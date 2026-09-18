@@ -1256,7 +1256,7 @@ export default function CounterPangPang() {
                 )}
 
                 {/* 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
-                <div className="relative flex flex-col items-center mt-auto mb-2">
+                <div className="relative flex flex-col items-center mt-auto mb-20">
                   <div className="relative w-64 h-56 sm:w-72 sm:h-64">
                     <GameImage
                       src="/assets/car.png"
