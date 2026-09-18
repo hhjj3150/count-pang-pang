@@ -582,6 +582,7 @@ export default function CounterPangPang() {
   const [reaction, setReaction] = useState<Reaction>("idle")
   const [locked, setLocked] = useState(false)
   const [timeLeft, setTimeLeft] = useState(15)
+  const [isPaused, setIsPaused] = useState(false)
   const [correctCount, setCorrectCount] = useState(0)
 
   // 결과
@@ -728,16 +729,27 @@ export default function CounterPangPang() {
     [locked, advance, sfxRight, sfxWrong],
   )
 
+  // ▼▼▼ 화면 밖으로 나가면 일시정지 스위치 켜기 ▼▼▼
+  const [isPaused, setIsPaused] = useState(false)
+
+  useEffect(() => {
+    const handleVis = () => setIsPaused(document.hidden)
+    document.addEventListener("visibilitychange", handleVis)
+    return () => document.removeEventListener("visibilitychange", handleVis)
+  }, [])
+
   // 타이머
   useEffect(() => {
-    if (screen !== "GAME" || locked) return
+    // isPaused(일시정지) 상태일 때는 시간이 안 줄어듦!
+    if (screen !== "GAME" || locked || isPaused) return
     if (timeLeft <= 0) {
       resolve(false)
       return
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
     return () => clearTimeout(id)
-  }, [screen, locked, timeLeft, resolve])
+  }, [screen, locked, timeLeft, resolve, isPaused])
+  // ▲▲▲ 여기까지 교체 완료 ▲▲▲
 
   const startLevel = useCallback(
     (level: number) => {
