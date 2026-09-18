@@ -1265,7 +1265,7 @@ export default function CounterPangPang() {
                       className="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
                     />
                     {/* 번호판 크기 유지 & 겹치기 */}
-                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 scale-90 sm:scale-100 origin-top transform whitespace-nowrap z-30">
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 scale-90 sm:scale-100 origin-top transform whitespace-nowrap z-30">
                       <Plate
                         q={currentQ}
                         selected={currentQ.type === "partition" ? selected : undefined}
@@ -1280,7 +1280,7 @@ export default function CounterPangPang() {
             </div>
             
             {/* 입력 영역 (레벨별 UI 스위칭) */}
-            <div className="flex-none rounded-t-3xl border-t border-white/15 bg-white/5 px-4 pb-5 pt-4 backdrop-blur-xl">
+            <div className="flex-none rounded-t-3xl border-t border-white/15 bg-white/5 px-4 pb-2 pt-2 backdrop-blur-xl">
               {currentQ.type === "numpad" && (
                 <Numpad
                   value={input}
