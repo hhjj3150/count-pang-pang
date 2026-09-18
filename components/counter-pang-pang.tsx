@@ -427,11 +427,26 @@ export default function CounterPangPang() {
     
     document.addEventListener('click', handleFirstClick);
 
+    // ▼▼▼ 화면 밖으로 나가면 노래 끄기 추가 ▼▼▼
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        currentAudio.pause(); // 다른 앱을 켜면 노래 정지
+      } else {
+        // 앱으로 돌아왔을 때, 음소거 상태가 아니라면 다시 재생
+        if (!currentAudio.muted) {
+          currentAudio.play().catch(e => console.log("재생 대기"));
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    // ▲▲▲ 여기까지 ▲▲▲
+
     // 5. 화면을 벗어날 때 정리 (음악 끄기)
     return () => {
       currentAudio.pause();
       currentAudio.removeEventListener('ended', playNext);
       document.removeEventListener('click', handleFirstClick);
+      document.removeEventListener("visibilitychange", handleVisibilityChange); // 정리 코드 추가
     };
   }, []);
   // ▲▲▲ 여기까지입니다 ▲▲▲
@@ -457,8 +472,20 @@ export default function CounterPangPang() {
       drivingSound.pause(); 
     }
 
+    // ▼▼▼ 화면 밖으로 나가면 주행 소리 끄기 추가 ▼▼▼
+    const handleVis = () => {
+      if (document.hidden) {
+        drivingSound.pause();
+      } else if (screen === "GAME") {
+        drivingSound.play().catch(e => console.log("주행 소리 재생 대기"));
+      }
+    };
+    document.addEventListener("visibilitychange", handleVis);
+    // ▲▲▲ 여기까지 ▲▲▲
+
     return () => {
       drivingSound.pause();
+      document.removeEventListener("visibilitychange", handleVis); // 정리 코드 추가
     };
   }, [screen]);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
