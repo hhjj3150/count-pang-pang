@@ -1264,37 +1264,36 @@ export default function CounterPangPang() {
                   )}
                 </div>
 
-                {/* 2. 팡이 리액션 + 물음표/입력값 (자동차 위로 올림) */}
-                <div className="flex items-center gap-3 mb-2 z-20">
-                  <GameImage
-                    src={
-                      reaction === "correct" ? "/assets/정답이미지.png" : 
-                      reaction === "wrong" ? "/assets/오답이미지.png" : 
-                      "/assets/기본이미지.png"
-                    }
-                    alt="팡이 리액션"
-                    fallback={<span style={{ fontSize: "2.4rem" }}>{reactionEmoji}</span>}
-                    className={cn(
-                      "h-16 w-16 rounded-2xl bg-white/10 object-contain p-1 ring-1 ring-white/20",
-                      reaction === "wrong" && "cpp-shake",
-                      reaction === "correct" && "cpp-pop",
-                    )}
-                  />
-                  {currentQ.type === "numpad" && (
-                    <div className="min-w-[96px] rounded-2xl border border-white/20 bg-black/60 px-4 py-2 text-center backdrop-blur shadow-lg">
-                      <span className="text-3xl font-black tabular-nums text-white">{input || "?"}</span>
-                    </div>
-                  )}
-                </div>
-
-            {/* 3. 예시 정답 (글씨가 사라져도 높이가 흔들리지 않게 투명 틀 고정) */}
-            <div className="flex h-8 items-center justify-center z-20 mb-2">
-              {isExample && (
-                <div className="rounded-full bg-emerald-400/90 px-4 py-1.5 text-sm font-black text-emerald-950 shadow cpp-pop">
-                  예시 정답: {exampleText(currentQ)}
-                </div>
-              )}
+                {/* 2 & 3. 팡이 리액션 + 물음표 + 예시 정답 (세로 공간 절약을 위해 한 줄로 통합) */}
+        <div className="flex h-16 items-center justify-center gap-2 mb-2 z-20 transition-all">
+          <GameImage
+            src={
+              reaction === "correct" ? "/assets/정답이미지.png" : 
+              reaction === "wrong" ? "/assets/오답이미지.png" : 
+              "/assets/기본이미지.png"
+            }
+            alt="팡이 리액션"
+            fallback={<span style={{ fontSize: "2.4rem" }}>{reactionEmoji}</span>}
+            className={cn(
+              "h-16 w-16 rounded-2xl bg-white/10 object-contain p-1 ring-1 ring-white/20",
+              reaction === "wrong" && "cpp-shake",
+              reaction === "correct" && "cpp-pop",
+            )}
+          />
+          
+          {currentQ.type === "numpad" && (
+            <div className="min-w-[80px] rounded-2xl border border-white/20 bg-black/60 px-4 py-2 text-center backdrop-blur shadow-lg">
+              <span className="text-3xl font-black tabular-nums text-white">{input || "?"}</span>
             </div>
+          )}
+
+          {/* 예시 정답을 물음표 우측으로 이동! (세로 공간 절약) */}
+          {isExample && (
+            <div className="rounded-full bg-emerald-400/90 px-3 py-1.5 text-xs font-black text-emerald-950 shadow cpp-pop">
+              정답: {exampleText(currentQ)}
+            </div>
+          )}
+        </div>
 
             {/* 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
             <div className="relative flex flex-col items-center mt-auto mb-2">
