@@ -1287,34 +1287,35 @@ export default function CounterPangPang() {
                   )}
                 </div>
 
-                {/* 3. 예시 정답 (입력값 바로 아래) */}
-                {isExample && (
-                  <div className="rounded-full bg-emerald-400/90 px-4 py-1.5 text-sm font-black text-emerald-950 shadow cpp-pop z-20">
-                    예시 정답: {exampleText(currentQ)}
-                  </div>
-                )}
-
-                {/* 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
-                <div className="relative flex flex-col items-center mt-auto mb-20">
-                  <div className="relative w-64 h-56 sm:w-72 sm:h-64">
-                    <GameImage
-                      src="/assets/car.png"
-                      alt="달리는 자동차"
-                      fallback={<span style={{ fontSize: "3.5rem" }}>🚕</span>}
-                      className="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
-                    />
-                    {/* 번호판 크기 유지 & 겹치기 */}
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 scale-90 sm:scale-100 origin-top transform whitespace-nowrap z-30">
-                      <Plate
-                        q={currentQ}
-                        selected={currentQ.type === "partition" ? selected : undefined}
-                        onToggle={currentQ.type === "partition" && !locked ? togglePartition : undefined}
-                      />
-                    </div>
-                  </div>
+            {/* 3. 예시 정답 (글씨가 사라져도 높이가 흔들리지 않게 투명 틀 고정) */}
+            <div className="flex h-8 items-center justify-center z-20 mb-2">
+              {isExample && (
+                <div className="rounded-full bg-emerald-400/90 px-4 py-1.5 text-sm font-black text-emerald-950 shadow cpp-pop">
+                  예시 정답: {exampleText(currentQ)}
                 </div>
+              )}
+            </div>
 
+            {/* 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
+            <div className="relative flex flex-col items-center mt-auto mb-2">
+              {/* 자동차 크기를 카카오톡 좁은 화면에 맞게 w-48 h-40으로 축소 */}
+              <div className="relative w-48 h-40 sm:w-64 sm:h-56">
+                <GameImage
+                  src="/assets/car.png"
+                  alt="달리는 자동차"
+                  fallback={<span style={{ fontSize: "3.5rem" }}>🚕</span>}
+                  className="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
+                />
+                {/* 번호판을 자동차 바닥에 찰싹 붙임 (bottom-0) */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 scale-90 sm:scale-100 origin-top transform whitespace-nowrap z-30">
+                  <Plate
+                    q={currentQ}
+                    selected={currentQ.type === "partition" ? selected : undefined}
+                    onToggle={currentQ.type === "partition" && !locked ? togglePartition : undefined}
+                  />
+                </div>
               </div>
+            </div>
 
             </div>
             
