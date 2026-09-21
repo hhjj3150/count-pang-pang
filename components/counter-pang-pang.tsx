@@ -728,16 +728,8 @@ export default function CounterPangPang() {
     },
     [locked, advance, sfxRight, sfxWrong],
   )
-
-  // ▼▼▼ 화면 밖으로 나가면 일시정지 스위치 켜기 ▼▼▼
-  const [isPaused, setIsPaused] = useState(false)
-
-  useEffect(() => {
-    const handleVis = () => setIsPaused(document.hidden)
-    document.addEventListener("visibilitychange", handleVis)
-    return () => document.removeEventListener("visibilitychange", handleVis)
-  }, [])
-
+ 
+ 
   // 타이머
   useEffect(() => {
     // isPaused(일시정지) 상태일 때는 시간이 안 줄어듦!
