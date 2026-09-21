@@ -1375,7 +1375,7 @@ export default function CounterPangPang() {
               )}
             </div>
           </section>
-        )}
+      
 
         {/* ============================ RESULT ============================ */}
         {screen === "RESULT" && (
