@@ -1308,76 +1308,75 @@ export default function CounterPangPang() {
               </div>
             </div>
 
-            </div>
-            
-            {/* 입력 영역 (레벨별 UI 스위칭) */}
-            <div className="flex-none rounded-t-3xl border-t border-white/15 bg-white/5 px-4 pb-2 pt-2 backdrop-blur-xl">
-              {currentQ.type === "numpad" && (
-                <Numpad
-                  value={input}
-                  onKey={onKey}
-                  onBackspace={onBackspace}
-                  onSubmit={onNumSubmit}
+          </div>
+        </div> {/* ✅ 1226번 줄부터 이어졌던 배경 박스를 여기서 완벽히 닫아줍니다! */}
+
+        {/* 입력 영역 (레벨별 UI 스위칭) */}
+        <div className="flex-none rounded-t-3xl border-t border-white/15 bg-white/5 px-4 pb-2 pt-2 backdrop-blur-xl">
+          {currentQ.type === "numpad" && (
+            <Numpad
+              value={input}
+              onKey={onKey}
+              onBackspace={onBackspace}
+              onSubmit={onNumSubmit}
+              disabled={locked}
+            />
+          )}
+
+          {currentQ.type === "compare" && (
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { k: "front", label: "앞이 큼", emoji: "⬅️" },
+                  { k: "equal", label: "같음", emoji: "🟰" },
+                  { k: "back", label: "뒤가 큼", emoji: "➡️" },
+                ] as const
+              ).map((b) => (
+                <button
+                  key={b.k}
+                  type="button"
                   disabled={locked}
-                />
-              )}
-
-              {currentQ.type === "compare" && (
-                <div className="grid grid-cols-3 gap-2">
-                  {(
-                    [
-                      { k: "front", label: "앞이 큼", emoji: "⬅️" },
-                      { k: "equal", label: "같음", emoji: "🟰" },
-                      { k: "back", label: "뒤가 큼", emoji: "➡️" },
-                    ] as const
-                  ).map((b) => (
-                    <button
-                      key={b.k}
-                      type="button"
-                      disabled={locked}
-                      onClick={() => onCompare(b.k)}
-                      className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-b from-sky-400 to-sky-500 py-4 text-base font-black text-white shadow-[0_5px_0_#0369a1] active:translate-y-1 active:shadow-[0_1px_0_#0369a1] disabled:opacity-40"
-                    >
-                      <span className="text-2xl">{b.emoji}</span>
-                      {b.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {currentQ.type === "partition" && (
-                <div className="space-y-2">
-                  <p className="text-center text-xs text-white/60">
-                    번호판 숫자를 눌러 파란 불을 켜세요 · 현재 선택 합{" "}
-                    <span className="font-black text-sky-300">
-                      {selected.reduce((a, i) => a + [...currentQ.front, ...currentQ.back][i], 0)}
-                    </span>
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      disabled={locked}
-                      onClick={onPartitionSubmit}
-                      className="rounded-2xl bg-gradient-to-b from-emerald-400 to-emerald-500 py-4 text-lg font-black text-emerald-950 shadow-[0_5px_0_#047857] active:translate-y-1 active:shadow-[0_1px_0_#047857] disabled:opacity-40"
-                    >
-                      제출 ✅
-                    </button>
-                    <button
-                      type="button"
-                      disabled={locked}
-                      onClick={onPartitionImpossible}
-                      className="rounded-2xl bg-gradient-to-b from-rose-400 to-rose-500 py-4 text-lg font-black text-white shadow-[0_5px_0_#be123c] active:translate-y-1 active:shadow-[0_1px_0_#be123c] disabled:opacity-40"
-                    >
-                      이등분 불가 🚫
-                    </button>
-                  </div>
-                </div>
-              )}
+                  onClick={() => onCompare(b.k)}
+                  className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-b from-sky-400 to-sky-500 py-4 text-base font-black text-white shadow-[0_5px_0_#0369a1] active:translate-y-1 active:shadow-[0_1px_0_#0369a1] disabled:opacity-40"
+                >
+                  <span className="text-2xl">{b.emoji}</span>
+                  {b.label}
+                </button>
+              ))}
             </div>
-          </section>
-      
+          )}
 
-        {/* ============================ RESULT ============================ */}
+          {currentQ.type === "partition" && (
+            <div className="space-y-2">
+              <p className="text-center text-xs text-white/60">
+                번호판 숫자를 눌러 파란 불을 켜세요 · 현재 선택 합{" "}
+                <span className="font-black text-sky-300">
+                  {selected.reduce((a, i) => a + [...currentQ.front, ...currentQ.back][i], 0)}
+                </span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={onPartitionSubmit}
+                  className="rounded-2xl bg-gradient-to-b from-emerald-400 to-emerald-500 py-4 text-lg font-black text-emerald-950 shadow-[0_5px_0_#047857] active:translate-y-1 active:shadow-[0_1px_0_#047857] disabled:opacity-40"
+                >
+                  제출 ✅
+                </button>
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={onPartitionImpossible}
+                  className="rounded-2xl bg-gradient-to-b from-rose-400 to-rose-500 py-4 text-lg font-black text-white shadow-[0_5px_0_#be123c] active:translate-y-1 active:shadow-[0_1px_0_#be123c] disabled:opacity-40"
+                >
+                  이등분 불가 🚫
+                </button>
+              </div>
+            </div>
+          )} {/* ✅ 실수로 지워졌던 조건문 닫기 괄호를 복구했습니다! */}
+        </div>
+      </section>
+    )}
         {screen === "RESULT" && (
           <section className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6 text-center">
            <div 
