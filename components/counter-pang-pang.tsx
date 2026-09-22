@@ -460,6 +460,9 @@ export default function CounterPangPang() {
   const [unlocked, setUnlocked] = useState(0)
   const [records, setRecords] = useState<Record<number, number>>({})
   const [muted, setMuted] = useState(false)
+  const [points, setPoints] = useState(0);
+  const [isFever, setIsFever] = useState(false);
+  const [fastCombo, setFastCombo] = useState(0);
 
   React.useEffect(() => {
     const drivingSound = new Audio('/assets/driving.mp3');
@@ -696,9 +699,13 @@ export default function CounterPangPang() {
     setPassed(ok)
     setResultPhase("boom")
     if (ok) {
-      setRecords((r) => ({ ...r, [chosenLevel]: Math.max(r[chosenLevel] ?? 0, score) }))
-      if (chosenLevel < MAX_LEVEL) setUnlocked((u) => Math.max(u, chosenLevel + 1))
-    }
+        setRecords((r) => ({ ...r, [chosenLevel]: Math.max(r[chosenLevel] ?? 0, score) }))
+        if (chosenLevel < MAX_LEVEL) setUnlocked((u) => Math.max(u, chosenLevel + 1))
+        
+        // 레벨 패스 보너스 지급 (레벨0: 5점, 레벨1: 30점 ~ 최대 110점)
+        const bonus = chosenLevel === 0 ? 5 : Math.min(20 + (chosenLevel * 10), 110);
+        setPoints(prev => prev + bonus);
+      }
     setScreen("RESULT")
   }, [chosenLevel])
 
@@ -735,8 +742,10 @@ export default function CounterPangPang() {
     // isPaused(일시정지) 상태일 때는 시간이 안 줄어듦!
     if (screen !== "GAME" || locked || isPaused) return
     if (timeLeft <= 0) {
-      resolve(false)
-      return
+      setIsFever(false);
+      setFastCombo(0);
+      resolve(false);
+      return;
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
     return () => clearTimeout(id)
@@ -789,12 +798,61 @@ export default function CounterPangPang() {
   }
   const onNumSubmit = () => {
     if (!currentQ || input === "") return
-    resolve(Number(input) === currentQ.answer)
+    const isCorrect = Number(input) === currentQ.answer;
+    
+    // 예제 문제가 아닐 경우 피버 및 점수 계산
+    if (!isExample) {
+      if (isCorrect) {
+        // 피버 모드면 15점, 아니면 10점
+        const pointToAdd = isFever ? 15 : 10;
+        setPoints(prev => prev + pointToAdd);
+
+        // 남은 시간이 전체 시간의 2/3 이상일 때 (즉, 1/3 시간 내 정답)
+        if (timeLeft >= currentQ.timer * (2 / 3)) {
+          setFastCombo(prev => {
+            const newCombo = prev + 1;
+            // 3연속 빠른 정답 & 4번째 문제(qIndex가 3 이상)부터 피버 발동
+            if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
+            return newCombo;
+          });
+        } else {
+          setFastCombo(0); // 늦게 맞히면 콤보 초기화
+        }
+      } else {
+        // 오답 시 피버와 콤보 즉시 해제
+        setIsFever(false);
+        setFastCombo(0);
+      }
+    }
+    resolve(isCorrect);
   }
   const onCompare = (choice: "front" | "back" | "equal") => {
     if (!currentQ) return
     sfxClick()
-    resolve(choice === currentQ.answer)
+    const isCorrect = choice === currentQ.answer;
+    
+    // 예제 문제가 아닐 경우 피버 및 점수 계산
+    if (!isExample) {
+      if (isCorrect) {
+        const pointToAdd = isFever ? 15 : 10;
+        setPoints(prev => prev + pointToAdd);
+
+        if (timeLeft >= currentQ.timer * (2 / 3)) {
+          setFastCombo(prev => {
+            const newCombo = prev + 1;
+            if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
+            return newCombo;
+          });
+        } else {
+          setFastCombo(0);
+        }
+      } else {
+        setIsFever(false);
+        setFastCombo(0);
+      }
+    }
+    
+    resolve(isCorrect);
   }
   const togglePartition = (i: number) => {
     if (locked) return
@@ -1192,10 +1250,17 @@ export default function CounterPangPang() {
               {/* relative를 추가해서 중앙 정렬의 기준점을 만들어 줍니다 */}
               <div className="relative flex items-center justify-between py-1">
                 
-                {/* 1. 레벨 표시 (왼쪽 고정) */}
-                <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-black ring-1 ring-white/20">
-                  Lv.{chosenLevel}
-                </span>
+                {/* 1. 레벨 및 포인트 표시 (왼쪽 고정) */}
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-black ring-1 ring-white/20">
+            Lv.{chosenLevel}
+          </span>
+          {/* 포인트 지갑 & 피버 모드 표시 */}
+          <span className="flex items-center gap-1 rounded-full bg-yellow-400/20 px-3 py-1 text-sm font-black text-yellow-400 ring-1 ring-yellow-400/50">
+            💰 {points}
+            {isFever && <span className="ml-1 text-red-500 cpp-pop">🔥 1.5x</span>}
+          </span>
+        </div>
 
                 {/* 2. 타이머 & 문제 번호 (정중앙으로 강제 고정!) */}
                 <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
