@@ -1572,15 +1572,25 @@ export default function CounterPangPang() {
                     {/* 레벨당 10개의 이모티콘 반복 */}
                     {Array.from({ length: 10 }, (_, j) => {
                       const imgNum = j + 1; // 1 ~ 10
-                      
-                      return (
-                        <button
-                          key={imgNum}
-                          type="button"
-                          disabled={isLocked}
-                          onClick={() => {
-                            sfxClick();
-                            const imgSrc = `/assets/${lv}-${imgNum}.png`;
+            const price = 30 + (lv - 1) * 20; // 💰 레벨별 가격 계산 (30, 50, 70...)
+
+            return (
+              <button
+                key={imgNum}
+                type="button"
+                disabled={isLocked}
+                onClick={() => {
+                  // 잔액이 부족하면 알림 띄우고 다운로드 취소
+                  if (points < price) {
+                    flashToast(`포인트가 부족해요! (필요: ${price}p) 😥`);
+                    return; 
+                  }
+                  
+                  // 잔액이 충분하면 포인트 차감
+                  setPoints((prev) => prev - price);
+
+                  sfxClick();
+                  const imgSrc = `/assets/${lv}-${imgNum}.png`;
                             
                             // 캔버스를 이용해 닉네임 시그니처 합성 후 다운로드
                             const img = new Image();
@@ -1627,6 +1637,9 @@ export default function CounterPangPang() {
                             alt={`Lv.${lv}-${imgNum}`}
                             className="h-full w-full object-cover"
                           />
+                          <div className="absolute bottom-0 w-full bg-black/70 py-1 text-center text-xs font-bold text-yellow-400">
+              {isLocked ? "🔒 잠김" : `${price} p`}
+            </div>
                         </button>
                       );
                     })}
