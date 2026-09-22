@@ -1258,7 +1258,38 @@ export default function CounterPangPang() {
 
         {/* ============================ GAME ============================ */}
         {screen === "GAME" && currentQ && (
-          <section className="flex h-full flex-col">
+          <section className="relative flex h-full flex-col overflow-hidden">
+          
+          {/* 🔥 피버 타임 시각 효과 (오렌지색 깜빡임 + 중앙 텍스트) */}
+          {isFever && (
+            <>
+              <style>{`
+                @keyframes fastFever {
+                  0%, 100% { background-color: rgba(255, 165, 0, 0); }
+                  50% { background-color: rgba(255, 140, 0, 0.35); }
+                }
+                .fever-bg {
+                  animation: fastFever 0.6s infinite;
+                }
+              `}</style>
+              
+              <div className="pointer-events-none absolute inset-0 z-40 fever-bg" />
+              
+              <div className="pointer-events-none absolute left-1/2 top-[40%] z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center whitespace-nowrap">
+                <span 
+                  className="text-5xl font-black italic text-orange-500 drop-shadow-md"
+                  style={{ textShadow: '0 0 15px #FFD700, 0 0 30px #FF8C00' }}
+                >
+                  FEVER TIME
+                </span>
+                <span className="mt-1 animate-pulse text-3xl font-bold text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                  +50%
+                </span>
+              </div>
+            </>
+          )}
+
+          {/* 상태바 */}
             {/* 상태바 */}
             <header className="flex-none px-4 pb-2 pt-4">
               {/* relative를 추가해서 중앙 정렬의 기준점을 만들어 줍니다 */}
