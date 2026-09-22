@@ -1232,14 +1232,12 @@ export default function CounterPangPang() {
                 )}
               />
             </div>
-{/* 💖 하트 중앙에 표시될 클리어 보상 포인트 텍스트 */}
-        {!isLocked && (
-          <div className="pointer-events-none absolute bottom-[12%] left-1/2 z-20 flex -translate-x-1/2 items-center justify-center">
-            <span className="text-sm font-black text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]">
-              +100P
-            </span>
-          </div>
-        )}
+{/* 💖 하트 중앙에 표시될 클리어 보상 포인트 텍스트 (잠긴 레벨도 노출, 노란색, 레벨별 차등 지급) */}
+        <div className="pointer-events-none absolute bottom-[12%] left-1/2 z-20 flex -translate-x-1/2 items-center justify-center">
+          <span className="text-sm font-black text-yellow-400 drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]">
+            +{lv === 0 ? 5 : Math.min(110, 20 + lv * 10)}P
+          </span>
+        </div>
             {/* 2. 글씨 (레벨은 입체감 유지, 아래 이름은 깔끔한 평면 캡슐 글씨로 변경!) */}
           <div className="relative z-10 flex flex-col items-center gap-1">
             
