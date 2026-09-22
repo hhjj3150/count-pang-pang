@@ -597,7 +597,8 @@ export default function CounterPangPang() {
   const [nickInput, setNickInput] = useState("")
   const [showVault, setShowVault] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-
+// --- 📥 다운로드 미리보기 상태 ---
+  const [previewItem, setPreviewItem] = useState<{lv: number, idx: number, price: number} | null>(null);
   const correctRef = useRef(0)
   const qIndexRef = useRef(0)
   const audioRef = useRef<AudioContext | null>(null)
@@ -1613,7 +1614,82 @@ export default function CounterPangPang() {
           <p className="mb-4 text-center text-sm font-bold text-white/70">
             열린 팡이를 터치하면 닉네임이 박혀서 저장됩니다 📸
           </p>
-          
+          {/* 🌟 미리보기 팝업창 (전체 화면 덮어씌움) */}
+        {previewItem && (
+          <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/80 p-6 backdrop-blur-md">
+            <h3 className="mb-6 text-2xl font-black text-white">Lv.{previewItem.lv} 팡이</h3>
+            
+            {/* 크게 보여줄 이미지 */}
+            <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/10 ring-4 ring-yellow-400/50">
+              <GameImage 
+                src={`/assets/${previewItem.lv}-${previewItem.idx}.png`} 
+                alt="preview" 
+                fallback={<div className="h-full w-full bg-white/20" />}
+                className="h-full w-full object-cover"
+              />
+            </div>
+
+            {/* 다운로드 버튼 */}
+            <button
+              type="button"
+              onClick={() => {
+                // 1. 잔액 확인
+                if (points < previewItem.price) {
+                  flashToast(`포인트가 부족해요! (${points}P / ${previewItem.price}P) 😥`);
+                  return;
+                }
+                
+                // 2. 포인트 차감
+                setPoints(p => p - previewItem.price);
+                
+                // 3. 닉네임 각인 및 실제 다운로드 실행 (기존 로직 완벽 이식)
+                const imgSrc = `/assets/${previewItem.lv}-${previewItem.idx}.png`;
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => {
+                  const canvas = document.createElement("canvas");
+                  canvas.width = img.width;
+                  canvas.height = img.height;
+                  const ctx = canvas.getContext("2d");
+                  if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    const fontSize = Math.max(16, img.width * 0.1);
+                    ctx.font = `900 ${fontSize}px sans-serif`;
+                    ctx.textAlign = "right";
+                    ctx.textBaseline = "bottom";
+                    ctx.lineWidth = fontSize * 0.2;
+                    ctx.strokeStyle = "white";
+                    ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                    ctx.fillStyle = "#333333";
+                    ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                    
+                    const a = document.createElement("a");
+                    a.href = canvas.toDataURL("image/png");
+                    a.download = `pangi_lv${previewItem.lv}_${previewItem.idx}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    flashToast(`${previewItem.price}P 사용! Lv.${previewItem.lv} 이모티콘 저장 완료! 🎉`);
+                    setPreviewItem(null); 
+                  }
+                };
+                img.src = imgSrc;
+              }}
+              className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-black shadow-lg active:scale-95"
+            >
+              📥 {previewItem.price}P로 다운받기
+            </button>
+
+            {/* 돌아가기 버튼 */}
+            <button 
+              onClick={() => setPreviewItem(null)}
+              className="mt-5 text-sm font-bold text-white/60 underline"
+            >
+              돌아가기
+            </button>
+          </div>
+        )}
           <div className="space-y-6">
             {/* 👇 레벨 1부터 11까지만 반복하도록 딱 맞췄습니다! 👇 */}
             {Array.from({ length: 11 }, (_, i) => {
@@ -1636,54 +1712,9 @@ export default function CounterPangPang() {
                 type="button"
                 disabled={isLocked}
                 onClick={() => {
-                  // 잔액이 부족하면 알림 띄우고 다운로드 취소
-                  if (points < price) {
-                    flashToast(`포인트가 부족해요! (필요: ${price}p) 😥`);
-                    return; 
-                  }
-                  
-                  // 잔액이 충분하면 포인트 차감
-                  setPoints((prev) => prev - price);
-
-                  sfxClick();
-                  const imgSrc = `/assets/${lv}-${imgNum}.png`;
-                            
-                            // 캔버스를 이용해 닉네임 시그니처 합성 후 다운로드
-                            const img = new Image();
-                            img.crossOrigin = "anonymous";
-                            img.onload = () => {
-                              const canvas = document.createElement("canvas");
-                              canvas.width = img.width;
-                              canvas.height = img.height;
-                              const ctx = canvas.getContext("2d");
-                              
-                              if (ctx) {
-                                ctx.drawImage(img, 0, 0);
-                                
-                                const fontSize = Math.max(16, img.width * 0.1); 
-                                ctx.font = `900 ${fontSize}px sans-serif`;
-                                ctx.textAlign = "right";
-                                ctx.textBaseline = "bottom";
-                                
-                                ctx.lineWidth = fontSize * 0.2;
-                                ctx.strokeStyle = "white";
-                                ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                                
-                                ctx.fillStyle = "#333333";
-                                ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                                
-                                const a = document.createElement("a");
-                                a.href = canvas.toDataURL("image/png");
-                                a.download = `pangi_lv${lv}_${imgNum}.png`;
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                
-                                flashToast(`Lv.${lv} 이모티콘 저장 완료!`);
-                              }
-                            };
-                            img.src = imgSrc;
-                          }}
+              sfxClick();
+              setPreviewItem({ lv, idx: imgNum, price });
+            }}
                           className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10 transition-all ${
                             isLocked ? "cursor-not-allowed opacity-30 grayscale" : "active:scale-90 shadow-md"
                           }`}
