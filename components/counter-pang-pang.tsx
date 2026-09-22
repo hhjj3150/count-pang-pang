@@ -599,6 +599,48 @@ export default function CounterPangPang() {
   const [toast, setToast] = useState<string | null>(null)
 // --- 📥 다운로드 미리보기 상태 ---
   const [previewItem, setPreviewItem] = useState<{lv: number, idx: number, price: number} | null>(null);
+  // --- 💌 초대하기 및 일일 보상 시스템 ---
+  const [inviteCount, setInviteCount] = useState(0);
+
+  // 날짜가 바뀌면 초대 횟수 자동 초기화
+  useEffect(() => {
+    const todayStr = new Date().toLocaleDateString();
+    const savedInvite = localStorage.getItem('cp_invite');
+    if (savedInvite) {
+      const { date, count } = JSON.parse(savedInvite);
+      if (date === todayStr) {
+        setInviteCount(count);
+      } else {
+        setInviteCount(0); 
+      }
+    }
+  }, []);
+
+  // 공유 버튼 클릭 시 실행될 함수
+  const handleShare = async () => {
+    if (inviteCount >= 5) {
+      flashToast(`오늘 초대 보상을 모두 받으셨어요! (5/5) 내일 다시 만나요 ⏰`);
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: '카운터 팡팡 🎮',
+        text: '내 두뇌 한계에 도전해봐! 꿀잼 두뇌 게임 카운터 팡팡!',
+        url: 'https://count-pang-pang.vercel.app' 
+      });
+      
+      sfxClick();
+      const newCount = inviteCount + 1;
+      setInviteCount(newCount);
+      setPoints(prev => prev + 30);
+      localStorage.setItem('cp_invite', JSON.stringify({ date: new Date().toLocaleDateString(), count: newCount }));
+      
+      flashToast(`초대 성공! 30P 지급 완료 🎁 (오늘 ${newCount}/5회)`);
+    } catch (error) {
+      console.log('공유 취소 또는 미지원 기기:', error);
+    }
+  };
   const correctRef = useRef(0)
   const qIndexRef = useRef(0)
   const audioRef = useRef<AudioContext | null>(null)
@@ -1138,58 +1180,70 @@ export default function CounterPangPang() {
           <div className="absolute inset-0 z-0 bg-white/10" />
 
           {/* 2. 기존 글씨와 내용들이 배경에 가려지지 않도록 위로 띄워주기 (relative z-10) */}
-          <header className="relative z-10 flex-none px-4 pb-3 pt-4">
-                <div className="flex items-center justify-between pr-12">
-                  <div>
-                    {/* 노란 배경에 묻히지 않게 하얀 글씨를 '진한 까만색'으로 변경 */}
-                    <p className="text-xs text-black/60">반가워요</p>
-                    <div className="flex items-center gap-2">
-  <p className="text-lg font-black text-black">{nickname} 님</p>
-  <button
-    onClick={() => setScreen("LOGIN")}
-    className="rounded-full bg-black/10 px-2 py-1 text-xs font-bold text-black/60"
-  >
-    수정
-  </button>
-</div>
-                  </div>
-                  {/* 하트 개수 테두리도 노란색에 어울리는 검은색 반투명으로 변경 */}
-                  {/* 하트 개수: 우측에서 정중앙으로 이동 & BGM 버튼에 안 가려지게 z-10 추가! */}
-          <div className="absolute left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full bg-black/5 px-4 py-1.5 text-lg font-black text-black ring-1 ring-black/10 backdrop-blur-sm">
+          {/* 2. 기존 글씨와 내용들이 배경에 가려지지 않도록 위로 띄워주기 (relative z-10) */}
+        <header className="relative z-10 flex-none px-4 pb-3 pt-4">
+          <div className="flex items-center justify-between pr-12">
+            <div>
+              {/* 노란 배경에 묻히지 않게 하얀 글씨를 '진한 까만색'으로 변경 */}
+              <p className="text-xs text-black/60">반가워요</p>
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-black text-black">{nickname} 님</p>
+                <button
+                  onClick={() => setScreen("LOGIN")}
+                  className="rounded-full bg-black/10 px-2 py-1 text-xs font-bold text-black/60"
+                >
+                  수정
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 하트 개수: 중앙 정렬 */}
+          <div className="absolute left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full bg-black/5 px-4 py-1.5 text-lg font-black text-black">
             💖 <span>{hearts}</span>
           </div>
-                </div>
-                
-                {/* 핑크색 하트 충전 버튼 (이건 노란 배경에 잘 어울리니 그대로!) */}
-               <button
-                  type="button"
-                  onClick={rechargeAd}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-black/5 py-3.5 text-lg font-black text-black ring-1 ring-black/10 active:scale-[0.99]"
-                >
-                  🎬 광고 보고 하트 충전하기 <span className="rounded-full bg-black/10 px-2 py-0.5 text-sm">+1 💖</span>
-                </button>
-                
-                {/* 보관함 버튼도 노란 배경 위에서 잘 보이게 검은 글씨 + 검은 테두리로 변경 */}
-                {/* 💰 1번 & 2번 적용: 포인트 창(1/4) + 다운로드 보관함(3/4) 가로 배치 */}
-        <div className="mt-2 flex w-full items-center gap-2">
-          {/* 왼쪽: 포인트 표시 (flex-1) */}
-          <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80">
-            💰 {points}
+
+          {/* 🌟 1줄: 초대하기(1/4) + 하트 충전(3/4) 가로 배치 */}
+          <div className="mt-3 flex w-full items-center gap-2">
+            {/* 왼쪽: 초대하기 (flex-1) */}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-400 py-3 text-sm font-bold text-black/90 shadow-sm active:scale-95"
+            >
+              💌 초대
+            </button>
+            
+            {/* 오른쪽: 광고 보고 하트 충전하기 (flex-[3]) */}
+            <button
+              type="button"
+              onClick={rechargeAd}
+              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-black/5 py-3 text-sm font-black text-black/80 active:scale-95"
+            >
+              📺 광고 보고 하트 충전 <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs">+1 💖</span>
+            </button>
           </div>
-          
-          {/* 오른쪽: 다운로드 보관함 (flex-[3]) */}
-          <button
-            type="button"
-            onClick={() => {
-              sfxClick()
-              setShowVault(true)
-            }}
-            className="flex-[3] flex items-center justify-center gap-2 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80 active:scale-95 transition-transform"
-          >
-            📥 다운로드 보관함
-          </button>
-        </div>
-            </header>
+
+          {/* 🌟 2줄: 포인트 창(1/4) + 다운로드 보관함(3/4) 가로 배치 */}
+          <div className="mt-2 flex w-full items-center gap-2">
+            {/* 왼쪽: 포인트 표시 (flex-1) */}
+            <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80">
+              💰 {points}
+            </div>
+
+            {/* 오른쪽: 다운로드 보관함 (flex-[3]) */}
+            <button
+              type="button"
+              onClick={() => {
+                sfxClick();
+                setShowVault(true);
+              }}
+              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80 active:scale-95"
+            >
+              📥 다운로드 보관함
+            </button>
+          </div>
+        </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 cpp-no-scrollbar">
               <p className="mb-2 mt-1 text-sm font-bold text-black/70">스테이지 선택</p>
