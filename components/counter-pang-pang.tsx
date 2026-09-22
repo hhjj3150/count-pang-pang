@@ -617,28 +617,40 @@ export default function CounterPangPang() {
   }, []);
 
   // 공유 버튼 클릭 시 실행될 함수
+  // 공유 버튼 클릭 시 실행될 함수
   const handleShare = async () => {
     if (inviteCount >= 5) {
       flashToast(`오늘 초대 보상을 모두 받으셨어요! (5/5) 내일 다시 만나요 ⏰`);
       return;
     }
 
+    const shareUrl = 'https://count-pang-pang.vercel.app'; // 대표 메인 주소
+
     try {
-      await navigator.share({
-        title: '카운터 팡팡 🎮',
-        text: '내 두뇌 한계에 도전해봐! 꿀잼 두뇌 게임 카운터 팡팡!',
-        url: 'https://count-pang-pang.vercel.app' 
-      });
+      if (navigator.share) {
+        // 1. 일반 브라우저: 스마트폰 기본 공유 창 호출
+        await navigator.share({
+          title: '카운터 팡팡 🎮',
+          text: '내 두뇌 한계에 도전해봐! 꿀잼 두뇌 게임 카운터 팡팡!',
+          url: shareUrl
+        });
+      } else {
+        // 2. 카카오톡 인앱 등 공유 미지원 환경: 링크 복사로 대체
+        await navigator.clipboard.writeText(shareUrl);
+        flashToast("초대 링크가 복사되었습니다! 카톡 창에 붙여넣어 주세요 📋");
+      }
       
+      // 공유 또는 복사 성공 시 보상 지급
       sfxClick();
       const newCount = inviteCount + 1;
       setInviteCount(newCount);
       setPoints(prev => prev + 30);
       localStorage.setItem('cp_invite', JSON.stringify({ date: new Date().toLocaleDateString(), count: newCount }));
       
-      flashToast(`초대 성공! 30P 지급 완료 🎁 (오늘 ${newCount}/5회)`);
+      // 알림이 겹치지 않게 살짝 시간차를 두고 보상 알림 띄우기
+      setTimeout(() => flashToast(`초대 성공! 30P 지급 완료 🎁 (오늘 ${newCount}/5회)`), 1000);
     } catch (error) {
-      console.log('공유 취소 또는 미지원 기기:', error);
+      console.log('공유 취소 또는 에러:', error);
     }
   };
   const correctRef = useRef(0)
@@ -1172,19 +1184,12 @@ export default function CounterPangPang() {
             {/* 아까 메인 화면에 넣었던 화사한 햇살 투명 필름 똑같이 추가 */}
             <div className="absolute inset-0 z-0 bg-white/10" />
 
-            {/* 2. 기존 글씨와 내용들이 배경에 가려지지 않도록 위로 띄워주기 */}
-            <header className="relative z-10 flex-none px-4 pb-3 pt-4"></header>
-          
-          
-          {/* 아까 메인 화면에 넣었던 화사한 햇살 투명 필름 똑같이 추가 */}
-          <div className="absolute inset-0 z-0 bg-white/10" />
-
-          {/* 2. 기존 글씨와 내용들이 배경에 가려지지 않도록 위로 띄워주기 (relative z-10) */}
-          {/* 2. 기존 글씨와 내용들이 배경에 가려지지 않도록 위로 띄워주기 (relative z-10) */}
+           {/* 2. 기존 글씨와 내용들이 배경에 가려지지 않도록 위로 띄워주기 (relative z-10) */}
         <header className="relative z-10 flex-none px-4 pb-3 pt-4">
-          <div className="flex items-center justify-between pr-12">
+          {/* 상단 닉네임 + 하트 영역 (가로 정렬 묶음) */}
+          <div className="relative flex items-center justify-between pr-12">
+            {/* 왼쪽 닉네임 */}
             <div>
-              {/* 노란 배경에 묻히지 않게 하얀 글씨를 '진한 까만색'으로 변경 */}
               <p className="text-xs text-black/60">반가워요</p>
               <div className="flex items-center gap-2">
                 <p className="text-lg font-black text-black">{nickname} 님</p>
@@ -1196,11 +1201,11 @@ export default function CounterPangPang() {
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* 하트 개수: 중앙 정렬 */}
-          <div className="absolute left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full bg-black/5 px-4 py-1.5 text-lg font-black text-black">
-            💖 <span>{hearts}</span>
+            {/* 하트 개수: 위아래 중앙 + 가로 중앙 정렬로 완벽 고정 */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-black/5 px-4 py-1.5 text-lg font-black text-black">
+              💖 <span>{hearts}</span>
+            </div>
           </div>
 
           {/* 🌟 1줄: 초대하기(1/4) + 하트 충전(3/4) 가로 배치 */}
