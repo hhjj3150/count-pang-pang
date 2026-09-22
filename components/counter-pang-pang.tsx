@@ -803,21 +803,26 @@ export default function CounterPangPang() {
     // 예제 문제가 아닐 경우 피버 및 점수 계산
     if (!isExample) {
       if (isCorrect) {
-        // 피버 모드면 15점, 아니면 10점
-        const pointToAdd = isFever ? 15 : 10;
-        setPoints(prev => prev + pointToAdd);
+          // 1. 1/3 시간 안에 맞혔는지 먼저 체크!
+          const isFast = timeLeft >= currentQ.timer * (2 / 3);
 
-        // 남은 시간이 전체 시간의 2/3 이상일 때 (즉, 1/3 시간 내 정답)
-        if (timeLeft >= currentQ.timer * (2 / 3)) {
-          setFastCombo(prev => {
-            const newCombo = prev + 1;
-            // 3연속 빠른 정답 & 4번째 문제(qIndex가 3 이상)부터 피버 발동
-            if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
-            return newCombo;
-          });
-        } else {
-          setFastCombo(0); // 늦게 맞히면 콤보 초기화
-        }
+          if (!isFast) {
+            // 🚨 늦게 맞혔을 때: 즉시 피버 해제, 콤보 초기화, 10점만 부여
+            setIsFever(false);
+            setFastCombo(0);
+            setPoints((prev) => prev + 10);
+          } else {
+            // ⚡ 빨리 맞혔을 때: 기존 피버 상태면 15점, 아니면 10점 부여
+            const pointToAdd = isFever ? 15 : 10;
+            setPoints((prev) => prev + pointToAdd);
+
+            // 콤보 증가 및 피버 발동 (3연속 정답 & 4번째 문제 이상)
+            setFastCombo((prev) => {
+              const newCombo = prev + 1;
+              if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
+              return newCombo;
+            });
+          }
       } else {
         // 오답 시 피버와 콤보 즉시 해제
         setIsFever(false);
