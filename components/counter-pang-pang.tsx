@@ -751,7 +751,13 @@ export default function CounterPangPang() {
     return () => clearTimeout(id)
   }, [screen, locked, timeLeft, resolve, isPaused])
   // ▲▲▲ 여기까지 교체 완료 ▲▲▲
-
+// ⏱️ 실시간 피버 감시자: 남은 시간이 2/3 미만으로 떨어지는 순간 즉시 피버 강제 종료
+  useEffect(() => {
+    if (isFever && currentQ && timeLeft < currentQ.timer * (2 / 3)) {
+      setIsFever(false);
+      setFastCombo(0);
+    }
+  }, [timeLeft, isFever, currentQ]);
   const startLevel = useCallback(
     (level: number) => {
       if (level > unlocked) {
