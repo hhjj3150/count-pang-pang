@@ -1163,16 +1163,25 @@ export default function CounterPangPang() {
                 </button>
                 
                 {/* 보관함 버튼도 노란 배경 위에서 잘 보이게 검은 글씨 + 검은 테두리로 변경 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfxClick()
-                    setShowVault(true)
-                  }}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black ring-1 ring-black/10 active:scale-[0.99]"
-                >
-                📥 다운로드 보관함
-              </button>
+                {/* 💰 1번 & 2번 적용: 포인트 창(1/4) + 다운로드 보관함(3/4) 가로 배치 */}
+        <div className="mt-2 flex w-full items-center gap-2">
+          {/* 왼쪽: 포인트 표시 (flex-1) */}
+          <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80">
+            💰 {points}
+          </div>
+          
+          {/* 오른쪽: 다운로드 보관함 (flex-[3]) */}
+          <button
+            type="button"
+            onClick={() => {
+              sfxClick()
+              setShowVault(true)
+            }}
+            className="flex-[3] flex items-center justify-center gap-2 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80 active:scale-95 transition-transform"
+          >
+            📥 다운로드 보관함
+          </button>
+        </div>
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 cpp-no-scrollbar">
