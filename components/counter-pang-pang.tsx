@@ -1836,7 +1836,7 @@ export default function CounterPangPang() {
              {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 (워터마크 적용) ▼▼▼ */}
         <div className="max-h-[60vh] overflow-y-auto px-5 pb-8 cpp-no-scrollbar">
           <p className="mb-4 text-center text-sm font-bold text-white/70">
-            열린 팡이를 터치하면 닉네임이 박혀서 저장됩니다 📸
+            열린 팡이를 터치하면 닉네임 새겨진 시그니처 이모티콘으로 앨범에 저장됩니다 📸
           </p>
           {/* 🌟 미리보기 팝업창 (전체 화면 덮어씌움) */}
         {previewItem && (
