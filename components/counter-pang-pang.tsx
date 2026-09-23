@@ -1380,7 +1380,6 @@ export default function CounterPangPang() {
           {/* 포인트 지갑 & 피버 모드 표시 */}
           <span className="flex items-center gap-1 rounded-full bg-yellow-400/20 px-3 py-1 text-sm font-black text-yellow-400 ring-1 ring-yellow-400/50">
             💰 {points}
-            {isFever && <span className="ml-1 text-red-500 cpp-pop">🔥 1.5x</span>}
           </span>
         </div>
 
