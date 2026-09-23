@@ -199,14 +199,23 @@ function buildQuestion(chosenLevel: number, index: number): Question {
       }
     }
     case 10:
-            default: {
-              const { front, back } = base(2 + ri(2))
-              const all = [...front, ...back]
-              const litCount = 3 // 무조건 3개의 숫자에 불이 들어오도록 고정
-              const lit = pickDistinct(litCount, all.length)
+    default: {
+      const { front, back } = base(2 + ri(2))
+      
+      // 🔥 난이도 상승: 번호판의 0과 1을 2~9 사이의 숫자로 강제 변환
+      const hardFront = front.map(n => n <= 1 ? 2 + ri(8) : n)
+      const hardBack = back.map(n => n <= 1 ? 2 + ri(8) : n)
+      const all = [...hardFront, ...hardBack]
+      
+      const litCount = 3 // 무조건 3개의 숫자 곱셈
+      const lit = pickDistinct(litCount, all.length)
       const product = lit.reduce((p, i) => p * all[i], 1)
+      
       return {
-        level: logic, front, back, hangul, type: "numpad", timer,
+        level: logic, 
+        front: hardFront, // 변환된 어려운 숫자 적용
+        back: hardBack,   // 변환된 어려운 숫자 적용
+        hangul, type: "numpad", timer,
         title: "불빛 곱셈", desc: "불이 켜진 숫자를 모두 곱하세요", answer: product, lit,
       }
     }
