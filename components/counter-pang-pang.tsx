@@ -1740,9 +1740,10 @@ export default function CounterPangPang() {
                     sfxClick()
                     setShowVault(true)
                   }}
-                  className="w-full rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:scale-[0.99]"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:scale-[0.99]"
                 >
-                  🛒 포인트 상점 열기
+                  🛒 포인트 상점 열기 
+                  <span className="rounded-full bg-yellow-400/20 px-2 py-0.5 text-[11px] text-yellow-400">내 포인트: {points}P</span>
                 </button>
               )}
               <button
@@ -1820,7 +1821,12 @@ export default function CounterPangPang() {
           <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
             <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/15 bg-[#12172b]">
               <div className="flex items-center justify-between px-5 py-4">
-                <h3 className="text-lg font-black">🛒 포인트 상점</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-white">🛒 포인트 상점</h3>
+                  <span className="rounded-full bg-yellow-400/20 px-2 py-1 text-xs font-bold text-yellow-400 ring-1 ring-yellow-400/50">
+                    보유: {points}P
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -1841,7 +1847,10 @@ export default function CounterPangPang() {
           {/* 🌟 미리보기 팝업창 (전체 화면 덮어씌움) */}
         {previewItem && (
           <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/80 p-6 backdrop-blur-md">
-            <h3 className="mb-6 text-2xl font-black text-white">Lv.{previewItem.lv} 팡이</h3>
+            <h3 className="mb-2 text-2xl font-black text-white">Lv.{previewItem.lv} 팡이</h3>
+            <p className="mb-6 text-sm font-bold text-yellow-400">내 포인트: {points}P</p>
+            
+            {/* 크게 보여줄 이미지 */}
             
             {/* 크게 보여줄 이미지 */}
             <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/10 ring-4 ring-yellow-400/50">
