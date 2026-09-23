@@ -780,55 +780,43 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
-  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 제어 로직 (이중 팝업 튕김 방지)
+  // 📱 스마트폰 뒤로가기(하드웨어) 최종 제어 로직 (이중 팝업 오작동 원천 차단)
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen });
-  const prevPopupsRef = useRef(0);
   
-  // 현재 열려있는 창의 상태를 실시간으로 업데이트하여 기억해 둡니다.
+  // 상태 실시간 동기화
   useEffect(() => {
     stateRef.current = { showVault, showAttendance, previewItem, screen };
   }, [showVault, showAttendance, previewItem, screen]);
 
-  // ⭐️ 핵심 수정: 팝업이 '열릴 때만' 방어막을 추가합니다 (닫힐 때 오작동 방지)
-  const activePopups = (showVault ? 1 : 0) + (showAttendance ? 1 : 0) + (previewItem ? 1 : 0);
   useEffect(() => {
-    if (activePopups > prevPopupsRef.current) {
-      window.history.pushState({ popup: activePopups }, "", window.location.href);
-    }
-    prevPopupsRef.current = activePopups;
-  }, [activePopups]);
-
-  // 실제 뒤로가기 버튼을 눌렀을 때 작동하는 함수
-  useEffect(() => {
-    // 앱 시작 시 기본 방어막 하나 치기
-    window.history.pushState({ init: true }, "", window.location.href);
+    // 앱 진입 시 히스토리 스택에 가짜 기록 추가
+    window.history.pushState({ page: "main" }, "", window.location.href);
 
     const handlePopState = () => {
       const current = stateRef.current;
 
-      // 1순위: 두 번째 팝업(미리보기)이 열려있다면 그것만 닫기
+      // 1순위: 두 번째 팝업(미리보기)이 열려있다면? -> 팝업만 닫고, 뒤로가기로 소모된 히스토리를 제자리로 복구
       if (current.previewItem) {
         setPreviewItem(null);
-        return; 
+        window.history.pushState({ page: "main" }, "", window.location.href);
+        return;
       }
       
-      // 2순위: 첫 번째 팝업(상점이나 출석부)이 열려있다면 그것만 닫기
-      if (current.showVault) {
+      // 2순위: 첫 번째 팝업(상점이나 출석부)이 열려있다면? -> 팝업만 닫고 히스토리 복구
+      if (current.showVault || current.showAttendance) {
         setShowVault(false);
-        return; 
-      }
-      if (current.showAttendance) {
         setShowAttendance(false);
-        return; 
+        window.history.pushState({ page: "main" }, "", window.location.href);
+        return;
       }
 
-      // 3순위: 팝업이 다 닫혀있다면 이전 화면으로 이동 처리
+      // 3순위: 팝업이 없을 때만 정상적인 화면 이동 처리
       if (current.screen === "GAME" || current.screen === "RESULT") {
         setScreen("LOBBY");
-        window.history.pushState({ screen: "LOBBY" }, "", window.location.href);
+        window.history.pushState({ page: "main" }, "", window.location.href);
       } else if (current.screen === "LOBBY" || current.screen === "LOGIN") {
         setScreen("INTRO");
-        window.history.pushState({ screen: "INTRO" }, "", window.location.href);
+        window.history.pushState({ page: "main" }, "", window.location.href);
       }
     };
 
