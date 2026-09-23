@@ -1241,7 +1241,7 @@ export default function CounterPangPang() {
           <div className="mt-2 flex w-full items-center gap-2">
             {/* 왼쪽: 포인트 표시 (flex-1) */}
             <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80">
-              💰 {points}
+              {points}P
             </div>
 
             {/* 오른쪽: 다운로드 보관함 (flex-[3]) */}
@@ -1380,9 +1380,9 @@ export default function CounterPangPang() {
             Lv.{chosenLevel}
           </span>
           {/* 포인트 지갑 & 피버 모드 표시 */}
-          <span className="flex items-center gap-1 rounded-full bg-yellow-400/20 px-3 py-1 text-sm font-black text-yellow-400 ring-1 ring-yellow-400/50">
-            💰 {points}
-          </span>
+        <span className="flex items-center gap-1 rounded-full bg-yellow-400/20 px-2 py-1 text-sm font-black text-yellow-400 ring-1 ring-yellow-400/50">
+          {points}P
+        </span>
         </div>
 
                 {/* 2. 타이머 & 문제 번호 (정중앙으로 강제 고정!) */}
