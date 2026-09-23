@@ -1237,14 +1237,14 @@ export default function CounterPangPang() {
             </button>
           </div>
 
-          {/* 🌟 2줄: 포인트 창(1/4) + 다운로드 보관함(3/4) 가로 배치 */}
+          {/* 🌟 2줄: 포인트 창(1/4) + 🛒 포인트 상점(3/4) 가로 배치 */}
           <div className="mt-2 flex w-full items-center gap-2">
             {/* 왼쪽: 포인트 표시 (flex-1) */}
             <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80">
               {points}P
             </div>
 
-            {/* 오른쪽: 다운로드 보관함 (flex-[3]) */}
+            {/* 오른쪽: 🛒 포인트 상점 (flex-[3]) */}
             <button
               type="button"
               onClick={() => {
@@ -1253,7 +1253,7 @@ export default function CounterPangPang() {
               }}
               className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
             >
-              📥 다운로드 보관함
+               🛒 포인트 상점
             </button>
           </div>
         </header>
@@ -1640,7 +1640,7 @@ export default function CounterPangPang() {
                   }}
                   className="w-full rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:scale-[0.99]"
                 >
-                  📥 다운로드 보관함 열기
+                  🛒 포인트 상점 열기
                 </button>
               )}
               <button
@@ -1657,12 +1657,12 @@ export default function CounterPangPang() {
           </section>
         )}
 
-        {/* ============================ 다운로드 보관함 모달 ============================ */}
+        {/* ============================ 🛒 포인트 상점 모달 ============================ */}
         {showVault && (
           <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
             <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/15 bg-[#12172b]">
               <div className="flex items-center justify-between px-5 py-4">
-                <h3 className="text-lg font-black">📥 다운로드 보관함</h3>
+                <h3 className="text-lg font-black">🛒 포인트 상점</h3>
                 <button
                   type="button"
                   onClick={() => {
