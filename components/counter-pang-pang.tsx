@@ -199,11 +199,11 @@ function buildQuestion(chosenLevel: number, index: number): Question {
       }
     }
     case 10:
-    default: {
-      const { front, back } = base(2 + ri(2))
-      const all = [...front, ...back]
-      const litCount = index < 5 ? 2 : 3
-      const lit = pickDistinct(litCount, all.length)
+            default: {
+              const { front, back } = base(2 + ri(2))
+              const all = [...front, ...back]
+              const litCount = 3 // 무조건 3개의 숫자에 불이 들어오도록 고정
+              const lit = pickDistinct(litCount, all.length)
       const product = lit.reduce((p, i) => p * all[i], 1)
       return {
         level: logic, front, back, hangul, type: "numpad", timer,
