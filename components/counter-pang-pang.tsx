@@ -1818,12 +1818,14 @@ export default function CounterPangPang() {
         )}
         {/* ============================ 🛒 포인트 상점 모달 ============================ */}
         {showVault && (
-          <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
-            <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/15 bg-[#12172b]">
+          <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+            {/* 1. 상점 메인 배경: 아주 연한 투명 노란색 (bg-yellow-50/95) */}
+            <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-yellow-50/95 backdrop-blur-md shadow-2xl">
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-black text-white">🛒 포인트 상점</h3>
-                  <span className="rounded-full bg-yellow-400/20 px-2 py-1 text-xs font-bold text-yellow-400 ring-1 ring-yellow-400/50">
+                  {/* 글씨 색상 어둡게 변경 */}
+                  <h3 className="text-lg font-black text-zinc-900">🛒 포인트 상점</h3>
+                  <span className="rounded-full bg-yellow-400/30 px-2 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-500/50">
                     보유: {points}P
                   </span>
                 </div>
@@ -1833,143 +1835,138 @@ export default function CounterPangPang() {
                     sfxClick()
                     setShowVault(false)
                   }}
-                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-lg active:scale-90"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-zinc-900 text-lg hover:bg-black/10 active:scale-90"
                   aria-label="닫기"
                 >
                   ✕
                 </button>
               </div>
-             {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 (워터마크 적용) ▼▼▼ */}
-        <div className="max-h-[60vh] overflow-y-auto px-5 pb-8 cpp-no-scrollbar">
-          <p className="mb-4 text-center text-sm font-bold text-white/70">
-            열린 팡이를 터치하면 닉네임 새겨진 시그니처 이모티콘으로 앨범에 저장됩니다 📸
-          </p>
-          {/* 🌟 미리보기 팝업창 (전체 화면 덮어씌움) */}
-        {previewItem && (
-          <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/80 p-6 backdrop-blur-md">
-            <h3 className="mb-2 text-2xl font-black text-white">Lv.{previewItem.lv} 팡이</h3>
-            <p className="mb-6 text-sm font-bold text-yellow-400">내 포인트: {points}P</p>
-            
-            {/* 크게 보여줄 이미지 */}
-            
-            {/* 크게 보여줄 이미지 */}
-            <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/10 ring-4 ring-yellow-400/50">
-              <GameImage 
-                src={`/assets/${previewItem.lv}-${previewItem.idx}.png`} 
-                alt="preview" 
-                fallback={<div className="h-full w-full bg-white/20" />}
-                className="h-full w-full object-cover"
-              />
-            </div>
 
-            {/* 다운로드 버튼 */}
-            <button
-              type="button"
-              onClick={() => {
-                // 1. 잔액 확인
-                if (points < previewItem.price) {
-                  flashToast(`포인트가 부족해요! (${points}P / ${previewItem.price}P) 😥`);
-                  return;
-                }
-                
-                // 2. 포인트 차감
-                setPoints(p => p - previewItem.price);
-                
-                // 3. 닉네임 각인 및 실제 다운로드 실행 (기존 로직 완벽 이식)
-                const imgSrc = `/assets/${previewItem.lv}-${previewItem.idx}.png`;
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.onload = () => {
-                  const canvas = document.createElement("canvas");
-                  canvas.width = img.width;
-                  canvas.height = img.height;
-                  const ctx = canvas.getContext("2d");
-                  if (ctx) {
-                    ctx.drawImage(img, 0, 0);
-                    const fontSize = Math.max(16, img.width * 0.1);
-                    ctx.font = `900 ${fontSize}px sans-serif`;
-                    ctx.textAlign = "right";
-                    ctx.textBaseline = "bottom";
-                    ctx.lineWidth = fontSize * 0.2;
-                    ctx.strokeStyle = "white";
-                    ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                    ctx.fillStyle = "#333333";
-                    ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+              {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 ▼▼▼ */}
+              <div className="max-h-[60vh] overflow-y-auto px-5 pb-8 cpp-no-scrollbar">
+                <p className="mb-4 text-center text-sm font-bold text-zinc-700">
+                  열린 팡이를 터치하면 닉네임이 박혀서 저장됩니다 📸
+                </p>
+
+                {/* 🌟 2. 미리보기 팝업창 배경: 연하고 투명한 노란색 (bg-yellow-100/95) */}
+                {previewItem && (
+                  <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md">
+                    <h3 className="mb-2 text-2xl font-black text-zinc-900">Lv.{previewItem.lv} 팡이</h3>
+                    <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
                     
-                    const a = document.createElement("a");
-                    a.href = canvas.toDataURL("image/png");
-                    a.download = `pangi_lv${previewItem.lv}_${previewItem.idx}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    flashToast(`${previewItem.price}P 사용! Lv.${previewItem.lv} 이모티콘 저장 완료! 🎉`);
-                    setPreviewItem(null); 
-                  }
-                };
-                img.src = imgSrc;
-              }}
-              className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-black shadow-lg active:scale-95"
-            >
-              📥 {previewItem.price}P로 다운받기
-            </button>
+                    <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/60 ring-4 ring-yellow-400/80 shadow-xl">
+                      <GameImage 
+                        src={`/assets/${previewItem.lv}-${previewItem.idx}.png`} 
+                        alt="preview" 
+                        fallback={<div className="h-full w-full bg-white/50" />}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
 
-            {/* 돌아가기 버튼 */}
-            <button 
-              onClick={() => setPreviewItem(null)}
-              className="mt-5 text-sm font-bold text-white/60 underline"
-            >
-              돌아가기
-            </button>
-          </div>
-        )}
-          <div className="space-y-6">
-            {/* 👇 레벨 1부터 11까지만 반복하도록 딱 맞췄습니다! 👇 */}
-            {Array.from({ length: 11 }, (_, i) => {
-              const lv = i + 1; 
-              const isLocked = lv > unlocked;
-              
-              return (
-                <div key={lv} className="rounded-xl bg-black/20 p-3">
-                  <h4 className="mb-3 text-sm font-bold text-white">Lv.{lv} 팡이 팩 {isLocked && "🔒"}</h4>
-                  
-                  <div className="grid grid-cols-5 gap-2">
-                    {/* 레벨당 10개의 이모티콘 반복 */}
-                    {Array.from({ length: 10 }, (_, j) => {
-                      const imgNum = j + 1; // 1 ~ 10
-            const price = 30 + (lv - 1) * 20; // 💰 레벨별 가격 계산 (30, 50, 70...)
+                    {/* 다운로드 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (points < previewItem.price) {
+                          flashToast(`포인트가 부족해요! (${points}P / ${previewItem.price}P) 😥`);
+                          return;
+                        }
+                        
+                        setPoints(p => p - previewItem.price);
+                        
+                        const imgSrc = `/assets/${previewItem.lv}-${previewItem.idx}.png`;
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.onload = () => {
+                          const canvas = document.createElement("canvas");
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          const ctx = canvas.getContext("2d");
+                          if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            const fontSize = Math.max(16, img.width * 0.1);
+                            ctx.font = `900 ${fontSize}px sans-serif`;
+                            ctx.textAlign = "right";
+                            ctx.textBaseline = "bottom";
+                            ctx.lineWidth = fontSize * 0.2;
+                            ctx.strokeStyle = "white";
+                            ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                            ctx.fillStyle = "#333333";
+                            ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                            
+                            const a = document.createElement("a");
+                            a.href = canvas.toDataURL("image/png");
+                            a.download = `pangi_lv${previewItem.lv}_${previewItem.idx}.png`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            
+                            flashToast(`${previewItem.price}P 사용! Lv.${previewItem.lv} 이모티콘 저장 완료! 🎉`);
+                            setPreviewItem(null); 
+                          }
+                        };
+                        img.src = imgSrc;
+                      }}
+                      className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-zinc-900 shadow-lg active:scale-95"
+                    >
+                      📥 {previewItem.price}P로 다운받기
+                    </button>
 
-            return (
-              <button
-                key={imgNum}
-                type="button"
-                disabled={isLocked}
-                onClick={() => {
-              sfxClick();
-              setPreviewItem({ lv, idx: imgNum, price });
-            }}
-                          className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10 transition-all ${
-                            isLocked ? "cursor-not-allowed opacity-30 grayscale" : "active:scale-90 shadow-md"
-                          }`}
-                        >
-                          <img
-                            src={`/assets/${lv}-${imgNum}.png`}
-                            alt={`Lv.${lv}-${imgNum}`}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute bottom-0 w-full bg-black/70 py-1 text-center text-xs font-bold text-yellow-400">
-              {isLocked ? "🔒 잠김" : `${price} p`}
-            </div>
-                        </button>
-                      );
-                    })}
+                    {/* 돌아가기 버튼 */}
+                    <button 
+                      onClick={() => setPreviewItem(null)}
+                      className="mt-5 text-sm font-bold text-zinc-500 underline"
+                    >
+                      돌아가기
+                    </button>
                   </div>
+                )}
+
+                <div className="space-y-6">
+                  {/* 레벨별 이모티콘 목록 */}
+                  {Array.from({ length: 11 }, (_, i) => {
+                    const lv = i + 1; 
+                    const isLocked = lv > unlocked;
+                    
+                    return (
+                      <div key={lv} className="rounded-xl bg-yellow-900/5 p-3 ring-1 ring-yellow-900/10">
+                        <h4 className="mb-3 text-sm font-bold text-zinc-800">Lv.{lv} 팡이 팩 {isLocked && "🔒"}</h4>
+                        
+                        <div className="grid grid-cols-5 gap-2">
+                          {Array.from({ length: 10 }, (_, j) => {
+                            const imgNum = j + 1; 
+                            const price = 30 + (lv - 1) * 20; 
+
+                            return (
+                              <button
+                                key={imgNum}
+                                type="button"
+                                disabled={isLocked}
+                                onClick={() => {
+                                  sfxClick();
+                                  setPreviewItem({ lv, idx: imgNum, price });
+                                }}
+                                className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/5 transition-all ${
+                                  isLocked ? "cursor-not-allowed opacity-40 grayscale" : "active:scale-95 shadow-sm"
+                                }`}
+                              >
+                                <img
+                                  src={`/assets/${lv}-${imgNum}.png`}
+                                  alt={`Lv.${lv}-${imgNum}`}
+                                  className="h-full w-full object-cover"
+                                />
+                                <div className="absolute bottom-0 w-full bg-white/90 py-1 text-center text-[10px] font-black text-amber-700 backdrop-blur-sm">
+                                  {isLocked ? "🔒 잠김" : `${price} P`}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-        {/* ▲▲▲ 도감형 이모티콘 다운로드 화면 (여기까지) ▲▲▲ */}
+              </div>
             </div>
           </div>
         )}
