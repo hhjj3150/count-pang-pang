@@ -1328,14 +1328,23 @@ export default function CounterPangPang() {
             </button>
           </div>
 
-          {/* 🌟 2줄: 포인트 창(1/4) + 🛒 포인트 상점(3/4) 가로 배치 */}
+          {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
           <div className="mt-2 flex w-full items-center gap-2">
-            {/* 왼쪽: 포인트 표시 (flex-1) */}
-            <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80">
+            <div className="flex w-20 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80">
               {points}P
             </div>
 
-            {/* 오른쪽: 🛒 포인트 상점 (flex-[3]) */}
+            <button
+              type="button"
+              onClick={() => {
+                sfxClick();
+                setShowAttendance(true);
+              }}
+              className="flex flex-[2] items-center justify-center gap-1 rounded-2xl bg-emerald-400/80 py-2.5 text-sm font-bold text-emerald-950 active:scale-95"
+            >
+              📅 출석체크
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -1344,7 +1353,7 @@ export default function CounterPangPang() {
               }}
               className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
             >
-               🛒 포인트 상점
+              🛒 포인트 상점
             </button>
           </div>
         </header>
