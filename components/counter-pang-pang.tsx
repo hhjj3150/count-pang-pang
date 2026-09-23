@@ -605,7 +605,89 @@ export default function CounterPangPang() {
   // 기타 UI
   const [nickInput, setNickInput] = useState("")
   const [showVault, setShowVault] = useState(false)
+  const [showAttendance, setShowAttendance] = useState(false);
+  const [attData, setAttData] = useState({ date: "", weekCount: 0, lastMonday: "" });
+
+  // 이번 주 월요일 날짜 구하기 (주간 초기화용)
+  const getMonday = (d = new Date()) => {
+    const dt = new Date(d);
+    const day = dt.getDay();
+    const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(dt.setDate(diff)).toISOString().slice(0, 10);
+  };
+
+  useEffect(() => {
+    const saved = localStorage.getItem("cp_attendance");
+    const currentMonday = getMonday();
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.lastMonday !== currentMonday) {
+        setAttData({ date: "", weekCount: 0, lastMonday: currentMonday });
+      } else {
+        setAttData(parsed);
+      }
+    } else {
+      setAttData({ date: "", weekCount: 0, lastMonday: currentMonday });
+    }
+  }, []);
+
+  const handleAttendance = () => {
+    sfxClick();
+    const todayStr = today();
+    if (attData.date === todayStr) {
+      flashToast("오늘은 이미 출석했어요! 내일 또 만나요 👋");
+      return;
+    }
+
+    const newCount = attData.weekCount + 1;
+    let bonus = 0;
+    if (newCount === 3) bonus = 5;
+    else if (newCount === 5) bonus = 10;
+    else if (newCount === 7) bonus = 20;
+
+    const totalReward = 5 + bonus;
+    setPoints(p => p + totalReward);
+    
+    const newData = { date: todayStr, weekCount: newCount, lastMonday: attData.lastMonday };
+    setAttData(newData);
+    localStorage.setItem("cp_attendance", JSON.stringify(newData));
+
+    if (bonus > 0) {
+      flashToast(`주 ${newCount}회 출석 달성! 보너스 포함 ${totalReward}P 획득 🎉`);
+    } else {
+      flashToast(`출석 완료! 5P 획득 🎁`);
+    }
+    setShowAttendance(false);
+  };
   const [toast, setToast] = useState<string | null>(null)
+  {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
+          <div className="mt-2 flex w-full items-center gap-2">
+            <div className="flex w-20 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80">
+              {points}P
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                sfxClick();
+                setShowAttendance(true);
+              }}
+              className="flex flex-[2] items-center justify-center gap-1 rounded-2xl bg-emerald-400/80 py-2.5 text-sm font-bold text-emerald-950 active:scale-95"
+            >
+              📅 출석체크
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                sfxClick();
+                setShowVault(true);
+              }}
+              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
+            >
+              🛒 포인트 상점
+            </button>
+          </div>
 // --- 📥 다운로드 미리보기 상태 ---
   const [previewItem, setPreviewItem] = useState<{lv: number, idx: number, price: number} | null>(null);
   // --- 💌 초대하기 및 일일 보상 시스템 ---
@@ -1665,7 +1747,63 @@ export default function CounterPangPang() {
             </div>
           </section>
         )}
+{/* ============================ 📅 출석체크 모달 ============================ */}
+        {showAttendance && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+              <button
+                onClick={() => setShowAttendance(false)}
+                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"
+              >
+                ✕
+              </button>
+              
+              <h2 className="mb-2 text-center text-2xl font-black text-gray-800">📅 주간 출석부</h2>
+              <p className="mb-5 text-center text-sm font-bold text-gray-500">
+                매일 <span className="text-emerald-500">5P</span> 지급! 꾸준히 접속하면 보너스까지!
+              </p>
+              
+              {/* 도장판 UI */}
+              <div className="mb-6 grid grid-cols-4 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+                  const isChecked = attData.weekCount >= day;
+                  const isBonus = day === 3 || day === 5 || day === 7;
+                  const bonusText = day === 3 ? "+5P" : day === 5 ? "+10P" : "+20P";
+                  
+                  return (
+                    <div 
+                      key={day} 
+                      className={cn(
+                        "relative flex aspect-square flex-col items-center justify-center rounded-2xl border-2 transition-all",
+                        isChecked ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-gray-50"
+                      )}
+                    >
+                      <span className="mb-1 text-xs font-bold text-gray-400">{day}일차</span>
+                      {isChecked ? (
+                        <span className="text-2xl cpp-pop">💮</span>
+                      ) : (
+                        <span className="text-2xl opacity-20">⚪</span>
+                      )}
+                      {isBonus && !isChecked && (
+                        <div className="absolute -top-2 -right-2 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-black text-white shadow-sm">
+                          {bonusText}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
+              <button
+                onClick={handleAttendance}
+                disabled={attData.date === today()}
+                className="w-full rounded-2xl bg-gradient-to-b from-emerald-400 to-emerald-500 py-3.5 text-lg font-black text-white shadow-[0_5px_0_#047857] active:translate-y-1 active:shadow-[0_1px_0_#047857] disabled:opacity-50 disabled:shadow-none disabled:translate-y-1"
+              >
+                {attData.date === today() ? "오늘 출석 완료 ✅" : "출석하고 포인트 받기 🎁"}
+              </button>
+            </div>
+          </div>
+        )}
         {/* ============================ 🛒 포인트 상점 모달 ============================ */}
         {showVault && (
           <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
