@@ -837,8 +837,10 @@ export default function CounterPangPang() {
       setChosenLevel(level)
       setQuestions(qs)
       setQIndex(0)
-      setCorrectCount(0)
-      setScreen("GAME")
+    setCorrectCount(0)
+    setIsFever(false) // 새 게임 시작 시 피버타임 강제 종료
+    setFastCombo(0)   // 연속 정답 콤보 0으로 초기화
+    setScreen("GAME")
     },
     [unlocked, hearts, sfxClick, flashToast],
   )
