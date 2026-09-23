@@ -1220,7 +1220,7 @@ export default function CounterPangPang() {
             <button
               type="button"
               onClick={handleShare}
-              className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-400 py-3 text-sm font-bold text-black/90 shadow-sm active:scale-95"
+              className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-400/40 py-3 text-sm font-bold text-black/90 shadow-sm active:scale-95"
             >
               💌 초대
             </button>
@@ -1229,16 +1229,16 @@ export default function CounterPangPang() {
             <button
               type="button"
               onClick={rechargeAd}
-              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-black/5 py-3 text-sm font-black text-black/80 active:scale-95"
+              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-400/40 py-3 text-sm font-black text-black/80 active:scale-95"
             >
-              📺 광고 보고 하트 충전 <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs">+1 💖</span>
+              📺 광고 보고 하트 충전 <span className="rounded-full bg-white/50 px-2 py-0.5 text-xs">+1 💖</span>
             </button>
           </div>
 
           {/* 🌟 2줄: 포인트 창(1/4) + 다운로드 보관함(3/4) 가로 배치 */}
           <div className="mt-2 flex w-full items-center gap-2">
             {/* 왼쪽: 포인트 표시 (flex-1) */}
-            <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80">
+            <div className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-400/40 py-2.5 text-sm font-bold text-black/80">
               💰 {points}
             </div>
 
@@ -1249,7 +1249,7 @@ export default function CounterPangPang() {
                 sfxClick();
                 setShowVault(true);
               }}
-              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-black/5 py-2.5 text-sm font-bold text-black/80 active:scale-95"
+              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-400/40 py-2.5 text-sm font-bold text-black/80 active:scale-95"
             >
               📥 다운로드 보관함
             </button>
