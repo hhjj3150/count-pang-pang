@@ -21,6 +21,7 @@ interface SaveData {
   unlocked: number
   records: Record<number, number>
   muted: boolean
+  points: number // 👈 포인트 저장 공간 추가!
 }
 
 interface Question {
@@ -768,8 +769,9 @@ export default function CounterPangPang() {
         setHearts(h)
         setHeartDate(hd)
         setUnlocked(d.unlocked ?? 0)
-        setRecords(d.records ?? {})
+       setRecords(d.records ?? {})
         setMuted(!!d.muted)
+        setPoints(d.points ?? 0) // 👈 앱을 켤 때 저장된 포인트 불러오기!
         if (d.nickname) setScreen("INTRO")
       }
     } catch {
@@ -780,13 +782,13 @@ export default function CounterPangPang() {
 
   useEffect(() => {
     if (!loaded) return
-    const data: SaveData = { nickname, hearts, heartDate, unlocked, records, muted }
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch {
-      /* ignore */
-    }
-  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted])
+    const data: SaveData = { nickname, hearts, heartDate, unlocked, records, muted, points } // 👈 끝에 , points 추가
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch {
+    /* ignore */
+  }
+}, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points]) // 👈 끝에 , points 추가
 
   /* --------------------- 사운드 --------------------- */
   const beep = useCallback(
