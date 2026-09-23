@@ -780,36 +780,45 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
-  // 📱 스마트폰 뒤로가기 버튼(하드웨어) 제어 로직
+  // 📱 1. 앱이 처음 켜질 때 브라우저 히스토리에 가짜 기록을 밀어넣어 앱 종료 방지
   useEffect(() => {
-    // 1. 앱이 처음 켜질 때 브라우저 히스토리에 가짜 기록을 하나 밀어넣어 앱 종료를 막습니다.
     window.history.pushState(null, "", window.location.href);
+  }, []);
 
+  // 📱 2. 스마트폰 뒤로가기 버튼(하드웨어) 제어 로직
+  useEffect(() => {
     const handlePopState = () => {
-      // 2. 뒤로가기 이벤트가 발생하면, 현재 화면(prevScreen)에 따라 갈 곳을 지정해 줍니다.
+      // 최우선 순위: 이모티콘 팝업(미리보기)이 열려있다면 그것만 닫기
+      if (previewItem) {
+        setPreviewItem(null);
+        window.history.pushState(null, "", window.location.href); // 방어막 재구축
+        return;
+      }
+      
+      // 두 번째 순위: 상점이나 출석체크 창이 열려있다면 그것만 닫기
+      if (showVault || showAttendance) {
+        setShowVault(false);
+        setShowAttendance(false);
+        window.history.pushState(null, "", window.location.href); // 방어막 재구축
+        return;
+      }
+
+      // 열려있는 팝업이 없을 때만 이전 화면으로 이동 처리
       setScreen((prevScreen) => {
         if (prevScreen === "GAME" || prevScreen === "RESULT") {
-          // 게임 중이거나 결과창에서 뒤로가기 누르면 -> 로비로
-          window.history.pushState(null, "", window.location.href); // 방어막 다시 생성
+          window.history.pushState(null, "", window.location.href);
           return "LOBBY";
         } else if (prevScreen === "LOBBY" || prevScreen === "LOGIN") {
-          // 로비나 로그인 창에서 뒤로가기 누르면 -> 인트로로
-          window.history.pushState(null, "", window.location.href); // 방어막 다시 생성
+          window.history.pushState(null, "", window.location.href);
           return "INTRO";
         }
-        // 인트로 화면일 때는 진짜 뒤로가기(앱 종료)를 허용합니다.
         return prevScreen;
       });
-
-      // 뒤로가기를 누를 때 열려있는 팝업창(상점, 출석부 등)이 있다면 안전하게 싹 닫아줍니다.
-      setShowVault(false);
-      setShowAttendance(false);
-      setPreviewItem(null);
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [showVault, showAttendance, previewItem]);
 
   /* --------------------- 사운드 --------------------- */
   const beep = useCallback(
