@@ -721,10 +721,11 @@ export default function CounterPangPang() {
   )
   const sfxClick = useCallback(() => beep(620, 0.07), [beep])
   const sfxRight = useCallback(() => {
-    beep(880, 0.12)
-    setTimeout(() => beep(1245, 0.16), 90)
-  }, [beep])
-  const sfxWrong = useCallback(() => beep(180, 0.28, "sawtooth"), [beep])
+      new Audio('/assets/정답.mp3').play().catch(e => console.log('재생 에러:', e));
+    }, []);
+    const sfxWrong = useCallback(() => {
+      new Audio('/assets/오답.mp3').play().catch(e => console.log('재생 에러:', e));
+    }, []);
 
   const flashToast = useCallback((msg: string) => {
     setToast(msg)
@@ -734,7 +735,12 @@ export default function CounterPangPang() {
   /* --------------------- 게임 진행 --------------------- */
   const currentQ = questions[qIndex]
   const isExample = qIndex < 3
-
+// --- 🎵 피버타임 진입 효과음 ---
+  useEffect(() => {
+    if (isFever) {
+      new Audio('/assets/피버타임.mp3').play().catch(e => console.log('재생 에러:', e));
+    }
+  }, [isFever]);
   // 문제 전환 시 초기화
   useEffect(() => {
     if (screen !== "GAME") return
