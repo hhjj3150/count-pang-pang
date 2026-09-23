@@ -1313,7 +1313,7 @@ export default function CounterPangPang() {
             <button
               type="button"
               onClick={handleShare}
-              className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-3 text-sm font-bold text-black/90 shadow-sm active:scale-95"
+              className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-sky-200/60 py-3 text-sm font-bold text-black/80 shadow-sm active:scale-95"
             >
               💌 초대
             </button>
@@ -1322,7 +1322,7 @@ export default function CounterPangPang() {
             <button
               type="button"
               onClick={rechargeAd}
-              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-300/60 py-3 text-sm font-black text-black/80 active:scale-95"
+              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-sky-200/60 py-3 text-sm font-black text-black/80 active:scale-95"
             >
               📺 광고 보고 하트 충전 <span className="rounded-full bg-white/60 px-2 py-0.5 text-xs">+1 💖</span>
             </button>
@@ -1330,7 +1330,7 @@ export default function CounterPangPang() {
 
           {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
           <div className="mt-2 flex w-full items-center gap-2">
-            <div className="flex w-20 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80">
+            <div className="flex w-20 items-center justify-center gap-1 rounded-2xl bg-sky-200/60 py-2.5 text-sm font-bold text-black/80">
               {points}P
             </div>
 
@@ -1340,7 +1340,7 @@ export default function CounterPangPang() {
                 sfxClick();
                 setShowAttendance(true);
               }}
-              className="flex flex-[2] items-center justify-center gap-1 rounded-2xl bg-emerald-400/80 py-2.5 text-sm font-bold text-emerald-950 active:scale-95"
+              className="flex flex-[2] items-center justify-center gap-1 rounded-2xl bg-sky-200/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
             >
               📅 출석체크
             </button>
@@ -1351,7 +1351,7 @@ export default function CounterPangPang() {
                 sfxClick();
                 setShowVault(true);
               }}
-              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
+              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-sky-200/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
             >
               🛒 포인트 상점
             </button>
