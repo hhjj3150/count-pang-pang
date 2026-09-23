@@ -286,7 +286,7 @@ function Plate({
       hidden
         ? "bg-rose-500 text-white animate-pulse"
         : lit
-          ? "bg-yellow-300 text-yellow-950 cpp-glow"
+          ? "bg-red-500 text-white animate-pulse ring-2 ring-red-300 shadow-lg"
           : sel
             ? "bg-sky-400 text-white ring-2 ring-sky-200 scale-105"
             : "bg-white text-zinc-900",
