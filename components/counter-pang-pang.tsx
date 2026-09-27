@@ -781,8 +781,7 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
- // 📱 스마트폰 뒤로가기(하드웨어) 완벽 방어 로직 (마스터 키 적용)
-  const trapRef = useRef(false); // 🚨 진짜 나갈 때만 문을 열어주는 마스터 키
+ // 📱 스마트폰 뒤로가기(하드웨어) 완벽 방어 로직 (안전한 정공법)
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
   
   useEffect(() => {
@@ -790,21 +789,22 @@ export default function CounterPangPang() {
   }, [showVault, showAttendance, previewItem, screen, exitPhase]);
 
   useEffect(() => {
-    // 1. 앱에 들어오자마자 무조건 방어막(트랩)을 하나 깝니다.
-    window.history.pushState({ locked: true }, "");
+    // 1. 편법(터치 인식 등)을 모두 지우고, 딱 한 번만 정직하게 히스토리(방어막)를 깝니다.
+    window.history.pushState("preventBack", "", window.location.href);
 
     const handlePopState = () => {
-      // 2. 유저가 '확인' 버튼을 눌러 마스터 키를 돌렸다면 쿨하게 보내줍니다.
-      if (trapRef.current) return; 
-
-      // 3. 브라우저가 눈치채기 전에 즉시 방어막을 다시 깝니다. (0.1초의 틈도 안 줌)
-      window.history.pushState({ locked: true }, "");
-
       const current = stateRef.current;
 
-      // 4. 안전한 화면 이동 로직
-      if (current.exitPhase) {
-        setExitPhase(null); // 종료 확인 중에 뒤로가기 누르면 팝업만 닫음
+      // 2. 진짜 종료할 때는 방어막을 치지 않고 브라우저가 알아서 빠져나가게 둡니다.
+      if (current.exitPhase === "goodbye") {
+        return;
+      }
+
+      // 3. 닫을 팝업이 있다면 방어막을 1개 리필하고 상태를 부드럽게 변경합니다.
+      window.history.pushState("preventBack", "", window.location.href);
+
+      if (current.exitPhase === "ask") {
+        setExitPhase(null);
       } else if (current.previewItem) {
         setPreviewItem(null);
       } else if (current.showVault) {
@@ -814,8 +814,7 @@ export default function CounterPangPang() {
       } else if (current.screen === "GAME" || current.screen === "RESULT") {
         setScreen("LOBBY");
       } else {
-        // 로비나 메인 화면에서 뒤로가기 누르면 절대 안 꺼지고 종료 팝업 등장!
-        setExitPhase("ask");
+        setExitPhase("ask"); // 제일 바깥 화면이면 종료 팝업 띄우기
       }
     };
 
@@ -2013,7 +2012,7 @@ export default function CounterPangPang() {
             </div>
           </div>
         )}
-      {/* ============================ 🚨 앱 종료 연출 모달 (절대 증발 안 함) ============================ */}
+      {/* ============================ 🚨 앱 종료 연출 모달 (안전한 정공법) ============================ */}
         {exitPhase && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm" style={{ touchAction: "none" }}>
             <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl">
@@ -2059,8 +2058,9 @@ export default function CounterPangPang() {
                     type="button"
                     onClick={() => {
                       sfxClick();
-                      trapRef.current = true; // 🌟 무적 트랩 마스터 키 해제!
-                      window.history.back(); // 브라우저가 아주 자연스럽게 앱을 종료시킴
+                      // 🌟 옛날 trapRef 코드를 버리고, 자연스러운 뒤로가기 2번으로 탈출합니다!
+                      setExitPhase(null);
+                      window.history.go(-2);
                     }}
                     className="w-full rounded-2xl bg-amber-400 py-3.5 text-lg font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none"
                   >
