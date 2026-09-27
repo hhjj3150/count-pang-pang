@@ -781,7 +781,7 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
- // 📱 스마트폰 뒤로가기(하드웨어) 최종 마스터 로직 (해시 # 기반 절대 방어)
+ // 📱 스마트폰 뒤로가기 방어 로직 (버튼 UI부터 만들기 위해 싹 비웠습니다!)
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
   
   useEffect(() => {
@@ -1249,6 +1249,18 @@ export default function CounterPangPang() {
               >
                 시작하기 🚗
               </button>
+              {/* 👇 여기서부터 추가: 물리적인 게임 종료 버튼 👇 */}
+              <button
+                type="button"
+                onClick={() => {
+                  sfxClick();
+                  setExitPhase("ask"); // 누르면 1단계 팝업 호출!
+                }}
+                className="mt-3 w-full rounded-2xl bg-white/10 py-3.5 text-lg font-black text-white ring-1 ring-white/30 active:translate-y-1"
+              >
+                게임 종료하기 🚪
+              </button>
+              {/* 👆 여기까지 추가 👆 */}
             </div>
           </section>
         )}
@@ -2019,11 +2031,12 @@ export default function CounterPangPang() {
             </div>
           </div>
         )}
-      {/* ============================ 🚨 앱 종료 연출 모달 (해시 트랩 완벽 대응) ============================ */}
+      {/* ============================ 🚨 앱 종료 연출 모달 (순수 UI 버튼 작업) ============================ */}
         {exitPhase && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm" style={{ touchAction: "none" }}>
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
             <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl">
               
+              {/* 1단계 팝업: 물어보기 */}
               {exitPhase === "ask" ? (
                 <>
                   <h2 className="mb-6 mt-2 text-2xl font-black text-zinc-900">종료하시겠습니까?</h2>
@@ -2032,7 +2045,7 @@ export default function CounterPangPang() {
                       type="button"
                       onClick={() => {
                         sfxClick();
-                        setExitPhase("goodbye"); 
+                        setExitPhase("goodbye"); // 2단계 작별인사로 넘어가기
                       }}
                       className="flex-1 rounded-2xl bg-rose-500 py-3.5 text-lg font-black text-white shadow-[0_4px_0_#be123c] active:translate-y-1 active:shadow-none"
                     >
@@ -2042,7 +2055,7 @@ export default function CounterPangPang() {
                       type="button"
                       onClick={() => {
                         sfxClick();
-                        setExitPhase(null);
+                        setExitPhase(null); // 팝업 닫기 (로비/메인으로 복귀)
                       }}
                       className="flex-1 rounded-2xl bg-gray-200 py-3.5 text-lg font-black text-gray-700 shadow-[0_4px_0_#9ca3af] active:translate-y-1 active:shadow-none"
                     >
@@ -2051,6 +2064,7 @@ export default function CounterPangPang() {
                   </div>
                 </>
               ) : (
+                /* 2단계 팝업: 작별인사 */
                 <>
                   <GameImage
                     src="/assets/car.png"
@@ -2065,11 +2079,9 @@ export default function CounterPangPang() {
                     type="button"
                     onClick={() => {
                       sfxClick();
-                      setExitPhase("goodbye"); // 방어막 해제
-                      // 브라우저가 인식할 수 있도록 0.05초 뒤에 히스토리를 강제로 빠져나갑니다
-                      setTimeout(() => {
-                        window.history.go(-2);
-                      }, 50);
+                      // 여기서 진짜 앱 종료 로직이 실행될 예정 (일단 콘솔과 알림으로 테스트)
+                      alert("원래 여기서 앱이 종료됩니다! (버튼 작동 테스트 완료)");
+                      setExitPhase(null); 
                     }}
                     className="w-full rounded-2xl bg-amber-400 py-3.5 text-lg font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none"
                   >
