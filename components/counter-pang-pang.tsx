@@ -502,6 +502,7 @@ export default function CounterPangPang() {
     };
   }, [screen]);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [exitPhase, setExitPhase] = useState<"ask" | "goodbye" | null>(null);
 
   // ▼▼▼ 10장 세트 ZIP 압축 다운로드 & 워터마크 기능 ▼▼▼
   const downloadLevelPack = async (level: number) => {
@@ -780,45 +781,62 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
-  // 📱 스마트폰 뒤로가기(하드웨어) 최종 제어 로직 (이중 팝업 오작동 원천 차단)
-  const stateRef = useRef({ showVault, showAttendance, previewItem, screen });
+ // 📱 스마트폰 뒤로가기(하드웨어) 절대 방어 로직 (대표님 기획: 2단계 종료 시나리오 적용)
+  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
   
   // 상태 실시간 동기화
   useEffect(() => {
-    stateRef.current = { showVault, showAttendance, previewItem, screen };
-  }, [showVault, showAttendance, previewItem, screen]);
+    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase };
+  }, [showVault, showAttendance, previewItem, screen, exitPhase]);
 
   useEffect(() => {
-    // 🔥 1. 앱 진입 시 방어막(히스토리)을 2겹으로 쳐서 절대 바닥이 드러나지 않게 만듭니다.
+    window.history.replaceState(null, "", window.location.href);
     window.history.pushState(null, "", window.location.href);
-    window.history.pushState(null, "", window.location.href);
+
+    let isExiting = false;
 
     const handlePopState = () => {
-      // 🔥 2. 모바일 브라우저가 뒤로가기를 처리할 시간을 0.01초(10ms) 주고, 비동기로 방어막을 다시 칩니다. (브라우저 무시 현상 완벽 해결)
-      setTimeout(() => {
-        window.history.pushState(null, "", window.location.href);
-      }, 10);
+      if (isExiting) return;
 
       const current = stateRef.current;
+      let handled = false;
 
-      // 1순위: 두 번째 팝업(미리보기)이 열려있다면 팝업만 닫기
-      if (current.previewItem) {
-        setPreviewItem(null);
-        return;
-      }
-      
-      // 2순위: 첫 번째 팝업(상점이나 출석부)이 열려있다면 팝업만 닫기
-      if (current.showVault || current.showAttendance) {
-        setShowVault(false);
-        setShowAttendance(false);
-        return;
-      }
-
-      // 3순위: 팝업이 없을 때만 정상적인 화면 이동 처리
-      if (current.screen === "GAME" || current.screen === "RESULT") {
+      // 🚨 대표님 기획: 팝업이나 화면에서 뒤로가기 연타 시 방패막이 역할
+      if (current.exitPhase) {
+        // 종료 팝업이 떠 있을 때 뒤로가기를 누르면 무조건 로비로 복귀
+        setExitPhase(null);
+        current.exitPhase = null;
         setScreen("LOBBY");
-      } else if (current.screen === "LOBBY" || current.screen === "LOGIN") {
-        setScreen("INTRO");
+        current.screen = "LOBBY";
+        handled = true;
+      } else if (current.previewItem) {
+        setPreviewItem(null);
+        current.previewItem = null;
+        handled = true;
+      } else if (current.showVault) {
+        setShowVault(false);
+        current.showVault = false;
+        handled = true;
+      } else if (current.showAttendance) {
+        setShowAttendance(false);
+        current.showAttendance = false;
+        handled = true;
+      } else if (current.screen === "GAME" || current.screen === "RESULT") {
+        setScreen("LOBBY");
+        current.screen = "LOBBY";
+        handled = true;
+      } else if (current.screen === "LOBBY" || current.screen === "INTRO" || current.screen === "LOGIN") {
+        // 로비나 메인 화면에서 뒤로가기를 누르면 앱을 끄지 않고 "종료하시겠습니까?" 팝업 띄움
+        setExitPhase("ask");
+        current.exitPhase = "ask";
+        handled = true;
+      }
+
+      if (handled) {
+        window.history.pushState(null, "", window.location.href);
+      } else {
+        isExiting = true;
+        window.history.back();
       }
     };
 
@@ -2016,6 +2034,69 @@ export default function CounterPangPang() {
             </div>
           </div>
         )}
+      {/* ============================ 🚨 앱 종료 연출 모달 (대표님 기획) ============================ */}
+        {exitPhase && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+            <div className="w-full max-w-sm animate-in zoom-in-95 rounded-3xl bg-white p-6 text-center shadow-2xl duration-200">
+              
+              {exitPhase === "ask" ? (
+                <>
+                  <h2 className="mb-8 mt-2 text-2xl font-black text-zinc-800">종료하시겠습니까?</h2>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfxClick();
+                        // 🌟 '네' 누르면 작별 인사로 화면 전환
+                        setExitPhase("goodbye"); 
+                      }}
+                      className="flex-1 rounded-2xl bg-gradient-to-b from-rose-400 to-rose-500 py-3.5 text-lg font-black text-white shadow-[0_5px_0_#be123c] active:translate-y-1 active:shadow-[0_1px_0_#be123c]"
+                    >
+                      네
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfxClick();
+                        // 🌟 '아니요' 누르면 팝업 닫고 로비로 직행!
+                        setExitPhase(null);
+                        setScreen("LOBBY"); 
+                      }}
+                      className="flex-1 rounded-2xl bg-gray-200 py-3.5 text-lg font-black text-gray-700 active:scale-95"
+                    >
+                      아니요
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <GameImage
+                    src="/assets/car.png"
+                    alt="자동차"
+                    fallback={<span style={{ fontSize: "4rem" }}>🚕</span>}
+                    className="mx-auto mb-4 h-24 w-24 object-contain cpp-bounce"
+                  />
+                  <p className="mb-6 text-lg font-bold text-zinc-700 leading-snug">
+                    실제 자동차 번호판을 보고도<br/>숫자놀이 해보세요^^
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfxClick();
+                      setExitPhase(null);
+                      // 🌟 진짜 종료: 뒤로가기 히스토리를 강제로 빠져나가 앱 종료
+                      window.history.go(-3); 
+                    }}
+                    className="w-full rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 py-3.5 text-lg font-black text-amber-950 shadow-[0_5px_0_#b45309] active:translate-y-1 active:shadow-[0_1px_0_#b45309]"
+                  >
+                    확인
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )
