@@ -789,34 +789,36 @@ export default function CounterPangPang() {
   }, [showVault, showAttendance, previewItem, screen]);
 
   useEffect(() => {
-    // 앱 진입 시 히스토리 스택에 가짜 기록 추가
-    window.history.pushState({ page: "main" }, "", window.location.href);
+    // 🔥 1. 앱 진입 시 방어막(히스토리)을 2겹으로 쳐서 절대 바닥이 드러나지 않게 만듭니다.
+    window.history.pushState(null, "", window.location.href);
+    window.history.pushState(null, "", window.location.href);
 
     const handlePopState = () => {
+      // 🔥 2. 모바일 브라우저가 뒤로가기를 처리할 시간을 0.01초(10ms) 주고, 비동기로 방어막을 다시 칩니다. (브라우저 무시 현상 완벽 해결)
+      setTimeout(() => {
+        window.history.pushState(null, "", window.location.href);
+      }, 10);
+
       const current = stateRef.current;
 
-      // 1순위: 두 번째 팝업(미리보기)이 열려있다면? -> 팝업만 닫고, 뒤로가기로 소모된 히스토리를 제자리로 복구
+      // 1순위: 두 번째 팝업(미리보기)이 열려있다면 팝업만 닫기
       if (current.previewItem) {
         setPreviewItem(null);
-        window.history.pushState({ page: "main" }, "", window.location.href);
         return;
       }
       
-      // 2순위: 첫 번째 팝업(상점이나 출석부)이 열려있다면? -> 팝업만 닫고 히스토리 복구
+      // 2순위: 첫 번째 팝업(상점이나 출석부)이 열려있다면 팝업만 닫기
       if (current.showVault || current.showAttendance) {
         setShowVault(false);
         setShowAttendance(false);
-        window.history.pushState({ page: "main" }, "", window.location.href);
         return;
       }
 
       // 3순위: 팝업이 없을 때만 정상적인 화면 이동 처리
       if (current.screen === "GAME" || current.screen === "RESULT") {
         setScreen("LOBBY");
-        window.history.pushState({ page: "main" }, "", window.location.href);
       } else if (current.screen === "LOBBY" || current.screen === "LOGIN") {
         setScreen("INTRO");
-        window.history.pushState({ page: "main" }, "", window.location.href);
       }
     };
 
