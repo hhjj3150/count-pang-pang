@@ -781,26 +781,45 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
- // 📱 스마트폰 뒤로가기(하드웨어) 절대 방어 로직 (대표님 기획 맞춤형)
+ // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
+  const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
   useEffect(() => {
     stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase };
   }, [showVault, showAttendance, previewItem, screen, exitPhase]);
 
+  // 1. 초기 진입 시 기본 방어막 1개 생성
   useEffect(() => {
-    // 1. 앱에 들어오면 일단 방어막을 2겹 쳐둡니다.
     window.history.pushState(null, "", window.location.href);
-    window.history.pushState(null, "", window.location.href);
+  }, []);
 
+  // 2. 화면이동 시 히스토리 쌓기 (🌟 게임에서 튕기는 현상 완벽 해결!)
+  useEffect(() => {
+    if (isPopRef.current) return;
+    if (screen === "GAME" || screen === "RESULT") {
+      window.history.pushState(null, "", window.location.href);
+    }
+  }, [screen]);
+
+  // 3. 팝업이 뜰 때 히스토리 쌓기 (🌟 팝업에서 튕기는 현상 완벽 해결!)
+  useEffect(() => {
+    if (isPopRef.current) return;
+    if (exitPhase || showVault || showAttendance || previewItem) {
+      window.history.pushState(null, "", window.location.href);
+    }
+  }, [exitPhase, showVault, showAttendance, previewItem]);
+
+  // 4. 진짜 뒤로가기를 눌렀을 때의 동작 흐름
+  useEffect(() => {
     const handlePopState = () => {
+      isPopRef.current = true; // 스마트폰 뒤로가기 감지 켜기
       const current = stateRef.current;
       
-      // 2. 대표님이 기획하신 정확한 화면 이동 흐름!
       if (current.exitPhase === "goodbye") {
-        setExitPhase("ask"); // 2단계에서 뒤로 누르면 -> 1단계 팝업으로!
+        setExitPhase("ask"); 
       } else if (current.exitPhase === "ask") {
-        setExitPhase(null); // 1단계에서 뒤로 누르면 -> 팝업 닫고 화면으로!
+        setExitPhase(null);
       } else if (current.previewItem) {
         setPreviewItem(null);
       } else if (current.showVault) {
@@ -810,11 +829,13 @@ export default function CounterPangPang() {
       } else if (current.screen === "GAME" || current.screen === "RESULT") {
         setScreen("LOBBY");
       } else {
-        setExitPhase("ask"); // 로비나 시작화면에서 뒤로 누르면 -> 1단계 팝업 띄우기!
+        // 메인 화면에서 뒤로가기 -> 앱 꺼짐 방지용 방어막 추가 후 팝업 띄움
+        window.history.pushState(null, "", window.location.href);
+        setExitPhase("ask");
       }
 
-      // 🚨 3. 가장 핵심: 뒤로가기를 눌러서 방어막이 하나 까졌으니, 즉시 1개 다시 채워넣기! (절대 안 꺼짐)
-      window.history.pushState(null, "", window.location.href);
+      // 0.1초 뒤 감지 끄기 (자연스러운 화면 전환 유도)
+      setTimeout(() => { isPopRef.current = false; }, 100); 
     };
 
     window.addEventListener("popstate", handlePopState);
