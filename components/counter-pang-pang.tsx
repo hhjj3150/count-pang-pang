@@ -2071,9 +2071,9 @@ export default function CounterPangPang() {
                     type="button"
                     onClick={() => {
                       sfxClick();
-                      // 여기서 진짜 앱 종료 로직이 실행될 예정 (일단 콘솔과 알림으로 테스트)
-                      alert("원래 여기서 앱이 종료됩니다! (버튼 작동 테스트 완료)");
-                      setExitPhase(null); 
+                      setExitPhase(null);
+                      // 🌟 쌓여있는 무한 방어막을 무시하고, 히스토리를 맨 처음(-100)으로 강제로 돌려 앱을 폭파시킵니다!
+                      window.history.go(-100); 
                     }}
                     className="w-full rounded-2xl bg-amber-400 py-3.5 text-lg font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none"
                   >
