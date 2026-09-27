@@ -781,7 +781,7 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
- // 📱 스마트폰 뒤로가기(하드웨어) 완벽 방어 로직 (안전한 정공법)
+ // 📱 스마트폰 뒤로가기(하드웨어) 최종 마스터 로직 (해시 # 기반 절대 방어)
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
   
   useEffect(() => {
@@ -789,37 +789,44 @@ export default function CounterPangPang() {
   }, [showVault, showAttendance, previewItem, screen, exitPhase]);
 
   useEffect(() => {
-    // 1. 편법(터치 인식 등)을 모두 지우고, 딱 한 번만 정직하게 히스토리(방어막)를 깝니다.
-    window.history.pushState("preventBack", "", window.location.href);
+    // 1. 앱 진입 시 주소창 끝에 '#play' 꼬리표를 달아 브라우저 히스토리를 강제로 하나 만듭니다.
+    if (window.location.hash !== "#play") {
+      window.location.hash = "play";
+    }
 
-    const handlePopState = () => {
-      const current = stateRef.current;
+    const handleHashChange = () => {
+      // 2. 사용자가 뒤로가기를 눌러서 '#play' 꼬리표가 떨어졌을 때를 완벽하게 감지!
+      if (window.location.hash !== "#play") {
+        const current = stateRef.current;
 
-      // 2. 진짜 종료할 때는 방어막을 치지 않고 브라우저가 알아서 빠져나가게 둡니다.
-      if (current.exitPhase === "goodbye") {
-        return;
-      }
+        // 3. 진짜 종료하기 버튼을 누른 상태라면? 방어하지 않고 앱 종료 허용
+        if (current.exitPhase === "goodbye") {
+          return;
+        }
 
-      // 3. 닫을 팝업이 있다면 방어막을 1개 리필하고 상태를 부드럽게 변경합니다.
-      window.history.pushState("preventBack", "", window.location.href);
+        // 4. 앱이 꺼지기 전에 0.001초 만에 다시 '#play'를 붙여서 앱 종료를 원천 차단합니다.
+        window.location.hash = "play";
 
-      if (current.exitPhase === "ask") {
-        setExitPhase(null);
-      } else if (current.previewItem) {
-        setPreviewItem(null);
-      } else if (current.showVault) {
-        setShowVault(false);
-      } else if (current.showAttendance) {
-        setShowAttendance(false);
-      } else if (current.screen === "GAME" || current.screen === "RESULT") {
-        setScreen("LOBBY");
-      } else {
-        setExitPhase("ask"); // 제일 바깥 화면이면 종료 팝업 띄우기
+        // 5. 안전하게 팝업만 닫기 로직 실행
+        if (current.exitPhase === "ask") {
+          setExitPhase(null);
+        } else if (current.previewItem) {
+          setPreviewItem(null);
+        } else if (current.showVault) {
+          setShowVault(false);
+        } else if (current.showAttendance) {
+          setShowAttendance(false);
+        } else if (current.screen === "GAME" || current.screen === "RESULT") {
+          setScreen("LOBBY");
+        } else {
+          setExitPhase("ask"); // 메인 화면에서 누르면 비로소 종료 확인 팝업 등장!
+        }
       }
     };
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    // 불안정한 popstate 대신 모바일에서 100% 감지되는 hashchange 이벤트 사용
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   /* --------------------- 사운드 --------------------- */
@@ -2012,7 +2019,7 @@ export default function CounterPangPang() {
             </div>
           </div>
         )}
-      {/* ============================ 🚨 앱 종료 연출 모달 (안전한 정공법) ============================ */}
+      {/* ============================ 🚨 앱 종료 연출 모달 (해시 트랩 완벽 대응) ============================ */}
         {exitPhase && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm" style={{ touchAction: "none" }}>
             <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl">
@@ -2058,9 +2065,11 @@ export default function CounterPangPang() {
                     type="button"
                     onClick={() => {
                       sfxClick();
-                      // 🌟 옛날 trapRef 코드를 버리고, 자연스러운 뒤로가기 2번으로 탈출합니다!
-                      setExitPhase(null);
-                      window.history.go(-2);
+                      setExitPhase("goodbye"); // 방어막 해제
+                      // 브라우저가 인식할 수 있도록 0.05초 뒤에 히스토리를 강제로 빠져나갑니다
+                      setTimeout(() => {
+                        window.history.go(-2);
+                      }, 50);
                     }}
                     className="w-full rounded-2xl bg-amber-400 py-3.5 text-lg font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none"
                   >
