@@ -1611,10 +1611,10 @@ export default function CounterPangPang() {
                   )}
                 </div>
 
-                {/* 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
+                {/* 🌟 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
                 <div className="relative flex flex-col items-center mt-auto mb-2">
-                  {/* 자동차 크기를 카카오톡 좁은 화면에 맞게 w-48 h-40으로 축소 */}
-                  <div className="relative w-48 h-40 sm:w-64 sm:h-56">
+                  {/* 🌟 2번 전략: 화면 세로가 좁아지면 자동차와 번호판이 '한 몸통'으로 묶여 완벽한 비율로 줌아웃 됩니다 */}
+                  <div className="relative w-48 h-40 sm:w-64 sm:h-56 origin-bottom transition-all duration-300 [@media(max-height:740px)]:scale-90 [@media(max-height:640px)]:scale-75 [@media(max-height:550px)]:scale-50">
                     <GameImage
                       src="/assets/car.png"
                       alt="달리는 자동차"
