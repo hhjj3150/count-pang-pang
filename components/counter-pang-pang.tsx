@@ -781,62 +781,41 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
- // 📱 스마트폰 뒤로가기(하드웨어) 절대 방어 로직 (대표님 기획: 2단계 종료 시나리오 적용)
+ // 📱 스마트폰 뒤로가기(하드웨어) 완벽 방어 로직 (마스터 키 적용)
+  const trapRef = useRef(false); // 🚨 진짜 나갈 때만 문을 열어주는 마스터 키
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
   
-  // 상태 실시간 동기화
   useEffect(() => {
     stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase };
   }, [showVault, showAttendance, previewItem, screen, exitPhase]);
 
   useEffect(() => {
-    window.history.replaceState(null, "", window.location.href);
-    window.history.pushState(null, "", window.location.href);
-
-    let isExiting = false;
+    // 1. 앱에 들어오자마자 무조건 방어막(트랩)을 하나 깝니다.
+    window.history.pushState({ locked: true }, "");
 
     const handlePopState = () => {
-      if (isExiting) return;
+      // 2. 유저가 '확인' 버튼을 눌러 마스터 키를 돌렸다면 쿨하게 보내줍니다.
+      if (trapRef.current) return; 
+
+      // 3. 브라우저가 눈치채기 전에 즉시 방어막을 다시 깝니다. (0.1초의 틈도 안 줌)
+      window.history.pushState({ locked: true }, "");
 
       const current = stateRef.current;
-      let handled = false;
 
-      // 🚨 대표님 기획: 팝업이나 화면에서 뒤로가기 연타 시 방패막이 역할
+      // 4. 안전한 화면 이동 로직
       if (current.exitPhase) {
-        // 종료 팝업이 떠 있을 때 뒤로가기를 누르면 무조건 로비로 복귀
-        setExitPhase(null);
-        current.exitPhase = null;
-        setScreen("LOBBY");
-        current.screen = "LOBBY";
-        handled = true;
+        setExitPhase(null); // 종료 확인 중에 뒤로가기 누르면 팝업만 닫음
       } else if (current.previewItem) {
         setPreviewItem(null);
-        current.previewItem = null;
-        handled = true;
       } else if (current.showVault) {
         setShowVault(false);
-        current.showVault = false;
-        handled = true;
       } else if (current.showAttendance) {
         setShowAttendance(false);
-        current.showAttendance = false;
-        handled = true;
       } else if (current.screen === "GAME" || current.screen === "RESULT") {
         setScreen("LOBBY");
-        current.screen = "LOBBY";
-        handled = true;
-      } else if (current.screen === "LOBBY" || current.screen === "INTRO" || current.screen === "LOGIN") {
-        // 로비나 메인 화면에서 뒤로가기를 누르면 앱을 끄지 않고 "종료하시겠습니까?" 팝업 띄움
-        setExitPhase("ask");
-        current.exitPhase = "ask";
-        handled = true;
-      }
-
-      if (handled) {
-        window.history.pushState(null, "", window.location.href);
       } else {
-        isExiting = true;
-        window.history.back();
+        // 로비나 메인 화면에서 뒤로가기 누르면 절대 안 꺼지고 종료 팝업 등장!
+        setExitPhase("ask");
       }
     };
 
@@ -2034,23 +2013,22 @@ export default function CounterPangPang() {
             </div>
           </div>
         )}
-      {/* ============================ 🚨 앱 종료 연출 모달 (대표님 기획) ============================ */}
+      {/* ============================ 🚨 앱 종료 연출 모달 (절대 증발 안 함) ============================ */}
         {exitPhase && (
-          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-            <div className="w-full max-w-sm animate-in zoom-in-95 rounded-3xl bg-white p-6 text-center shadow-2xl duration-200">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm" style={{ touchAction: "none" }}>
+            <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl">
               
               {exitPhase === "ask" ? (
                 <>
-                  <h2 className="mb-8 mt-2 text-2xl font-black text-zinc-800">종료하시겠습니까?</h2>
+                  <h2 className="mb-6 mt-2 text-2xl font-black text-zinc-900">종료하시겠습니까?</h2>
                   <div className="flex gap-3">
                     <button
                       type="button"
                       onClick={() => {
                         sfxClick();
-                        // 🌟 '네' 누르면 작별 인사로 화면 전환
                         setExitPhase("goodbye"); 
                       }}
-                      className="flex-1 rounded-2xl bg-gradient-to-b from-rose-400 to-rose-500 py-3.5 text-lg font-black text-white shadow-[0_5px_0_#be123c] active:translate-y-1 active:shadow-[0_1px_0_#be123c]"
+                      className="flex-1 rounded-2xl bg-rose-500 py-3.5 text-lg font-black text-white shadow-[0_4px_0_#be123c] active:translate-y-1 active:shadow-none"
                     >
                       네
                     </button>
@@ -2058,11 +2036,9 @@ export default function CounterPangPang() {
                       type="button"
                       onClick={() => {
                         sfxClick();
-                        // 🌟 '아니요' 누르면 팝업 닫고 로비로 직행!
                         setExitPhase(null);
-                        setScreen("LOBBY"); 
                       }}
-                      className="flex-1 rounded-2xl bg-gray-200 py-3.5 text-lg font-black text-gray-700 active:scale-95"
+                      className="flex-1 rounded-2xl bg-gray-200 py-3.5 text-lg font-black text-gray-700 shadow-[0_4px_0_#9ca3af] active:translate-y-1 active:shadow-none"
                     >
                       아니요
                     </button>
@@ -2074,20 +2050,19 @@ export default function CounterPangPang() {
                     src="/assets/car.png"
                     alt="자동차"
                     fallback={<span style={{ fontSize: "4rem" }}>🚕</span>}
-                    className="mx-auto mb-4 h-24 w-24 object-contain cpp-bounce"
+                    className="mx-auto mb-4 h-24 w-24 object-contain"
                   />
-                  <p className="mb-6 text-lg font-bold text-zinc-700 leading-snug">
+                  <p className="mb-6 text-lg font-bold text-zinc-800 leading-snug">
                     실제 자동차 번호판을 보고도<br/>숫자놀이 해보세요^^
                   </p>
                   <button
                     type="button"
                     onClick={() => {
                       sfxClick();
-                      setExitPhase(null);
-                      // 🌟 진짜 종료: 뒤로가기 히스토리를 강제로 빠져나가 앱 종료
-                      window.history.go(-3); 
+                      trapRef.current = true; // 🌟 무적 트랩 마스터 키 해제!
+                      window.history.back(); // 브라우저가 아주 자연스럽게 앱을 종료시킴
                     }}
-                    className="w-full rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 py-3.5 text-lg font-black text-amber-950 shadow-[0_5px_0_#b45309] active:translate-y-1 active:shadow-[0_1px_0_#b45309]"
+                    className="w-full rounded-2xl bg-amber-400 py-3.5 text-lg font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none"
                   >
                     확인
                   </button>
