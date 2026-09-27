@@ -1567,10 +1567,10 @@ export default function CounterPangPang() {
 
               
 
- <div className="relative z-10 flex h-full flex-1 min-h-0 flex-col items-center pt-4 pb-2 px-4">
+<div className="relative z-10 flex h-full flex-col items-center pt-4 pb-2 px-4">
                 
                 {/* 1. 문제 안내 (맨 위로) */}
-                <div className="text-center mb-3 flex-none">
+                <div className="text-center mb-3">
                   <p className="text-xl font-black text-yellow-300 drop-shadow-md">{currentQ.title}</p>
                   <p className="text-sm font-bold text-white/90 drop-shadow-md">{currentQ.desc}</p>
                   {currentQ.type === "numpad" && currentQ.hiddenPos != null && (
@@ -1581,7 +1581,7 @@ export default function CounterPangPang() {
                 </div>
 
                 {/* 2 & 3. 팡이 리액션 + 물음표 + 예시 정답 (세로 공간 절약을 위해 한 줄로 통합) */}
-                <div className="flex h-16 flex-none items-center justify-center gap-2 mb-2 z-20 transition-all">
+                <div className="flex h-16 items-center justify-center gap-2 mb-2 z-20 transition-all">
                   <GameImage
                     src={
                       reaction === "correct" ? "/assets/정답이미지.png" : 
@@ -1611,19 +1611,18 @@ export default function CounterPangPang() {
                   )}
                 </div>
 
-                {/* 🌟 4. 자동차 + 번호판 (어떤 기기에서도 찌그러지거나 겹치지 않는 강철 방어 레이아웃) 🌟 */}
-                <div className="relative mt-auto flex flex-1 min-h-0 w-full items-end justify-center mb-2">
-                  {/* 자동차 래퍼: max-height와 shrink를 통해 화면이 좁아지면 스스로 크기를 줄임 */}
-                  <div className="relative flex h-full max-h-[10rem] w-full max-w-[12rem] sm:max-h-[14rem] sm:max-w-[16rem] shrink items-end justify-center">
+                {/* 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
+                <div className="relative flex flex-col items-center mt-auto mb-2">
+                  {/* 자동차 크기를 카카오톡 좁은 화면에 맞게 w-48 h-40으로 축소 */}
+                  <div className="relative w-48 h-40 sm:w-64 sm:h-56">
                     <GameImage
                       src="/assets/car.png"
                       alt="달리는 자동차"
                       fallback={<span style={{ fontSize: "3.5rem" }}>🚕</span>}
-                      /* object-bottom으로 자동차가 항상 컨테이너 바닥에 안정적으로 붙어서 축소되도록 강제 */
-                      className="h-full w-full object-contain object-bottom drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
+                      className="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
                     />
-                    {/* 번호판을 자동차 바닥(bottom-0)에 찰싹 붙임 */}
-                    <div className="absolute bottom-0 left-1/2 z-30 -translate-x-1/2 scale-90 origin-bottom transform whitespace-nowrap sm:scale-100">
+                    {/* 번호판을 자동차 바닥에 찰싹 붙임 (bottom-0) */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 scale-90 sm:scale-100 origin-top transform whitespace-nowrap z-30">
                       <Plate
                         q={currentQ}
                         selected={currentQ.type === "partition" ? selected : undefined}
@@ -1636,8 +1635,8 @@ export default function CounterPangPang() {
               </div>
             </div> {/* ✅ 1226번 줄부터 이어졌던 배경 박스를 여기서 완벽히 닫아줍니다! */}
 
-        {/* 🌟 입력 영역 (키패드는 flex-none을 부여하여 절대 찌그러지지 않고 하단에 철통 고정) 🌟 */}
-        <div className="relative z-50 flex-none rounded-t-3xl border-t border-white/15 bg-white/5 px-4 pb-2 pt-2 backdrop-blur-xl">
+        {/* 입력 영역 (레벨별 UI 스위칭) */}
+        <div className="flex-none rounded-t-3xl border-t border-white/15 bg-white/5 px-4 pb-2 pt-2 backdrop-blur-xl">
           {currentQ.type === "numpad" && (
             <Numpad
               value={input}
