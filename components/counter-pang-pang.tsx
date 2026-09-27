@@ -2088,13 +2088,30 @@ export default function CounterPangPang() {
                   <p className="mb-6 text-lg font-bold text-zinc-800 leading-snug">
                     실제 자동차 번호판을 보고도<br/>숫자놀이 해보세요^^
                   </p>
-                  <button
+                 <button
                     type="button"
                     onClick={() => {
                       sfxClick();
                       setExitPhase(null);
-                      // 🌟 쌓여있는 무한 방어막을 무시하고, 히스토리를 맨 처음(-100)으로 강제로 돌려 앱을 폭파시킵니다!
-                      window.history.go(-100); 
+                      
+                      // 🚨 모바일 웹앱 강제 종료 마스터 로직 (카톡/네이버/일반 브라우저 모두 대응)
+                      const ua = navigator.userAgent.toLowerCase();
+                      
+                      if (ua.indexOf('kakaotalk') > -1) {
+                        // 1. 카카오톡을 타고 들어왔을 때: 카톡 창 자체를 부수고 나감
+                        window.location.href = 'kakaotalk://inappbrowser/close';
+                      } else if (ua.indexOf('naver') > -1) {
+                        // 2. 네이버를 타고 들어왔을 때: 네이버 창 강제 종료
+                        window.location.href = 'naversearchapp://inappbrowser/close';
+                      } else {
+                        // 3. 삼성인터넷, 크롬, 사파리 등 일반 브라우저
+                        // 브라우저 탭 자체를 끌 수는 없으므로, 앱 방문 기록을 지우고 껍데기만 남은 '하얀 빈 화면'으로 강제로 던져버립니다.
+                        window.history.go(-100);
+                        setTimeout(() => {
+                          window.open('about:blank', '_self');
+                          window.close();
+                        }, 100);
+                      }
                     }}
                     className="w-full rounded-2xl bg-amber-400 py-3.5 text-lg font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none"
                   >
