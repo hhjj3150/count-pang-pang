@@ -348,9 +348,9 @@ function Numpad({
   const keyBtn =
     "select-none rounded-2xl bg-white/90 text-zinc-900 text-2xl font-black shadow-[0_4px_0_rgba(0,0,0,0.25)] active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.25)] disabled:opacity-40 transition-all"
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-        <button key={n} type="button" disabled={disabled} onClick={() => onKey(String(n))} className={cn(keyBtn, "py-2.5")}>
+        <button key={n} type="button" disabled={disabled} onClick={() => onKey(String(n))} className={cn(keyBtn, "py-1.5 sm:py-2.5")}>
           {n}
         </button>
       ))}
@@ -358,19 +358,19 @@ function Numpad({
         type="button"
         disabled={disabled}
         onClick={onBackspace}
-        className={cn(keyBtn, "py-2.5 bg-rose-200 text-rose-800 text-lg")}
+        className={cn(keyBtn, "py-1.5 sm:py-2.5 bg-rose-200 text-rose-800 text-lg")}
         aria-label="지움"
       >
         ⌫
       </button>
-      <button key={0} type="button" disabled={disabled} onClick={() => onKey("0")} className={cn(keyBtn, "py-2.5")}>
+      <button key={0} type="button" disabled={disabled} onClick={() => onKey("0")} className={cn(keyBtn, "py-1.5 sm:py-2.5")}>
         0
       </button>
       <button
         type="button"
         disabled={disabled || value.length === 0}
         onClick={onSubmit}
-        className={cn(keyBtn, "py-2.5 bg-emerald-300 text-emerald-950 text-lg")}
+        className={cn(keyBtn, "py-1.5 sm:py-2.5 bg-emerald-300 text-emerald-950 text-lg")}
         aria-label="입력"
       >
         입력
@@ -1611,18 +1611,28 @@ export default function CounterPangPang() {
                   )}
                 </div>
 
-                {/* 🌟 4. 자동차 + 번호판 (화면 맨 아래 도로에 착 붙임!) */}
+                {/* 🌟 4. 자동차 + 번호판 (물리적 크기 자체를 다단계로 축소!) */}
                 <div className="relative flex flex-col items-center mt-auto mb-2">
-                  {/* 🌟 2번 전략: 화면 세로가 좁아지면 자동차와 번호판이 '한 몸통'으로 묶여 완벽한 비율로 줌아웃 됩니다 */}
-                  <div className="relative w-48 h-40 sm:w-64 sm:h-56 origin-bottom transition-all duration-300 [@media(max-height:740px)]:scale-90 [@media(max-height:640px)]:scale-75 [@media(max-height:550px)]:scale-50">
+                  {/* Tailwind 세로 미디어 쿼리를 이용해 박스의 실제 크기(w, h)를 확 줄여 밀려나지 않게 완벽 방어 */}
+                  <div className="relative transition-all duration-300
+                    w-48 h-40 
+                    [@media(max-height:700px)]:w-40 [@media(max-height:700px)]:h-32 
+                    [@media(max-height:600px)]:w-32 [@media(max-height:600px)]:h-24 
+                    [@media(max-height:550px)]:w-28 [@media(max-height:550px)]:h-20"
+                  >
                     <GameImage
                       src="/assets/car.png"
                       alt="달리는 자동차"
                       fallback={<span style={{ fontSize: "3.5rem" }}>🚕</span>}
                       className="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
                     />
-                    {/* 번호판을 자동차 바닥에 찰싹 붙임 (bottom-0) */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 scale-90 sm:scale-100 origin-top transform whitespace-nowrap z-30">
+                    {/* 번호판도 박스 크기에 맞춰 축소! origin-bottom으로 자동차 바닥에 찰싹 고정 */}
+                    <div className="absolute bottom-0 left-1/2 origin-bottom -translate-x-1/2 transform whitespace-nowrap z-30
+                      scale-90 
+                      [@media(max-height:700px)]:scale-75 
+                      [@media(max-height:600px)]:scale-[0.6] 
+                      [@media(max-height:550px)]:scale-[0.45]"
+                    >
                       <Plate
                         q={currentQ}
                         selected={currentQ.type === "partition" ? selected : undefined}
