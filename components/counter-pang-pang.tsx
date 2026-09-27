@@ -781,7 +781,7 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
- // 📱 스마트폰 뒤로가기 방어 로직 (버튼 UI부터 만들기 위해 싹 비웠습니다!)
+ // 📱 스마트폰 뒤로가기(하드웨어) 절대 방어 로직 (대표님 기획 맞춤형)
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
   
   useEffect(() => {
@@ -789,44 +789,36 @@ export default function CounterPangPang() {
   }, [showVault, showAttendance, previewItem, screen, exitPhase]);
 
   useEffect(() => {
-    // 1. 앱 진입 시 주소창 끝에 '#play' 꼬리표를 달아 브라우저 히스토리를 강제로 하나 만듭니다.
-    if (window.location.hash !== "#play") {
-      window.location.hash = "play";
-    }
+    // 1. 앱에 들어오면 일단 방어막을 2겹 쳐둡니다.
+    window.history.pushState(null, "", window.location.href);
+    window.history.pushState(null, "", window.location.href);
 
-    const handleHashChange = () => {
-      // 2. 사용자가 뒤로가기를 눌러서 '#play' 꼬리표가 떨어졌을 때를 완벽하게 감지!
-      if (window.location.hash !== "#play") {
-        const current = stateRef.current;
-
-        // 3. 진짜 종료하기 버튼을 누른 상태라면? 방어하지 않고 앱 종료 허용
-        if (current.exitPhase === "goodbye") {
-          return;
-        }
-
-        // 4. 앱이 꺼지기 전에 0.001초 만에 다시 '#play'를 붙여서 앱 종료를 원천 차단합니다.
-        window.location.hash = "play";
-
-        // 5. 안전하게 팝업만 닫기 로직 실행
-        if (current.exitPhase === "ask") {
-          setExitPhase(null);
-        } else if (current.previewItem) {
-          setPreviewItem(null);
-        } else if (current.showVault) {
-          setShowVault(false);
-        } else if (current.showAttendance) {
-          setShowAttendance(false);
-        } else if (current.screen === "GAME" || current.screen === "RESULT") {
-          setScreen("LOBBY");
-        } else {
-          setExitPhase("ask"); // 메인 화면에서 누르면 비로소 종료 확인 팝업 등장!
-        }
+    const handlePopState = () => {
+      const current = stateRef.current;
+      
+      // 2. 대표님이 기획하신 정확한 화면 이동 흐름!
+      if (current.exitPhase === "goodbye") {
+        setExitPhase("ask"); // 2단계에서 뒤로 누르면 -> 1단계 팝업으로!
+      } else if (current.exitPhase === "ask") {
+        setExitPhase(null); // 1단계에서 뒤로 누르면 -> 팝업 닫고 화면으로!
+      } else if (current.previewItem) {
+        setPreviewItem(null);
+      } else if (current.showVault) {
+        setShowVault(false);
+      } else if (current.showAttendance) {
+        setShowAttendance(false);
+      } else if (current.screen === "GAME" || current.screen === "RESULT") {
+        setScreen("LOBBY");
+      } else {
+        setExitPhase("ask"); // 로비나 시작화면에서 뒤로 누르면 -> 1단계 팝업 띄우기!
       }
+
+      // 🚨 3. 가장 핵심: 뒤로가기를 눌러서 방어막이 하나 까졌으니, 즉시 1개 다시 채워넣기! (절대 안 꺼짐)
+      window.history.pushState(null, "", window.location.href);
     };
 
-    // 불안정한 popstate 대신 모바일에서 100% 감지되는 hashchange 이벤트 사용
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   /* --------------------- 사운드 --------------------- */
