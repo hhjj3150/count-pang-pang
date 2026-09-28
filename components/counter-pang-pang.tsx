@@ -473,6 +473,24 @@ export default function CounterPangPang() {
   const [points, setPoints] = useState(0);
   const [isFever, setIsFever] = useState(false);
   const [fastCombo, setFastCombo] = useState(0);
+  // 🏆 유저 레벨(unlocked)에 따른 12단계 띠(Belt) 뱃지 반환 함수
+  const getBeltTitle = (level: number) => {
+    if (level >= 11) return { badge: "👑 그랜드 마스터", style: "bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-zinc-900 ring-1 ring-yellow-300 shadow-md" };
+    if (level >= 10) return { badge: "🟥 레드 벨트", style: "bg-red-600 text-white shadow-sm" };
+    if (level >= 9) return { badge: "🟥⬜ 레드화이트", style: "bg-gradient-to-r from-red-600 50% to-white 50% text-black shadow-sm ring-1 ring-gray-200" };
+    if (level >= 8) return { badge: "🟥⬛ 레드블랙", style: "bg-gradient-to-r from-red-600 50% to-zinc-900 50% text-white shadow-sm" };
+    if (level >= 7) return { badge: "⬛ 블랙 벨트", style: "bg-zinc-900 text-yellow-400 ring-1 ring-yellow-400/30 shadow-md" };
+    if (level >= 6) return { badge: "🟫 브라운 벨트", style: "bg-amber-800 text-white shadow-sm" };
+    if (level >= 5) return { badge: "🟪 퍼플 벨트", style: "bg-purple-600 text-white shadow-sm" };
+    if (level >= 4) return { badge: "🟦 블루 벨트", style: "bg-blue-600 text-white shadow-sm" };
+    if (level >= 3) return { badge: "🟩 그린 벨트", style: "bg-green-600 text-white shadow-sm" };
+    if (level >= 2) return { badge: "🟧 오렌지 벨트", style: "bg-orange-500 text-white shadow-sm" };
+    if (level >= 1) return { badge: "🟨 옐로우 벨트", style: "bg-yellow-400 text-black shadow-sm" };
+    return { badge: "⬜ 화이트 벨트", style: "bg-white text-gray-700 border border-gray-300 shadow-sm" };
+  };
+
+  // 내 실제 레벨에 맞는 칭호 세팅 완료!
+  const myTitle = getBeltTitle(unlocked || 0);
 
   React.useEffect(() => {
     const drivingSound = new Audio('/assets/driving.mp3');
@@ -1447,43 +1465,13 @@ export default function CounterPangPang() {
             {/* 왼쪽 닉네임 */}
             <div>
               <p className="text-xs text-black/60">반가워요</p>
-              {/* ================= 🎨 뱃지 디자인 시안 미리보기 (확인 후 삭제) ================= */}
-              <div className="mb-4 mt-2 flex flex-col gap-3 rounded-2xl bg-white/60 p-4 shadow-sm backdrop-blur-md">
-                <p className="text-[11px] font-bold text-blue-600">▼ 칭호 뱃지 디자인 테스트</p>
-                
-                {/* 1. 입문자 뱃지 (깔끔한 화이트) */}
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] font-black text-gray-700 shadow-sm">
-                    ⬜ 화이트 벨트
-                  </span>
-                  <p className="text-base font-black text-black">{nickname}</p>
-                </div>
-
-                {/* 2. 중수 뱃지 (신뢰감 있는 블루) */}
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-black text-white shadow-sm">
-                    🟦 블루 벨트
-                  </span>
-                  <p className="text-base font-black text-black">{nickname}</p>
-                </div>
-
-                {/* 3. 고수 뱃지 (묵직한 블랙+골드 포인트) */}
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-black text-yellow-400 shadow-md ring-1 ring-yellow-400/30">
-                    ⬛ 블랙 벨트
-                  </span>
-                  <p className="text-base font-black text-black">{nickname}</p>
-                </div>
-                
-                {/* 4. 마스터 뱃지 (화려한 황금색 그라데이션) */}
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 px-2 py-1 text-[11px] font-black text-zinc-900 shadow-md ring-1 ring-yellow-300">
-                    👑 그랜드 마스터
-                  </span>
-                  <p className="text-base font-black text-black">{nickname}</p>
-                </div>
+             {/* 실제 유저 레벨 연동 칭호 뱃지 + 닉네임 */}
+              <div className="flex items-center gap-2">
+                <span className={`rounded-md px-2 py-1 text-[11px] font-black ${myTitle.style}`}>
+                  {myTitle.badge}
+                </span>
+                <p className="text-lg font-black text-black">{nickname} <span className="text-sm font-bold text-black/60">님</span></p>
               </div>
-              {/* ========================================================================= */}
               <div className="flex items-center gap-2">
                 <p className="text-lg font-black text-black">{nickname} 님</p>
                 <button
