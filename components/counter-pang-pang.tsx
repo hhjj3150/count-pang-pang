@@ -1447,6 +1447,43 @@ export default function CounterPangPang() {
             {/* 왼쪽 닉네임 */}
             <div>
               <p className="text-xs text-black/60">반가워요</p>
+              {/* ================= 🎨 뱃지 디자인 시안 미리보기 (확인 후 삭제) ================= */}
+              <div className="mb-4 mt-2 flex flex-col gap-3 rounded-2xl bg-white/60 p-4 shadow-sm backdrop-blur-md">
+                <p className="text-[11px] font-bold text-blue-600">▼ 칭호 뱃지 디자인 테스트</p>
+                
+                {/* 1. 입문자 뱃지 (깔끔한 화이트) */}
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] font-black text-gray-700 shadow-sm">
+                    ⬜ 화이트 벨트
+                  </span>
+                  <p className="text-base font-black text-black">{nickname}</p>
+                </div>
+
+                {/* 2. 중수 뱃지 (신뢰감 있는 블루) */}
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-black text-white shadow-sm">
+                    🟦 블루 벨트
+                  </span>
+                  <p className="text-base font-black text-black">{nickname}</p>
+                </div>
+
+                {/* 3. 고수 뱃지 (묵직한 블랙+골드 포인트) */}
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-black text-yellow-400 shadow-md ring-1 ring-yellow-400/30">
+                    ⬛ 블랙 벨트
+                  </span>
+                  <p className="text-base font-black text-black">{nickname}</p>
+                </div>
+                
+                {/* 4. 마스터 뱃지 (화려한 황금색 그라데이션) */}
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 px-2 py-1 text-[11px] font-black text-zinc-900 shadow-md ring-1 ring-yellow-300">
+                    👑 그랜드 마스터
+                  </span>
+                  <p className="text-base font-black text-black">{nickname}</p>
+                </div>
+              </div>
+              {/* ========================================================================= */}
               <div className="flex items-center gap-2">
                 <p className="text-lg font-black text-black">{nickname} 님</p>
                 <button
