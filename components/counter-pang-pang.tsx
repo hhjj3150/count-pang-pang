@@ -1463,13 +1463,15 @@ export default function CounterPangPang() {
             </div>
 
             {/* 하트 개수: 위아래 중앙 + 가로 중앙 정렬로 완벽 고정 */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-black/5 px-4 py-1.5 text-lg font-black text-black">
-              💖 <span>{hearts}</span>
-            </div>
+           
           </div>
 
           {/* 🌟 1줄: 초대하기(1/4) + 하트 충전(3/4) 가로 배치 */}
           <div className="mt-3 flex w-full items-center gap-2">
+            {/* 1. 현재 하트 개수 (포인트 박스처럼 왼쪽에 고정) */}
+              <div className="flex flex-none items-center justify-center gap-1 rounded-2xl bg-white/40 px-3 py-2 text-sm font-black text-black/80 shadow-sm backdrop-blur-sm">
+                💖 <span>{hearts}</span>
+              </div>
             {/* 왼쪽: 초대하기 (flex-1) */}
             <button
               type="button"
@@ -2264,12 +2266,12 @@ export default function CounterPangPang() {
                   
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { id: "suv", name: "SUV", price: 300, src: "/assets/suv.png" },
-                      { id: "police", name: "경찰차", price: 400, src: "/assets/경찰차.png" },
-                      { id: "sports", name: "스포츠카", price: 450, src: "/assets/스포츠카.png" },
-                      { id: "fire", name: "소방차", price: 500, src: "/assets/소방차.png" },
-                      { id: "forklift", name: "포크레인", price: 600, src: "/assets/포크레인.png" },
-                      { id: "tank", name: "탱크", price: 700, src: "/assets/탱크.png" }
+                      { id: "suv", name: "SUV", price: 500, src: "/assets/suv.png" },
+                      { id: "police", name: "경찰차", price: 1000, src: "/assets/경찰차.png" },
+                      { id: "sports", name: "스포츠카", price: 1500, src: "/assets/스포츠카.png" },
+                      { id: "fire", name: "소방차", price: 2000, src: "/assets/소방차.png" },
+                      { id: "forklift", name: "포크레인", price: 2500, src: "/assets/포크레인.png" },
+                      { id: "tank", name: "탱크", price: 3000, src: "/assets/탱크.png" }
                     ].map(car => (
                       <div key={car.id} className="relative flex flex-col items-center justify-between rounded-xl bg-gray-50 p-3 ring-1 ring-gray-200">
                         {/* 이미 보유 중인 차량일 경우 반투명 가림막 처리 */}
