@@ -2053,12 +2053,13 @@ export default function CounterPangPang() {
         </div>
       )}
       {/* ==================== 🚘 내 차고 (마이페이지) 모달 ==================== */}
+      {/* ==================== 👤 종합 마이페이지 (내 정보 관리) 모달 ==================== */}
       {showMyPage && (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-          <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-slate-50 backdrop-blur-md">
+          <div className="max-h-[85%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-slate-50 backdrop-blur-md">
             {/* 헤더 */}
             <div className="flex items-center justify-between border-b border-black/5 bg-slate-100 px-5 py-4">
-              <h3 className="text-lg font-black text-slate-900">🚘 내 차고</h3>
+              <h3 className="text-lg font-black text-slate-900">👤 내 정보 관리</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -2071,54 +2072,85 @@ export default function CounterPangPang() {
               </button>
             </div>
 
-            {/* 보유 차량 목록 (보유한 차만 보임) */}
+            {/* 스크롤 영역 */}
             <div className="overflow-y-auto px-5 py-6 cpp-no-scrollbar" style={{ maxHeight: 'calc(60vh - 60px)' }}>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { id: "default", name: "기본 자동차", src: "🚕" }, // 임시 기본차 (이모지 또는 추후 이미지로 변경)
-                  { id: "suv", name: "SUV", src: "/assets/suv.png" },
-                  { id: "police", name: "경찰차", src: "/assets/경찰차.png" },
-                  { id: "sports", name: "스포츠카", src: "/assets/스포츠카.png" },
-                  { id: "fire", name: "소방차", src: "/assets/소방차.png" },
-                  { id: "forklift", name: "포크레인", src: "/assets/포크레인.png" },
-                  { id: "tank", name: "탱크", src: "/assets/탱크.png" }
-                ].filter(car => ownedCars.includes(car.id)).map(car => (
-                  <div key={car.id} className={`relative flex flex-col items-center justify-between rounded-2xl p-4 ring-2 transition-all ${equippedCar === car.id ? 'bg-blue-50 ring-blue-500' : 'bg-white ring-gray-100 shadow-sm'}`}>
-                    {equippedCar === car.id && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black text-white shadow-sm">
-                        탑승 중
-                      </div>
-                    )}
-                    
-                    {car.id === "default" ? (
-                      <div className="mb-3 text-4xl">{car.src}</div> 
-                    ) : (
-                      <img src={car.src} alt={car.name} className="mb-3 h-12 w-auto object-contain drop-shadow-md" />
-                    )}
-                    
-                    <span className="mb-3 text-xs font-black text-zinc-800">{car.name}</span>
-                    
-                    {equippedCar !== car.id ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          sfxClick();
-                          setEquippedCar(car.id);
-                          localStorage.setItem("cp_equipped_car", car.id);
-                          flashToast(`${car.name} (으)로 갈아탔어요! 부릉부릉 💨`);
-                        }}
-                        className="w-full rounded-xl bg-slate-800 py-2 text-xs font-black text-white shadow-sm active:scale-95"
-                      >
-                        장착하기
-                      </button>
-                    ) : (
-                      <button disabled className="w-full rounded-xl bg-blue-100 py-2 text-xs font-black text-blue-600">
-                        장착됨
-                      </button>
-                    )}
-                  </div>
-                ))}
+              
+              {/* 1. 닉네임 설정 구역 (추후 기존 로직과 연결) */}
+              <div className="mb-8">
+                <h4 className="mb-3 text-sm font-bold text-slate-700">✏️ 닉네임 설정</h4>
+                <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    value={nickInput}
+                    onChange={(e) => setNickInput(e.target.value)}
+                    placeholder="새 닉네임 입력" 
+                    className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-blue-500"
+                  />
+                  <button className="rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-black text-white shadow-sm active:scale-95">
+                    변경
+                  </button>
+                </div>
               </div>
+
+              {/* 2. 내 차고 구역 */}
+              <div className="mb-8">
+                <h4 className="mb-3 text-sm font-bold text-slate-700">🚘 내 차고 (스킨 장착)</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { id: "default", name: "기본 자동차", src: "🚕" },
+                    { id: "suv", name: "SUV", src: "/assets/suv.png" },
+                    { id: "police", name: "경찰차", src: "/assets/경찰차.png" },
+                    { id: "sports", name: "스포츠카", src: "/assets/스포츠카.png" },
+                    { id: "fire", name: "소방차", src: "/assets/소방차.png" },
+                    { id: "forklift", name: "포크레인", src: "/assets/포크레인.png" },
+                    { id: "tank", name: "탱크", src: "/assets/탱크.png" }
+                  ].filter(car => ownedCars.includes(car.id)).map(car => (
+                    <div key={car.id} className={`relative flex flex-col items-center justify-between rounded-2xl p-4 ring-2 transition-all ${equippedCar === car.id ? 'bg-blue-50 ring-blue-500' : 'bg-white ring-gray-100 shadow-sm'}`}>
+                      {equippedCar === car.id && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black text-white shadow-sm">
+                          탑승 중
+                        </div>
+                      )}
+                      
+                      {car.id === "default" ? (
+                        <div className="mb-3 text-4xl">{car.src}</div> 
+                      ) : (
+                        <img src={car.src} alt={car.name} className="mb-3 h-12 w-auto object-contain drop-shadow-md" />
+                      )}
+                      
+                      <span className="mb-3 text-xs font-black text-zinc-800">{car.name}</span>
+                      
+                      {equippedCar !== car.id ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sfxClick();
+                            setEquippedCar(car.id);
+                            localStorage.setItem("cp_equipped_car", car.id);
+                            flashToast(`${car.name} 장착 완료! 부릉부릉 💨`);
+                          }}
+                          className="w-full rounded-xl bg-slate-800 py-2 text-xs font-black text-white shadow-sm active:scale-95"
+                        >
+                          장착하기
+                        </button>
+                      ) : (
+                        <button disabled className="w-full rounded-xl bg-blue-100 py-2 text-xs font-black text-blue-600">
+                          장착됨
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. 악세사리 및 이모티콘 관리 (업데이트 예정) */}
+              <div>
+                <h4 className="mb-3 text-sm font-bold text-slate-700">🎀 악세사리 & 이모티콘</h4>
+                <div className="flex h-20 items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-xs font-bold text-gray-400">
+                  다음 업데이트를 기대해 주세요! ✨
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
