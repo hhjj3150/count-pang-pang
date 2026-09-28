@@ -1757,8 +1757,8 @@ export default function CounterPangPang() {
               }
               alt="달리는 자동차"
               fallback={<span style={{ fontSize: "3.5rem" }}>{equippedCar === "default" ? "🚕" : "🚘"}</span>}
-              /* 포크레인일 때만 scale-[1.4] (1.4배 확대) 적용 */
-              className={`w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce ${equippedCar === "forklift" ? "scale-[1.4]" : ""}`}
+              /* origin-bottom 추가: 바닥을 고정하고 위로만 확대되도록 설정 */
+              className={`w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce transition-transform origin-bottom ${equippedCar === "forklift" ? "scale-[1.4]" : "scale-125"}`}
             />
                     {/* 번호판도 박스 크기에 맞춰 축소! origin-bottom으로 자동차 바닥에 찰싹 고정 */}
                     <div className="absolute bottom-0 left-1/2 origin-bottom -translate-x-1/2 transform whitespace-nowrap z-30
