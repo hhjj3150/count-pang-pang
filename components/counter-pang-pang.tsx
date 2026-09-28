@@ -609,6 +609,55 @@ export default function CounterPangPang() {
   const [showVault, setShowVault] = useState(false)
   const [showAttendance, setShowAttendance] = useState(false);
   const [attData, setAttData] = useState({ date: "", weekCount: 0, lastMonday: "" });
+  // 💖 포인트 하트 구매 일일 제한 관리 상태
+  const [heartBuyData, setHeartBuyData] = useState({ date: "", count: 0 });
+
+  // 앱 켤 때 오늘 날짜의 하트 구매 횟수 불러오기 (자정 24시 리셋 기준)
+  useEffect(() => {
+    const saved = localStorage.getItem("cp_heart_buy");
+    const currentToday = new Date().toISOString().slice(0, 10);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.date !== currentToday) {
+        setHeartBuyData({ date: currentToday, count: 0 });
+      } else {
+        setHeartBuyData(parsed);
+      }
+    } else {
+      setHeartBuyData({ date: currentToday, count: 0 });
+    }
+  }, []);
+
+  // 💖 포인트로 하트 구매하는 함수 (50P 소모, 하루 최대 3회)
+  const buyHeartWithPoints = () => {
+    sfxClick();
+    const currentToday = new Date().toISOString().slice(0, 10);
+    const currentCount = heartBuyData.date === currentToday ? heartBuyData.count : 0;
+
+    if (currentCount >= 3) {
+      flashToast("오늘 하트 충전 횟수(3/3)를 모두 채웠어요! 내일 다시 만나요 ⏰");
+      return;
+    }
+
+    if (points < 50) {
+      flashToast(`포인트가 부족해요! (${points}P / 50P) 😥`);
+      return;
+    }
+
+    if (hearts >= HEART_CAP) {
+      flashToast("이미 하트가 가득 찼어요! 💖");
+      return;
+    }
+
+    setPoints(prev => prev - 50);
+    setHearts(prev => prev + 1);
+
+    const newBuyData = { date: currentToday, count: currentCount + 1 };
+    setHeartBuyData(newBuyData);
+    localStorage.setItem("cp_heart_buy", JSON.stringify(newBuyData));
+
+    flashToast(`50P로 하트 충전 완료! 💖 (오늘 ${newBuyData.count}/3회)`);
+  };
 
   // 이번 주 월요일 날짜 구하기 (주간 초기화용)
   const getMonday = (d = new Date()) => {
@@ -1893,6 +1942,26 @@ export default function CounterPangPang() {
         {/* ============================ 🛒 포인트 상점 모달 ============================ */}
         {showVault && (
           <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+            {/* 💖 [추가된 1단계] 포인트 하트 충전 상점 카드 */}
+                <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-base font-black text-zinc-900">💖 하트 즉시 충전</h4>
+                      <p className="text-xs font-bold text-zinc-500">50P로 하트를 충전하세요 (하루 3회)</p>
+                    </div>
+                    <span className="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-black text-amber-800">
+                      남은 횟수: {3 - (heartBuyData.date === new Date().toISOString().slice(0, 10) ? heartBuyData.count : 0)}/3
+                    </span>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={buyHeartWithPoints}
+                    className="w-full rounded-xl bg-gradient-to-b from-rose-400 to-rose-500 py-3 text-sm font-black text-white shadow-[0_4px_0_#be123c] active:translate-y-1 active:shadow-none"
+                  >
+                    💖 하트 +1 충전하기 (50P)
+                  </button>
+                </div>
             {/* 1. 상점 메인 배경: 아주 연한 투명 노란색 (bg-yellow-50/95) */}
             <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-yellow-50/95 backdrop-blur-md shadow-2xl">
               <div className="flex items-center justify-between px-5 py-4">
