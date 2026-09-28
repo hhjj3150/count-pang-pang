@@ -611,7 +611,37 @@ export default function CounterPangPang() {
   const [attData, setAttData] = useState({ date: "", weekCount: 0, lastMonday: "" });
   // 💖 포인트 하트 구매 일일 제한 관리 상태
   const [heartBuyData, setHeartBuyData] = useState({ date: "", count: 0 });
+// 🚗 [1단계] 자동차 스킨 및 내 보관함(My Page) 상태 관리
+  const [ownedCars, setOwnedCars] = useState(["default"]); // 보유 중인 차량 목록 (기본차 포함)
+  const [equippedCar, setEquippedCar] = useState("default"); // 현재 장착(탑승) 중인 차량
+  const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
 
+  // 앱 실행 시 저장된 차량 데이터 불러오기
+  useEffect(() => {
+    const savedOwned = localStorage.getItem("cp_owned_cars");
+    if (savedOwned) setOwnedCars(JSON.parse(savedOwned));
+    const savedEquipped = localStorage.getItem("cp_equipped_car");
+    if (savedEquipped) setEquippedCar(savedEquipped);
+  }, []);
+
+  // 🚗 포인트로 차량 스킨 구매하는 함수
+  const buyCar = (carId: string, price: number) => {
+    sfxClick();
+    if (ownedCars.includes(carId)) {
+      flashToast("이미 차고에 있는 멋진 차량입니다! 🚗");
+      return;
+    }
+    if (points < price) {
+      flashToast(`포인트가 부족해요! (${price}P 필요) 😥`);
+      return;
+    }
+    
+    setPoints(prev => prev - price);
+    const newOwned = [...ownedCars, carId];
+    setOwnedCars(newOwned);
+    localStorage.setItem("cp_owned_cars", JSON.stringify(newOwned));
+    flashToast("차량 구매 완료! 곧 완성될 '내 차고'에서 장착할 수 있어요 🎁");
+  };
   // 앱 켤 때 오늘 날짜의 하트 구매 횟수 불러오기 (자정 24시 리셋 기준)
   useEffect(() => {
     const saved = localStorage.getItem("cp_heart_buy");
@@ -1967,7 +1997,7 @@ export default function CounterPangPang() {
               </div>
 
               {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 ▼▼▼ */}
-              {/* 💖 하트 즉시 충전 (이모티콘 팩과 동일한 규격의 첫 번째 상점 아이템) */}
+             {/* 💖 하트 즉시 충전 (이모티콘 팩과 동일한 규격의 첫 번째 상점 아이템) */}
               <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1990,9 +2020,48 @@ export default function CounterPangPang() {
                   💖 하트 +1 충전하기 (50P)
                 </button>
               </div>
+
+              {/* 🚗 멋진 자동차 전시장 (하트 카드 바로 아래 배치) */}
+              <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-xl">🏎️</span>
+                  <h4 className="text-sm font-black text-zinc-900">자동차 튜닝샵</h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: "suv", name: "SUV", price: 300, src: "/asset/suv.png" },
+                    { id: "police", name: "경찰차", price: 400, src: "/asset/경찰차.png" },
+                    { id: "sports", name: "스포츠카", price: 450, src: "/asset/스포츠카.png" },
+                    { id: "fire", name: "소방차", price: 500, src: "/asset/소방차.png" },
+                    { id: "forklift", name: "포크레인", price: 600, src: "/asset/포크레인.png" },
+                    { id: "tank", name: "탱크", price: 700, src: "/asset/탱크.png" }
+                  ].map(car => (
+                    <div key={car.id} className="relative flex flex-col items-center justify-between rounded-xl bg-gray-50 p-3 ring-1 ring-gray-200">
+                      {/* 이미 보유 중인 차량일 경우 반투명 가림막 처리 */}
+                      {ownedCars.includes(car.id) && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-black/60 backdrop-blur-[1px]">
+                          <span className="text-lg">✅</span>
+                          <span className="text-xs font-black text-white">보유 중</span>
+                        </div>
+                      )}
+                      <img src={car.src} alt={car.name} className="mb-2 h-10 w-auto object-contain drop-shadow-md" />
+                      <span className="mb-2 text-[11px] font-black text-zinc-700">{car.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => buyCar(car.id, car.price)}
+                        disabled={ownedCars.includes(car.id)}
+                        className="w-full rounded-lg bg-zinc-800 py-1.5 text-xs font-black text-white active:scale-95 disabled:opacity-50"
+                      >
+                        {car.price}P
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="max-h-[60vh] overflow-y-auto px-5 pb-8 cpp-no-scrollbar">
                 <p className="mb-4 text-center text-sm font-bold text-zinc-700">
-                  열린 팡이를 터치하면 닉네임이 박혀서 저장됩니다 📸
+                  열린 팡이를 터치하면 닉네임이 새겨져 저장됩니다 📸
                 </p>
 
                 {/* 🌟 2. 미리보기 팝업창 배경: 연하고 투명한 노란색 (bg-yellow-100/95) */}
