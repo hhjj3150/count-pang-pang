@@ -1942,26 +1942,25 @@ export default function CounterPangPang() {
         {/* ============================ 🛒 포인트 상점 모달 ============================ */}
         {showVault && (
           <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-            {/* 💖 [추가된 1단계] 포인트 하트 충전 상점 카드 */}
-                <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-                  <div className="flex items-center justify-between mb-3">
+            {/* 💖 상점 맨 위 아담하게 자리 잡은 하트 충전 컴팩트 바 */}
+              <div className="px-5 pt-3">
+                <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">💖</span>
                     <div>
-                      <h4 className="text-base font-black text-zinc-900">💖 하트 즉시 충전</h4>
-                      <p className="text-xs font-bold text-zinc-500">50P로 하트를 충전하세요 (하루 3회)</p>
+                      <p className="text-xs font-black text-zinc-900">하트 즉시 충전 (+1개)</p>
+                      <p className="text-[10px] font-bold text-zinc-500">오늘 남은 횟수: {3 - (heartBuyData.date === new Date().toISOString().slice(0, 10) ? heartBuyData.count : 0)}/3회</p>
                     </div>
-                    <span className="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-black text-amber-800">
-                      남은 횟수: {3 - (heartBuyData.date === new Date().toISOString().slice(0, 10) ? heartBuyData.count : 0)}/3
-                    </span>
                   </div>
-                  
                   <button
                     type="button"
                     onClick={buyHeartWithPoints}
-                    className="w-full rounded-xl bg-gradient-to-b from-rose-400 to-rose-500 py-3 text-sm font-black text-white shadow-[0_4px_0_#be123c] active:translate-y-1 active:shadow-none"
+                    className="rounded-xl bg-gradient-to-b from-rose-400 to-rose-500 px-4 py-2 text-xs font-black text-white shadow-[0_3px_0_#be123c] active:translate-y-0.5 active:shadow-none"
                   >
-                    💖 하트 +1 충전하기 (50P)
+                    50P 충전 🎁
                   </button>
                 </div>
+              </div>
             {/* 1. 상점 메인 배경: 아주 연한 투명 노란색 (bg-yellow-50/95) */}
             <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-yellow-50/95 backdrop-blur-md shadow-2xl">
               <div className="flex items-center justify-between px-5 py-4">
