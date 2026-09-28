@@ -1449,11 +1449,15 @@ export default function CounterPangPang() {
               <div className="flex items-center gap-2">
                 <p className="text-lg font-black text-black">{nickname} 님</p>
                 <button
-                  onClick={() => setScreen("LOGIN")}
-                  className="rounded-full bg-black/10 px-2 py-1 text-xs font-bold text-black/60"
-                >
-                  수정
-                </button>
+                type="button"
+                onClick={() => {
+                  sfxClick();
+                  setShowMyPage(true);
+                }}
+                className="flex items-center gap-1 rounded-full bg-black/10 px-2.5 py-1 text-xs font-bold text-black/70 active:scale-95"
+              >
+                ⚙️ 관리
+              </button>
               </div>
             </div>
 
@@ -1741,11 +1745,19 @@ export default function CounterPangPang() {
                     [@media(max-height:550px)]:w-28 [@media(max-height:550px)]:h-20"
                   >
                     <GameImage
-                      src="/assets/car.png"
-                      alt="달리는 자동차"
-                      fallback={<span style={{ fontSize: "3.5rem" }}>🚕</span>}
-                      className="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
-                    />
+              src={
+                equippedCar === "suv" ? "/assets/suv.png" :
+                equippedCar === "police" ? "/assets/경찰차.png" :
+                equippedCar === "sports" ? "/assets/스포츠카.png" :
+                equippedCar === "fire" ? "/assets/소방차.png" :
+                equippedCar === "forklift" ? "/assets/포크레인.png" :
+                equippedCar === "tank" ? "/assets/탱크.png" :
+                "/assets/car.png"
+              }
+              alt="달리는 자동차"
+              fallback={<span style={{ fontSize: "3.5rem" }}>{equippedCar === "default" ? "🚕" : "🚘"}</span>}
+              className="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce"
+            />
                     {/* 번호판도 박스 크기에 맞춰 축소! origin-bottom으로 자동차 바닥에 찰싹 고정 */}
                     <div className="absolute bottom-0 left-1/2 origin-bottom -translate-x-1/2 transform whitespace-nowrap z-30
                       scale-90 
