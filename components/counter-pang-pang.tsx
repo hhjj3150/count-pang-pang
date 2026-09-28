@@ -615,6 +615,7 @@ export default function CounterPangPang() {
   const [ownedCars, setOwnedCars] = useState(["default"]); // 보유 중인 차량 목록 (기본차 포함)
   const [equippedCar, setEquippedCar] = useState("default"); // 현재 장착(탑승) 중인 차량
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
+  const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
 
   // 앱 실행 시 저장된 차량 데이터 불러오기
   useEffect(() => {
@@ -2065,17 +2066,20 @@ export default function CounterPangPang() {
         </div>
       )}
       {/* ==================== 🚘 내 차고 (마이페이지) 모달 ==================== */}
-      {/* ==================== 👤 종합 마이페이지 (내 정보 관리) 모달 ==================== */}
+     {/* ==================== 👤 종합 마이페이지 (내 정보 관리) 모달 ==================== */}
       {showMyPage && (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-          <div className="max-h-[85%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-slate-50 backdrop-blur-md">
-            {/* 헤더 */}
-            <div className="flex items-center justify-between border-b border-black/5 bg-slate-100 px-5 py-4">
+          {/* 창 전체 길이를 제한하고 flex-col로 배치하여 하단 버튼을 고정시킵니다 */}
+          <div className="flex max-h-[85vh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-3xl border-t border-white/50 bg-slate-50 backdrop-blur-md">
+            
+            {/* 1. 고정 헤더 */}
+            <div className="flex-none flex items-center justify-between border-b border-black/5 bg-slate-100 px-5 py-4">
               <h3 className="text-lg font-black text-slate-900">👤 내 정보 관리</h3>
               <button
                 type="button"
                 onClick={() => {
                   sfxClick();
+                  setTempEquippedCar(null); // X 누르면 임시 선택한 것들 모두 취소!
                   setShowMyPage(false);
                 }}
                 className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-lg text-zinc-900 hover:bg-black/10 active:scale-90"
@@ -2084,10 +2088,10 @@ export default function CounterPangPang() {
               </button>
             </div>
 
-            {/* 스크롤 영역 */}
-            <div className="overflow-y-auto px-5 py-6 cpp-no-scrollbar" style={{ maxHeight: 'calc(60vh - 60px)' }}>
+            {/* 2. 스크롤 영역 (자동으로 남는 공간을 꽉 채우며 스크롤됨) */}
+            <div className="flex-1 overflow-y-auto px-5 py-6 cpp-no-scrollbar">
               
-              {/* 1. 닉네임 설정 구역 (추후 기존 로직과 연결) */}
+              {/* 닉네임 설정 구역 */}
               <div className="mb-8">
                 <h4 className="mb-3 text-sm font-bold text-slate-700">✏️ 닉네임 설정</h4>
                 <div className="flex gap-2">
@@ -2098,13 +2102,11 @@ export default function CounterPangPang() {
                     placeholder="새 닉네임 입력" 
                     className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-blue-500"
                   />
-                  <button className="rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-black text-white shadow-sm active:scale-95">
-                    변경
-                  </button>
                 </div>
+                <p className="mt-2 text-[11px] font-bold text-gray-500">* 하단의 저장 버튼을 눌러야 최종 반영됩니다.</p>
               </div>
 
-              {/* 2. 내 차고 구역 */}
+              {/* 내 차고 구역 */}
               <div className="mb-8">
                 <h4 className="mb-3 text-sm font-bold text-slate-700">🚘 내 차고 (스킨 장착)</h4>
                 <div className="grid grid-cols-2 gap-4">
@@ -2116,47 +2118,51 @@ export default function CounterPangPang() {
                     { id: "fire", name: "소방차", src: "/assets/소방차.png" },
                     { id: "forklift", name: "포크레인", src: "/assets/포크레인.png" },
                     { id: "tank", name: "탱크", src: "/assets/탱크.png" }
-                  ].filter(car => ownedCars.includes(car.id)).map(car => (
-                    <div key={car.id} className={`relative flex flex-col items-center justify-between rounded-2xl p-4 ring-2 transition-all ${equippedCar === car.id ? 'bg-blue-50 ring-blue-500' : 'bg-white ring-gray-100 shadow-sm'}`}>
-                      {equippedCar === car.id && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black text-white shadow-sm">
-                          탑승 중
-                        </div>
-                      )}
-                      
-                      {car.id === "default" ? (
-                        <div className="mb-3 text-4xl">{car.src}</div> 
-                      ) : (
-                        <img src={car.src} alt={car.name} className="mb-3 h-12 w-auto object-contain drop-shadow-md" />
-                      )}
-                      
-                      <span className="mb-3 text-xs font-black text-zinc-800">{car.name}</span>
-                      
-                      {equippedCar !== car.id ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            sfxClick();
-                            setEquippedCar(car.id);
-                            localStorage.setItem("cp_equipped_car", car.id);
-                            flashToast(`${car.name} 장착 완료! 부릉부릉 💨`);
-                          }}
-                          className="w-full rounded-xl bg-slate-800 py-2 text-xs font-black text-white shadow-sm active:scale-95"
-                        >
-                          장착하기
-                        </button>
-                      ) : (
-                        <button disabled className="w-full rounded-xl bg-blue-100 py-2 text-xs font-black text-blue-600">
-                          장착됨
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  ].filter(car => ownedCars.includes(car.id)).map(car => {
+                    
+                    // 현재 선택되어 있는지 확인 (임시 선택값이 없으면 원래 장착된 차량 기준)
+                    const isSelected = (tempEquippedCar || equippedCar) === car.id;
+                    
+                    return (
+                      <div key={car.id} className={`relative flex flex-col items-center justify-between rounded-2xl p-4 ring-2 transition-all ${isSelected ? 'bg-blue-50 ring-blue-500' : 'bg-white ring-gray-100 shadow-sm'}`}>
+                        {isSelected && (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black text-white shadow-sm">
+                            선택됨
+                          </div>
+                        )}
+                        
+                        {car.id === "default" ? (
+                          <div className="mb-3 text-4xl">{car.src}</div> 
+                        ) : (
+                          <img src={car.src} alt={car.name} className="mb-3 h-12 w-auto object-contain drop-shadow-md" />
+                        )}
+                        
+                        <span className="mb-3 text-xs font-black text-zinc-800">{car.name}</span>
+                        
+                        {!isSelected ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              sfxClick();
+                              setTempEquippedCar(car.id); // 장착이 아니라 '임시 선택'만 함
+                            }}
+                            className="w-full rounded-xl bg-slate-800 py-2 text-xs font-black text-white shadow-sm active:scale-95"
+                          >
+                            선택하기
+                          </button>
+                        ) : (
+                          <button disabled className="w-full rounded-xl bg-blue-100 py-2 text-xs font-black text-blue-600">
+                            V 선택완료
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* 3. 악세사리 및 이모티콘 관리 (업데이트 예정) */}
-              <div>
+              {/* 악세사리 영역 */}
+              <div className="mb-2">
                 <h4 className="mb-3 text-sm font-bold text-slate-700">🎀 악세사리 & 이모티콘</h4>
                 <div className="flex h-20 items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-xs font-bold text-gray-400">
                   다음 업데이트를 기대해 주세요! ✨
@@ -2164,6 +2170,33 @@ export default function CounterPangPang() {
               </div>
 
             </div>
+
+            {/* 3. 하단 고정 저장 버튼 */}
+            <div className="flex-none border-t border-gray-200 bg-white p-4 pb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  sfxClick();
+                  
+                  // 1. 차량을 선택한 게 있다면, 이제 진짜 장착 처리!
+                  if (tempEquippedCar) {
+                    setEquippedCar(tempEquippedCar);
+                    localStorage.setItem("cp_equipped_car", tempEquippedCar);
+                  }
+                  
+                  // (참고: 닉네임 저장 로직은 여기에 추후 연결)
+                  
+                  // 창 닫고, 임시값 지우고, 성공 알림 띄우기
+                  setTempEquippedCar(null);
+                  setShowMyPage(false);
+                  flashToast("✅ 모든 설정이 성공적으로 저장되었습니다!");
+                }}
+                className="w-full rounded-2xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg active:scale-95"
+              >
+                💾 변경사항 저장하기
+              </button>
+            </div>
+
           </div>
         </div>
       )}
