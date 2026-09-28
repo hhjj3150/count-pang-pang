@@ -1997,69 +1997,71 @@ export default function CounterPangPang() {
               </div>
 
               {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 ▼▼▼ */}
-             {/* 💖 하트 즉시 충전 (이모티콘 팩과 동일한 규격의 첫 번째 상점 아이템) */}
-              <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">💖</span>
-                    <div>
-                      <h4 className="text-sm font-black text-zinc-900">하트 즉시 충전</h4>
-                      <p className="text-[11px] font-bold text-zinc-500">50P로 하트 1개 충전</p>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
-                    오늘 잔여: {3 - (heartBuyData.date === new Date().toISOString().slice(0, 10) ? heartBuyData.count : 0)}회
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={buyHeartWithPoints}
-                  className="w-full rounded-xl bg-gradient-to-b from-rose-400 to-rose-500 py-3 text-sm font-black text-white shadow-[0_3px_0_#be123c] active:translate-y-0.5 active:shadow-none"
-                >
-                  💖 하트 +1 충전하기 (50P)
-                </button>
-              </div>
-
-              {/* 🚗 멋진 자동차 전시장 (하트 카드 바로 아래 배치) */}
-              <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="text-xl">🏎️</span>
-                  <h4 className="text-sm font-black text-zinc-900">자동차 튜닝샵</h4>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { id: "suv", name: "SUV", price: 300, src: "/asset/suv.png" },
-                    { id: "police", name: "경찰차", price: 400, src: "/asset/경찰차.png" },
-                    { id: "sports", name: "스포츠카", price: 450, src: "/asset/스포츠카.png" },
-                    { id: "fire", name: "소방차", price: 500, src: "/asset/소방차.png" },
-                    { id: "forklift", name: "포크레인", price: 600, src: "/asset/포크레인.png" },
-                    { id: "tank", name: "탱크", price: 700, src: "/asset/탱크.png" }
-                  ].map(car => (
-                    <div key={car.id} className="relative flex flex-col items-center justify-between rounded-xl bg-gray-50 p-3 ring-1 ring-gray-200">
-                      {/* 이미 보유 중인 차량일 경우 반투명 가림막 처리 */}
-                      {ownedCars.includes(car.id) && (
-                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-black/60 backdrop-blur-[1px]">
-                          <span className="text-lg">✅</span>
-                          <span className="text-xs font-black text-white">보유 중</span>
-                        </div>
-                      )}
-                      <img src={car.src} alt={car.name} className="mb-2 h-10 w-auto object-contain drop-shadow-md" />
-                      <span className="mb-2 text-[11px] font-black text-zinc-700">{car.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => buyCar(car.id, car.price)}
-                        disabled={ownedCars.includes(car.id)}
-                        className="w-full rounded-lg bg-zinc-800 py-1.5 text-xs font-black text-white active:scale-95 disabled:opacity-50"
-                      >
-                        {car.price}P
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+             {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 (여기서부터 스크롤 시작!) ▼▼▼ */}
               <div className="max-h-[60vh] overflow-y-auto px-5 pb-8 cpp-no-scrollbar">
+                
+                {/* 💖 하트 즉시 충전 (스크롤 영역 안으로 쏙 들어옴) */}
+                <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">💖</span>
+                      <div>
+                        <h4 className="text-sm font-black text-zinc-900">하트 즉시 충전</h4>
+                        <p className="text-[11px] font-bold text-zinc-500">50P로 하트 1개 충전</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
+                      오늘 잔여: {3 - (heartBuyData.date === new Date().toISOString().slice(0, 10) ? heartBuyData.count : 0)}회
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={buyHeartWithPoints}
+                    className="w-full rounded-xl bg-gradient-to-b from-rose-400 to-rose-500 py-3 text-sm font-black text-white shadow-[0_3px_0_#be123c] active:translate-y-0.5 active:shadow-none"
+                  >
+                    💖 하트 +1 충전하기 (50P)
+                  </button>
+                </div>
+
+                {/* 🚗 멋진 자동차 전시장 (이미지 assets 경로 수정 완료) */}
+                <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xl">🏎️</span>
+                    <h4 className="text-sm font-black text-zinc-900">자동차 튜닝샵</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { id: "suv", name: "SUV", price: 300, src: "/assets/suv.png" },
+                      { id: "police", name: "경찰차", price: 400, src: "/assets/경찰차.png" },
+                      { id: "sports", name: "스포츠카", price: 450, src: "/assets/스포츠카.png" },
+                      { id: "fire", name: "소방차", price: 500, src: "/assets/소방차.png" },
+                      { id: "forklift", name: "포크레인", price: 600, src: "/assets/포크레인.png" },
+                      { id: "tank", name: "탱크", price: 700, src: "/assets/탱크.png" }
+                    ].map(car => (
+                      <div key={car.id} className="relative flex flex-col items-center justify-between rounded-xl bg-gray-50 p-3 ring-1 ring-gray-200">
+                        {/* 이미 보유 중인 차량일 경우 반투명 가림막 처리 */}
+                        {ownedCars.includes(car.id) && (
+                          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-black/60 backdrop-blur-[1px]">
+                            <span className="text-lg">✅</span>
+                            <span className="text-xs font-black text-white">보유 중</span>
+                          </div>
+                        )}
+                        <img src={car.src} alt={car.name} className="mb-2 h-10 w-auto object-contain drop-shadow-md" />
+                        <span className="mb-2 text-[11px] font-black text-zinc-700">{car.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => buyCar(car.id, car.price)}
+                          disabled={ownedCars.includes(car.id)}
+                          className="w-full rounded-lg bg-zinc-800 py-1.5 text-xs font-black text-white active:scale-95 disabled:opacity-50"
+                        >
+                          {car.price}P
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <p className="mb-4 text-center text-sm font-bold text-zinc-700">
                   열린 팡이를 터치하면 닉네임이 새겨져 저장됩니다 📸
                 </p>
