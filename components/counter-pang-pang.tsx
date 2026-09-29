@@ -491,7 +491,34 @@ export default function CounterPangPang() {
 
   // 내 실제 레벨에 맞는 칭호 세팅 완료!
   const myTitle = getBeltTitle(unlocked || 0);
+// 🎬 12단계 배경 데이터 (경로: /assets/mp4/)
+  const BACKGROUNDS = [
+    { id: 1, name: "해변의 드라이브", file: "해변의드라이브.mp4", price: 0, unlockLevel: 0 },
+    { id: 2, name: "벚꽃 드라이브", file: "벚꽃드라이브.mp4", price: 2000, unlockLevel: 1 },
+    { id: 3, name: "단풍길", file: "단풍길.mp4", price: 4000, unlockLevel: 2 },
+    { id: 4, name: "한밤의 도심", file: "한밤의 도심.mp4", price: 6000, unlockLevel: 3 },
+    { id: 5, name: "눈오는 산속", file: "눈오는 산속.mp4", price: 10000, unlockLevel: 4 },
+    { id: 6, name: "사막의 질주", file: "사막의질주.mp4", price: 13000, unlockLevel: 5 },
+    { id: 7, name: "아이스크림과 캔디", file: "아이스크림과 캔디.mp4", price: 16000, unlockLevel: 6 },
+    { id: 8, name: "지하도시", file: "지하도시.mp4", price: 20000, unlockLevel: 7 },
+    { id: 9, name: "스핑크스 로드", file: "스핑크스로드.mp4", price: 30000, unlockLevel: 8 },
+    { id: 10, name: "화산과 용암", file: "화산과용암.mp4", price: 40000, unlockLevel: 9 },
+    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50000, unlockLevel: 10 },
+    { id: 12, name: "황금의 나라", file: "황금의나라.mp4", price: 70000, unlockLevel: 11 },
+  ];
 
+  const [ownedBgs, setOwnedBgs] = useState<string[]>(["해변의드라이브.mp4"]);
+  const [equippedBg, setEquippedBg] = useState<string>("해변의드라이브.mp4");
+
+  const buyBackground = (file: string, price: number) => {
+    if (points >= price) {
+      setPoints(prev => prev - price);
+      setOwnedBgs(prev => [...prev, file]);
+      alert("🎉 배경을 성공적으로 구매했습니다! 이제 장착해보세요.");
+    } else {
+      alert(`포인트가 부족합니다. (필요 포인트: ${price}P)`);
+    }
+  };
   React.useEffect(() => {
     const drivingSound = new Audio('/assets/driving.mp3');
     drivingSound.loop = true; 
@@ -1702,16 +1729,17 @@ export default function CounterPangPang() {
             <div className="relative min-h-0 flex-1 overflow-hidden">
               
               {/* 🚗 AI로 만든 움직이는 동영상 배경 (워터마크 가리기 위해 5% 확대) */}
-              <video 
-                key="road-video"
-                autoPlay 
-                loop 
-                muted 
-                playsInline
-                className="absolute inset-0 h-full w-full object-cover scale-[1.05] brightness-110"
-              >
-                <source src="/assets/road-bg.mp4" type="video/mp4" />
-              </video>
+              {/* 🚗 장착한 배경에 따라 동적으로 바뀌는 움직이는 동영상 배경 */}
+        <video
+          key={equippedBg}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover scale-[1.05] brightness-110"
+        >
+          <source src={`/assets/mp4/${equippedBg}`} type="video/mp4" />
+        </video>
               
               {/* 문제 글씨가 잘 보이게 위쪽에만 살짝 그라데이션 그림자 깔기 */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" aria-hidden />
@@ -2133,6 +2161,50 @@ export default function CounterPangPang() {
                 </div>
                 <p className="mt-2 text-[11px] font-bold text-gray-500">* 하단의 저장 버튼을 눌러야 최종 반영됩니다.</p>
               </div>
+              {/* 🎬 배경 상점 & 장착 영역 */}
+            <div className="mb-8">
+              <h4 className="mb-3 text-sm font-bold text-slate-700">🛍️ 테마 상점 (배경 장착)</h4>
+              <div className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-1">
+                {BACKGROUNDS.map((bg) => {
+                  const isUnlocked = (unlocked || 0) >= bg.unlockLevel;
+                  const isOwned = ownedBgs.includes(bg.file);
+                  const isEquipped = equippedBg === bg.file;
+
+                  return (
+                    <div key={bg.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 border border-slate-200">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-slate-800">{bg.name}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5">
+                          {isUnlocked ? `Lv.${bg.unlockLevel} 해금됨` : `🔒 Lv.${bg.unlockLevel} 달성 시 오픈`}
+                        </span>
+                      </div>
+                      
+                      <div>
+                        {!isUnlocked ? (
+                          <button disabled className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-400">잠김</button>
+                        ) : isEquipped ? (
+                          <button disabled className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm">장착중</button>
+                        ) : isOwned ? (
+                          <button 
+                            onClick={() => { setEquippedBg(bg.file); }}
+                            className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm active:scale-95 transition-transform"
+                          >
+                            장착하기
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => { buyBackground(bg.file, bg.price); }}
+                            className="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-black text-slate-900 shadow-sm active:scale-95 transition-transform"
+                          >
+                            {bg.price.toLocaleString()} P
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
               {/* 내 차고 구역 */}
               <div className="mb-8">
