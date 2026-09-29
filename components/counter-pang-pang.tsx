@@ -2161,24 +2161,49 @@ export default function CounterPangPang() {
                 </div>
                 <p className="mt-2 text-[11px] font-bold text-gray-500">* 하단의 저장 버튼을 눌러야 최종 반영됩니다.</p>
               </div>
-              {/* 🎬 배경 상점 & 장착 영역 */}
+             {/* 🎬 배경 상점 & 장착 영역 (미리보기 썸네일 추가) */}
             <div className="mb-8">
-              <h4 className="mb-3 text-sm font-bold text-slate-700">🛍️ 테마 상점 (배경 장착)</h4>
+              <h4 className="mb-3 text-sm font-bold text-slate-700">🛍️ 테마 상점 (미리보기)</h4>
               <div className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-1">
                 {BACKGROUNDS.map((bg) => {
                   const isUnlocked = (unlocked || 0) >= bg.unlockLevel;
                   const isOwned = ownedBgs.includes(bg.file);
                   const isEquipped = equippedBg === bg.file;
+                  
+                  // mp4 파일명을 png로 바꿔서 썸네일 이미지 경로 자동 생성
+                  const thumbnailFile = bg.file.replace('.mp4', '.png'); 
 
                   return (
-                    <div key={bg.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 border border-slate-200">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-800">{bg.name}</span>
-                        <span className="text-[10px] text-slate-500 mt-0.5">
-                          {isUnlocked ? `Lv.${bg.unlockLevel} 해금됨` : `🔒 Lv.${bg.unlockLevel} 달성 시 오픈`}
-                        </span>
+                    <div key={bg.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 border border-slate-200">
+                      
+                      {/* 🖼️ 왼쪽: 썸네일 + 텍스트 영역 */}
+                      <div className="flex items-center gap-3">
+                        {/* 썸네일 이미지 영역 */}
+                        <div className="relative h-12 w-9 flex-shrink-0 overflow-hidden rounded-md bg-gray-200 shadow-sm border border-gray-300">
+                          <img 
+                            src={`/assets/thumbnails/${thumbnailFile}`} 
+                            alt={bg.name}
+                            // 🌟 핵심: 구매 안 했으면 흑백(grayscale) + 어둡게(brightness-50) 필터 적용!
+                            className={`h-full w-full object-cover transition-all duration-300 ${isOwned ? '' : 'grayscale brightness-50 opacity-80'}`}
+                          />
+                          {/* 안 샀으면 이미지 중앙에 반투명한 락(🔒) 아이콘 띄우기 */}
+                          {!isOwned && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-white drop-shadow-md text-[10px]">🔒</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 텍스트 영역 */}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-slate-800">{bg.name}</span>
+                          <span className="text-[10px] text-slate-500 mt-0.5">
+                            {isUnlocked ? `Lv.${bg.unlockLevel} 해금됨` : `🔒 Lv.${bg.unlockLevel} 달성 시 오픈`}
+                          </span>
+                        </div>
                       </div>
                       
+                      {/* 🔘 오른쪽: 버튼 영역 */}
                       <div>
                         {!isUnlocked ? (
                           <button disabled className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-400">잠김</button>
