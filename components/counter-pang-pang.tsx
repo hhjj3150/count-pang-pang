@@ -493,18 +493,18 @@ export default function CounterPangPang() {
   const myTitle = getBeltTitle(unlocked || 0);
 // 🎬 12단계 배경 데이터 (경로: /assets/mp4/)
   const BACKGROUNDS = [
-    { id: 1, name: "해변의 드라이브", file: "해변의드라이브.mp4", price: 0, unlockLevel: 0 },
-    { id: 2, name: "벚꽃 드라이브", file: "벚꽃드라이브.mp4", price: 2000, unlockLevel: 1 },
+    { id: 1, name: "해변의드라이브", file: "해변의드라이브.mp4", price: 0, unlockLevel: 0 },
+    { id: 2, name: "벚꽃드라이브", file: "벚꽃드라이브.mp4", price: 2000, unlockLevel: 1 },
     { id: 3, name: "단풍길", file: "단풍길.mp4", price: 4000, unlockLevel: 2 },
-    { id: 4, name: "한밤의 도심", file: "한밤의 도심.mp4", price: 6000, unlockLevel: 3 },
-    { id: 5, name: "눈오는 산속", file: "눈오는 산속.mp4", price: 10000, unlockLevel: 4 },
-    { id: 6, name: "사막의 질주", file: "사막의질주.mp4", price: 13000, unlockLevel: 5 },
-    { id: 7, name: "아이스크림과 캔디", file: "아이스크림과 캔디.mp4", price: 16000, unlockLevel: 6 },
+    { id: 4, name: "한밤의도심", file: "한밤의도심.mp4", price: 6000, unlockLevel: 3 },
+    { id: 5, name: "눈오는산속", file: "눈오는산속.mp4", price: 10000, unlockLevel: 4 },
+    { id: 6, name: "사막의질주", file: "사막의질주.mp4", price: 13000, unlockLevel: 5 },
+    { id: 7, name: "아이스크림과캔디", file: "아이스크림과캔디.mp4", price: 16000, unlockLevel: 6 },
     { id: 8, name: "지하도시", file: "지하도시.mp4", price: 20000, unlockLevel: 7 },
-    { id: 9, name: "스핑크스 로드", file: "스핑크스로드.mp4", price: 30000, unlockLevel: 8 },
-    { id: 10, name: "화산과 용암", file: "화산과용암.mp4", price: 40000, unlockLevel: 9 },
+    { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 30000, unlockLevel: 8 },
+    { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 40000, unlockLevel: 9 },
     { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50000, unlockLevel: 10 },
-    { id: 12, name: "황금의 나라", file: "황금의나라.mp4", price: 70000, unlockLevel: 11 },
+    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70000, unlockLevel: 11 },
   ];
 
   const [ownedBgs, setOwnedBgs] = useState<string[]>(["해변의드라이브.mp4"]);
@@ -2231,60 +2231,89 @@ export default function CounterPangPang() {
               </div>
             </div>
 
-              {/* 내 차고 구역 */}
-              <div className="mb-8">
-                <h4 className="mb-3 text-sm font-bold text-slate-700">🚘 내 차고 (스킨 장착)</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { id: "default", name: "기본 자동차", src: "🚕" },
-                    { id: "suv", name: "SUV", src: "/assets/suv.png" },
-                    { id: "police", name: "경찰차", src: "/assets/경찰차.png" },
-                    { id: "sports", name: "스포츠카", src: "/assets/스포츠카.png" },
-                    { id: "fire", name: "소방차", src: "/assets/소방차.png" },
-                    { id: "forklift", name: "포크레인", src: "/assets/포크레인.png" },
-                    { id: "tank", name: "탱크", src: "/assets/탱크.png" }
-                  ].filter(car => ownedCars.includes(car.id)).map(car => {
-                    
-                    // 현재 선택되어 있는지 확인 (임시 선택값이 없으면 원래 장착된 차량 기준)
-                    const isSelected = (tempEquippedCar || equippedCar) === car.id;
-                    
-                    return (
-                      <div key={car.id} className={`relative flex flex-col items-center justify-between rounded-2xl p-4 ring-2 transition-all ${isSelected ? 'bg-blue-50 ring-blue-500' : 'bg-white ring-gray-100 shadow-sm'}`}>
-                        {isSelected && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black text-white shadow-sm">
-                            선택됨
+             {/* 🚘 내 차고 구역 (상점 통합) */}
+            <div className="mb-8">
+              <h4 className="mb-3 text-sm font-bold text-slate-700">🚘 내 차고 (스킨 구매 및 장착)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { id: "default", name: "기본 자동차", src: "🚕", price: 0 },
+                  { id: "suv", name: "SUV", src: "/assets/suv.png", price: 3000 },
+                  { id: "police", name: "경찰차", src: "/assets/경찰차.png", price: 5000 },
+                  { id: "sports", name: "스포츠카", src: "/assets/스포츠카.png", price: 10000 },
+                  { id: "fire", name: "소방차", src: "/assets/소방차.png", price: 15000 },
+                  { id: "forklift", name: "포크레인", src: "/assets/포크레인.png", price: 20000 },
+                  { id: "tank", name: "탱크", src: "/assets/탱크.png", price: 30000 }
+                ].map(car => {
+                  // 보유 여부 및 선택 여부 확인
+                  const isOwned = ownedCars.includes(car.id);
+                  const isSelected = (tempEquippedCar || equippedCar) === car.id;
+
+                  return (
+                    <div 
+                      key={car.id} 
+                      className={`relative flex flex-col items-center justify-between rounded-2xl p-4 transition-all border ${
+                        isSelected 
+                          ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500' 
+                          : 'border-slate-200 bg-slate-50'
+                      }`}
+                    >
+                      {/* 🖼️ 자동차 이미지 (미보유 시 흑백 처리) */}
+                      <div className={`mb-3 flex h-16 w-full items-center justify-center ${isOwned ? '' : 'grayscale opacity-50'}`}>
+                        {car.id === "default" ? (
+                          <div className="text-5xl">{car.src}</div>
+                        ) : (
+                          <img src={car.src} alt={car.name} className="max-h-full max-w-full object-contain drop-shadow-md" />
+                        )}
+                        
+                        {/* 🔒 미보유 시 자물쇠 아이콘 */}
+                        {!isOwned && (
+                          <div className="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 shadow-sm">
+                            <span className="text-white text-[10px]">🔒</span>
                           </div>
                         )}
-                        
-                        {car.id === "default" ? (
-                          <div className="mb-3 text-4xl">{car.src}</div> 
-                        ) : (
-                          <img src={car.src} alt={car.name} className="mb-3 h-12 w-auto object-contain drop-shadow-md" />
-                        )}
-                        
-                        <span className="mb-3 text-xs font-black text-zinc-800">{car.name}</span>
-                        
-                        {!isSelected ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              sfxClick();
-                              setTempEquippedCar(car.id); // 장착이 아니라 '임시 선택'만 함
-                            }}
-                            className="w-full rounded-xl bg-slate-800 py-2 text-xs font-black text-white shadow-sm active:scale-95"
+                      </div>
+
+                      {/* 🏷️ 자동차 이름 */}
+                      <div className="mb-3 text-center">
+                        <span className="text-sm font-bold text-slate-800">{car.name}</span>
+                      </div>
+
+                      {/* 🔘 구매 및 장착 버튼 */}
+                      <div className="w-full">
+                        {isOwned ? (
+                          <button 
+                            onClick={() => { sfxClick && sfxClick(); setTempEquippedCar(car.id); }}
+                            className={`w-full rounded-xl py-2 text-xs font-bold transition-transform active:scale-95 ${
+                              isSelected 
+                                ? 'bg-blue-500 text-white shadow-sm' 
+                                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                            }`}
                           >
-                            선택하기
+                            {isSelected ? '장착됨' : '장착하기'}
                           </button>
                         ) : (
-                          <button disabled className="w-full rounded-xl bg-blue-100 py-2 text-xs font-black text-blue-600">
-                            V 선택완료
+                          <button 
+                            onClick={() => {
+                              sfxClick && sfxClick();
+                              if (points >= car.price) {
+                                setPoints(prev => prev - car.price);
+                                setOwnedCars(prev => [...prev, car.id]);
+                                alert(`🎉 ${car.name} 구매 완료! 이제 장착해 보세요.`);
+                              } else {
+                                alert(`포인트가 부족합니다. (필요 포인트: ${car.price.toLocaleString()}P)`);
+                              }
+                            }}
+                            className="w-full rounded-xl bg-yellow-400 py-2 text-xs font-black text-slate-900 shadow-sm transition-transform active:scale-95"
+                          >
+                            {car.price.toLocaleString()} P
                           </button>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
+            </div>
 
               {/* 악세사리 영역 */}
               <div className="mb-2">
