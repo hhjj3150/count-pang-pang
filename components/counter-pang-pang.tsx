@@ -504,7 +504,7 @@ export default function CounterPangPang() {
     { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 210, unlockLevel: 8 },
     { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 220, unlockLevel: 9 },
     { id: 11, name: "우주도시", file: "우주도시.mp4", price: 230, unlockLevel: 10 },
-    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 2400, unlockLevel: 11 },
+    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 240, unlockLevel: 11 },
   ];
 
   const [ownedBgs, setOwnedBgs] = useState<string[]>(["해변의드라이브.mp4"]);
