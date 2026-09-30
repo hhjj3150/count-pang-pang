@@ -492,23 +492,26 @@ export default function CounterPangPang() {
   // 내 실제 레벨에 맞는 칭호 세팅 완료!
   const myTitle = getBeltTitle(unlocked || 0);
 // 🎬 12단계 배경 데이터 (경로: /assets/mp4/)
+  // 🎬 배경 데이터 (경로: /assets/mp4/)
   const BACKGROUNDS = [
-    { id: 1, name: "해변의드라이브", file: "해변의드라이브.mp4", price: 0, unlockLevel: 0 },
-    { id: 2, name: "벚꽃드라이브", file: "벚꽃드라이브.mp4", price: 100, unlockLevel: 1 },
-    { id: 3, name: "단풍길", file: "단풍길.mp4", price: 110, unlockLevel: 2 },
-    { id: 4, name: "한밤의도심", file: "한밤의도심.mp4", price: 120, unlockLevel: 3 },
-    { id: 5, name: "눈오는산속", file: "눈오는산속.mp4", price: 130, unlockLevel: 4 },
-    { id: 6, name: "사막의질주", file: "사막의질주.mp4", price: 140, unlockLevel: 5 },
-    { id: 7, name: "아이스크림과캔디", file: "아이스크림과캔디.mp4", price: 160, unlockLevel: 6 },
-    { id: 8, name: "지하도시", file: "지하도시.mp4", price: 200, unlockLevel: 7 },
-    { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 210, unlockLevel: 8 },
-    { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 220, unlockLevel: 9 },
-    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 230, unlockLevel: 10 },
-    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 240, unlockLevel: 11 },
+    { id: 0, name: "가로수 드라이브 (기본)", file: "가로수드라이브.mp4", price: 0, unlockLevel: 0 }, // 👈 새로 추가된 기존 배경!
+    { id: 1, name: "해변의 드라이브", file: "해변의드라이브.mp4", price: 0, unlockLevel: 0 }, // (가격은 원하시는 대로 수정 가능합니다)
+    { id: 2, name: "벚꽃 드라이브", file: "벚꽃드라이브.mp4", price: 2000, unlockLevel: 1 },
+    { id: 3, name: "단풍길", file: "단풍길.mp4", price: 4000, unlockLevel: 2 },
+    { id: 4, name: "한밤의 도심", file: "한밤의 도심.mp4", price: 6000, unlockLevel: 3 },
+    { id: 5, name: "눈오는 산속", file: "눈오는 산속.mp4", price: 10000, unlockLevel: 4 },
+    { id: 6, name: "사막의 질주", file: "사막의질주.mp4", price: 13000, unlockLevel: 5 },
+    { id: 7, name: "아이스크림과 캔디", file: "아이스크림과 캔디.mp4", price: 16000, unlockLevel: 6 },
+    { id: 8, name: "지하도시", file: "지하도시.mp4", price: 20000, unlockLevel: 7 },
+    { id: 9, name: "스핑크스 로드", file: "스핑크스로드.mp4", price: 30000, unlockLevel: 8 },
+    { id: 10, name: "화산과 용암", file: "화산과용암.mp4", price: 40000, unlockLevel: 9 },
+    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50000, unlockLevel: 10 },
+    { id: 12, name: "황금의 나라", file: "황금의나라.mp4", price: 70000, unlockLevel: 11 },
   ];
 
-  const [ownedBgs, setOwnedBgs] = useState<string[]>(["해변의드라이브.mp4"]);
-  const [equippedBg, setEquippedBg] = useState<string>("해변의드라이브.mp4");
+  // 🌟 가로수드라이브를 기본 장착 배경으로 설정! (해변의 드라이브도 기본 보유)
+  const [ownedBgs, setOwnedBgs] = useState<string[]>(["가로수드라이브.mp4", "해변의드라이브.mp4"]);
+  const [equippedBg, setEquippedBg] = useState<string>("가로수드라이브.mp4");
 
   const buyBackground = (file: string, price: number) => {
     if (points >= price) {
