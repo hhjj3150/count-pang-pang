@@ -728,7 +728,7 @@ export default function CounterPangPang() {
   const [ownedCars, setOwnedCars] = useState(["default"]); // 보유 중인 차량 목록 (기본차 포함)
   const [equippedCar, setEquippedCar] = useState("default"); // 현재 장착(탑승) 중인 차량
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
-  const [activeCategory, setActiveCategory] = useState("car"); // 🌟 현재 선택된 마이페이지 탭 (car, bg, character 등)
+  const [activeCategory, setActiveCategory] = useState("info");
   const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
 
   // 앱 실행 시 저장된 차량 데이터 불러오기
@@ -2260,7 +2260,7 @@ export default function CounterPangPang() {
               </div>
               
               {/* 닉네임 설정 구역 */}
-              <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
+                <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
                 <h4 className="mb-3 text-sm font-bold text-slate-700">✏️ 닉네임 설정</h4>
                 <div className="flex gap-2">
                   <input 
@@ -2276,7 +2276,8 @@ export default function CounterPangPang() {
              {/* 🎬 배경 상점 & 장착 영역 (미리보기 썸네일 추가) */}
             <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
               <h4 className="mb-3 text-sm font-bold text-slate-700">🛍️ 테마 상점 (미리보기)</h4>
-              <div className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-1">
+              {/* 🏞️ 배경 상점 & 장착 영역 (미리보기 썸네일 추가) */}
+<div className="mb-8" style={{ display: activeCategory === "bg" ? "block" : "none" }}>
                 {BACKGROUNDS.map((bg) => {
                   const isUnlocked = (unlocked || 0) >= bg.unlockLevel;
                   const isOwned = ownedBgs.includes(bg.file);
