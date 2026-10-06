@@ -1865,50 +1865,53 @@ export default function CounterPangPang() {
               {/* 문제 글씨가 잘 보이게 위쪽에만 살짝 그라데이션 그림자 깔기 */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" aria-hidden />
           
-              {/* 🌟 게임 화면: 종이인형 레이어 아바타 구역 (크기 축소 및 좌측 하단 배치) */}
-        <div className="absolute bottom-5 left-5 w-32 h-32 flex items-center justify-center z-50 pointer-events-none">
+              {/* 🌟 게임 화면: 마리오 카트 스타일 종이인형 아바타 구역 */}
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
           
           {equippedCar === "kart_basic" ? (
-            /* 🚨 기본 차량 상태: 캐릭터 탑승 없이 차량만 단독 표시 */
+            /* 🚨 기본 차량: 팡이 탑승 없이 노란 차만 단독 표시 */
             <img 
               src={`/assets/karts/kart_default_yellow.png`} 
               alt="기본 차량" 
-              className="absolute w-full h-full object-contain z-10 drop-shadow-md" 
+              className="absolute bottom-0 w-4/5 object-contain z-10 drop-shadow-xl" 
             />
           ) : (
-            /* 🏎️ 카트 장착 상태: 카트 + 운전캐릭터 + 옷 + 악세사리 겹쳐 입히기 */
+            /* 🏎️ 카트 장착 상태: 카트 위에 캐릭터 세트 얹기 */
             <>
-              {/* 1층 (z-10): 카트 */}
+              {/* 1층 (z-10): 카트 (맨 밑, 큼직하게 배치) */}
               <img 
                 src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file}`} 
-                className="absolute w-full h-full object-contain z-10 drop-shadow-md" 
+                className="absolute bottom-0 w-full object-contain z-10 drop-shadow-xl" 
                 alt="카트" 
               />
               
-              {/* 2층 (z-20): 캐릭터 (자동으로 _base 글자를 _drive로 바꿔서 호출) */}
-              <img 
-                src={`/assets/characters/${CHARACTERS.find(c => c.id === equippedCharacter)?.file.replace('_base', '_drive')}`} 
-                className="absolute w-full h-full object-contain z-20" 
-                alt="캐릭터" 
-              />
-              
-              {/* 3층 (z-30): 의류 */}
-              {equippedClothes !== "cloth_none" && (
+              {/* 🌟 탑승객 묶음: 캐릭터+옷+악세사리 (카트 앞유리/좌석 쪽으로 살짝 올려서 배치) */}
+              <div className="absolute bottom-12 w-3/5 h-3/5 flex items-center justify-center z-20">
+                {/* 2층: 캐릭터 */}
                 <img 
-                  src={`/assets/clothes/${CLOTHES.find(c => c.id === equippedClothes)?.file}`} 
-                  className="absolute w-full h-full object-contain z-30" 
-                  alt="의류" 
+                  src={`/assets/characters/${CHARACTERS.find(c => c.id === equippedCharacter)?.file.replace('_base', '_drive')}`} 
+                  className="absolute w-full h-full object-contain z-20" 
+                  alt="캐릭터" 
                 />
-              )}
-              
-              {/* 4층 (z-40): 악세사리 */}
-              {equippedAccessory !== "acc_none" && (
-                <img 
-                  src={`/assets/accessories/${ACCESSORIES.find(c => c.id === equippedAccessory)?.file}`} 
-                  className="absolute w-full h-full object-contain z-40" 
-                  alt="악세사리" 
-                />
-              )}
+                
+                {/* 3층: 의류 */}
+                {equippedClothes !== "cloth_none" && (
+                  <img 
+                    src={`/assets/clothes/${CLOTHES.find(c => c.id === equippedClothes)?.file}`} 
+                    className="absolute w-full h-full object-contain z-30" 
+                    alt="의류" 
+                  />
+                )}
+                
+                {/* 4층: 악세사리 (빨간 리본 등) */}
+                {equippedAccessory !== "acc_none" && (
+                  <img 
+                    src={`/assets/accessories/${ACCESSORIES.find(c => c.id === equippedAccessory)?.file}`} 
+                    className="absolute w-full h-full object-contain z-40 drop-shadow-sm" 
+                    alt="악세사리" 
+                  />
+                )}
+              </div>
             </>
           )}
         </div>
