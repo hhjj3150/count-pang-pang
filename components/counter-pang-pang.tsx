@@ -603,6 +603,20 @@ export default function CounterPangPang() {
     { id: "acc_goldmedal", name: "금메달", file: "acc_goldmedal.png", price: 5 },
   ];
 
+  // 🚗 카트(차량) 리스트 (실제 이미지 파일명 완벽 반영)
+  const KARTS = [
+    { id: "kart_crocodile", name: "악어 카트", file: "kart_crocodile.png", price: 0 }, // 🌟 기본 지급 차량
+    { id: "kart_fire_truck", name: "소방차", file: "kart_fire_truck.png", price: 5 },
+    { id: "kart_giraffe", name: "기린 카트", file: "kart_giraffe.png", price: 4 },
+    { id: "kart_hippo", name: "하마 카트", file: "kart_hippo.png", price: 6 },
+    { id: "kart_lion", name: "사자 카트", file: "kart_lion.png", price: 8 },
+    { id: "kart_ostrich", name: "타조 카트", file: "kart_ostrich.png", price: 3 },
+    { id: "kart_owl", name: "부엉이 카트", file: "kart_owl.png", price: 5 },
+    { id: "kart_police", name: "경찰차", file: "kart_police.png", price: 7 },
+    { id: "kart_rabbit", name: "토끼 카트", file: "kart_rabbit.png", price: 4 },
+    { id: "kart_tank", name: "탱크", file: "kart_tank.png", price: 10 }
+  ];
+
   // 🌟 가로수드라이브를 기본 장착 배경으로 설정! (해변의 드라이브도 기본 보유)
   const [ownedBgs, setOwnedBgs] = useState<string[]>(["가로수드라이브.mp4", "해변의드라이브.mp4"]);
   const [equippedBg, setEquippedBg] = useState<string>("가로수드라이브.mp4");
@@ -754,8 +768,8 @@ export default function CounterPangPang() {
   // 💖 포인트 하트 구매 일일 제한 관리 상태
   const [heartBuyData, setHeartBuyData] = useState({ date: "", count: 0 });
 // 🚗 [1단계] 자동차 스킨 및 내 보관함(My Page) 상태 관리
-  const [ownedCars, setOwnedCars] = useState(["default"]); // 보유 중인 차량 목록 (기본차 포함)
-  const [equippedCar, setEquippedCar] = useState("default"); // 현재 장착(탑승) 중인 차량
+  const [ownedCars, setOwnedCars] = useState(["kart_crocodile"]); // 보유 중인 차량 목록 (기본차 포함)
+  const [equippedCar, setEquippedCar] = useState("kart_crocodile"); // 현재 장착(탑승) 중인 차량
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
   const [activeCategory, setActiveCategory] = useState("info");
   const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
@@ -2456,88 +2470,34 @@ export default function CounterPangPang() {
             </div>
 
              {/* 🚘 내 차고 구역 (상점 통합) */}
-            <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
-              <h4 className="mb-3 text-sm font-bold text-slate-700">🚘 내 차고 (스킨 구매 및 장착)</h4>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { id: "default", name: "기본 자동차", src: "🚕", price: 0 },
-                  { id: "suv", name: "SUV", src: "/assets/suv.png", price: 3000 },
-                  { id: "police", name: "경찰차", src: "/assets/경찰차.png", price: 5000 },
-                  { id: "sports", name: "스포츠카", src: "/assets/스포츠카.png", price: 10000 },
-                  { id: "fire", name: "소방차", src: "/assets/소방차.png", price: 15000 },
-                  { id: "forklift", name: "포크레인", src: "/assets/포크레인.png", price: 20000 },
-                  { id: "tank", name: "탱크", src: "/assets/탱크.png", price: 30000 }
-                ].map(car => {
-                  // 보유 여부 및 선택 여부 확인
-                  const isOwned = ownedCars.includes(car.id);
-                  const isSelected = (tempEquippedCar || equippedCar) === car.id;
-
-                  return (
-                    <div 
-                      key={car.id} 
-                      className={`relative flex flex-col items-center justify-between rounded-2xl p-4 transition-all border ${
-                        isSelected 
-                          ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500' 
-                          : 'border-slate-200 bg-slate-50'
-                      }`}
-                    >
-                      {/* 🖼️ 자동차 이미지 (미보유 시 흑백 처리) */}
-                      <div className={`mb-3 flex h-16 w-full items-center justify-center ${isOwned ? '' : 'grayscale opacity-50'}`}>
-                        {car.id === "default" ? (
-                          <div className="text-5xl">{car.src}</div>
-                        ) : (
-                          <img src={car.src} alt={car.name} className="max-h-full max-w-full object-contain drop-shadow-md" />
-                        )}
-                        
-                        {/* 🔒 미보유 시 자물쇠 아이콘 */}
-                        {!isOwned && (
-                          <div className="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 shadow-sm">
-                            <span className="text-white text-[10px]">🔒</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 🏷️ 자동차 이름 */}
-                      <div className="mb-3 text-center">
-                        <span className="text-sm font-bold text-slate-800">{car.name}</span>
-                      </div>
-
-                      {/* 🔘 구매 및 장착 버튼 */}
-                      <div className="w-full">
-                        {isOwned ? (
-                          <button 
-                            onClick={() => { sfxClick && sfxClick(); setTempEquippedCar(car.id); }}
-                            className={`w-full rounded-xl py-2 text-xs font-bold transition-transform active:scale-95 ${
-                              isSelected 
-                                ? 'bg-blue-500 text-white shadow-sm' 
-                                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                            }`}
-                          >
-                            {isSelected ? '장착됨' : '장착하기'}
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => {
-                              sfxClick && sfxClick();
-                              if (points >= car.price) {
-                                setPoints(prev => prev - car.price);
-                                setOwnedCars(prev => [...prev, car.id]);
-                                alert(`🎉 ${car.name} 구매 완료! 이제 장착해 보세요.`);
-                              } else {
-                                alert(`포인트가 부족합니다. (필요 포인트: ${car.price.toLocaleString()}P)`);
-                              }
-                            }}
-                            className="w-full rounded-xl bg-yellow-400 py-2 text-xs font-black text-slate-900 shadow-sm transition-transform active:scale-95"
-                          >
-                            {car.price.toLocaleString()} P
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            {/* 🚗 내 차고 구역 (차량 상점 통합) */}
+        <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
+          <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 내 차고</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {KARTS.map(item => {
+              const isOwned = ownedCars.includes(item.id);
+              const isSelected = equippedCar === item.id;
+              return (
+                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                  {/* 나중에 이곳을 실제 <img src="..." /> 로 변경할 예정입니다 */}
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file}</div>
+                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
+                  <div className="mt-2 flex justify-center">
+                    {isOwned ? (
+                      <button onClick={() => setEquippedCar(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                        {isSelected ? "탑승중" : "탑승"}
+                      </button>
+                    ) : (
+                      <button onClick={() => { setOwnedCars(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
+                        {item.price} P
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
               {/* 악세사리 영역 */}
               <div className="mb-2">
