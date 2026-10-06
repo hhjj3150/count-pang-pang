@@ -573,6 +573,35 @@ export default function CounterPangPang() {
     { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50, unlockLevel: 10 },
     { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70, unlockLevel: 11 },
   ];
+    
+    // 👤 캐릭터 리스트 (7종)
+  const CHARACTERS = [
+    { id: "char_croc", name: "주둥이짧은악어", file: "char_croc_base.png", price: 3 },
+    { id: "char_elep", name: "코가작은코끼리", file: "char_elep_base.png", price: 7 },
+    { id: "char_hippo", name: "입이작은하마", file: "char_hippo_base.png", price: 5 },
+    { id: "char_lion", name: "대머리사자", file: "char_lion_base.png", price: 9 },
+    { id: "char_ostrich", name: "다리가짧은타조", file: "char_ostrich_base.png", price: 2 },
+    { id: "char_rabbit", name: "귀가작은토끼", file: "char_rabbit_base.png", price: 4 },
+    { id: "char_owl", name: "실눈부엉이", file: "char_owl_base.png", price: 8 },
+  ];
+
+  // 👕 의류 리스트
+  const CLOTHES = [
+    { id: "cloth_none", name: "입지 않음", file: "", price: 0 },
+    { id: "cloth_gi_white", name: "화이트 도복", file: "cloth_gi_white.png", price: 2 },
+    { id: "cloth_gi_white", name: "레드 도복", file: "cloth_gi_red.png", price: 2 },
+    { id: "cloth_gi_white", name: "블랙 도복", file: "cloth_gi_black.png", price: 2 },
+    { id: "cloth_gi_blue", name: "블루 도복", file: "cloth_gi_blue.png", price: 6 },
+    { id: "cloth_gi_white", name: "경찰", file: "police.png", price: 2 },
+    { id: "cloth_gi_white", name: "소방관", file: "fireman.png", price: 2 },
+  ];
+
+  // 🕶 악세사리 리스트
+  const ACCESSORIES = [
+    { id: "acc_none", name: "착용 안함", file: "", price: 0 },
+    { id: "acc_sunglasses", name: "선글라스", file: "acc_sunglasses.png", price: 3 },
+    { id: "acc_goldmedal", name: "금메달", file: "acc_goldmedal.png", price: 5 },
+  ];
 
   // 🌟 가로수드라이브를 기본 장착 배경으로 설정! (해변의 드라이브도 기본 보유)
   const [ownedBgs, setOwnedBgs] = useState<string[]>(["가로수드라이브.mp4", "해변의드라이브.mp4"]);
@@ -730,6 +759,17 @@ export default function CounterPangPang() {
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
   const [activeCategory, setActiveCategory] = useState("info");
   const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
+  // 👤 캐릭터 보관함 및 장착 상태
+  const [equippedCharacter, setEquippedCharacter] = useState("pangi_base"); 
+  const [ownedCharacters, setOwnedCharacters] = useState<string[]>(["pangi_base"]);
+
+  // 👕 의류 보관함 및 장착 상태
+  const [equippedClothes, setEquippedClothes] = useState("none");
+  const [ownedClothes, setOwnedClothes] = useState<string[]>(["none"]);
+
+  // 🕶️ 악세사리 보관함 및 장착 상태
+  const [equippedAccessory, setEquippedAccessory] = useState("none");
+  const [ownedAccessories, setOwnedAccessories] = useState<string[]>(["none"]);
 
   // 앱 실행 시 저장된 차량 데이터 불러오기
   useEffect(() => {
@@ -2238,28 +2278,99 @@ export default function CounterPangPang() {
             {/* 2. 스크롤 영역 (자동으로 남는 공간을 꽉 채우며 스크롤됨) */}
             <div className="flex-1 overflow-y-auto px-5 py-6 cpp-no-scrollbar">
               {/* 🌟 카테고리 탭 메뉴 */}
-              <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0">
-                <button 
-                  onClick={() => setActiveCategory("info")}
-                  className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-                >
-                  👤 내 정보
-                </button>
-                <button 
-                  onClick={() => setActiveCategory("car")}
-                  className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-                >
-                  🚗 차량
-                </button>
-                <button 
-                  onClick={() => setActiveCategory("bg")}
-                  className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-                >
-                  🏞️ 테마
-                </button>
-              </div>
+        <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
+          <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
+          <button onClick={() => setActiveCategory("char")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "char" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🐾 캐릭터</button>
+          <button onClick={() => setActiveCategory("clothes")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "clothes" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👕 의류</button>
+          <button onClick={() => setActiveCategory("acc")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "acc" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🕶️ 악세</button>
+          <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🚗 차량</button>
+          <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 테마</button>
+        </div>
               
               {/* 닉네임 설정 구역 */}
+              {/* 🐾 캐릭터 상점 구역 */}
+        <div className="mb-8" style={{ display: activeCategory === "char" ? "block" : "none" }}>
+          <h4 className="mb-3 text-sm font-bold text-slate-700">🐾 내 캐릭터</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {CHARACTERS.map(item => {
+              const isOwned = ownedCharacters.includes(item.id);
+              const isSelected = equippedCharacter === item.id;
+              return (
+                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file}</div>
+                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
+                  <div className="mt-2 flex justify-center">
+                    {isOwned ? (
+                      <button onClick={() => setEquippedCharacter(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                        {isSelected ? "장착중" : "장착"}
+                      </button>
+                    ) : (
+                      <button onClick={() => { setOwnedCharacters(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
+                        {item.price} P
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 👕 의류 상점 구역 */}
+        <div className="mb-8" style={{ display: activeCategory === "clothes" ? "block" : "none" }}>
+          <h4 className="mb-3 text-sm font-bold text-slate-700">👕 의류</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {CLOTHES.map(item => {
+              const isOwned = ownedClothes.includes(item.id);
+              const isSelected = equippedClothes === item.id;
+              return (
+                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file || "기본 (없음)"}</div>
+                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
+                  <div className="mt-2 flex justify-center">
+                    {isOwned ? (
+                      <button onClick={() => setEquippedClothes(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                        {isSelected ? "장착중" : "장착"}
+                      </button>
+                    ) : (
+                      <button onClick={() => { setOwnedClothes(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
+                        {item.price} P
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 🕶️ 악세사리 상점 구역 */}
+        <div className="mb-8" style={{ display: activeCategory === "acc" ? "block" : "none" }}>
+          <h4 className="mb-3 text-sm font-bold text-slate-700">🕶️ 악세사리</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {ACCESSORIES.map(item => {
+              const isOwned = ownedAccessories.includes(item.id);
+              const isSelected = equippedAccessory === item.id;
+              return (
+                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file || "기본 (없음)"}</div>
+                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
+                  <div className="mt-2 flex justify-center">
+                    {isOwned ? (
+                      <button onClick={() => setEquippedAccessory(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                        {isSelected ? "장착중" : "장착"}
+                      </button>
+                    ) : (
+                      <button onClick={() => { setOwnedAccessories(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
+                        {item.price} P
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
                 <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
                 <h4 className="mb-3 text-sm font-bold text-slate-700">✏️ 닉네임 설정</h4>
                 <div className="flex gap-2">
