@@ -575,37 +575,48 @@ export default function CounterPangPang() {
   ];
     
     // 👤 캐릭터 리스트 (7종)
+  // 👤 캐릭터 리스트 (실제 파일명 연동 완료)
   const CHARACTERS = [
-    { id: "char_croc", name: "주둥이짧은악어", file: "char_croc_base.png", price: 3 },
-    { id: "char_elep", name: "코가작은코끼리", file: "char_elep_base.png", price: 7 },
-    { id: "char_hippo", name: "입이작은하마", file: "char_hippo_base.png", price: 5 },
-    { id: "char_lion", name: "대머리사자", file: "char_lion_base.png", price: 9 },
-    { id: "char_ostrich", name: "다리가짧은타조", file: "char_ostrich_base.png", price: 2 },
-    { id: "char_rabbit", name: "귀가작은토끼", file: "char_rabbit_base.png", price: 4 },
-    { id: "char_owl", name: "실눈부엉이", file: "char_owl_base.png", price: 8 },
+    { id: "chr_pangi", name: "기본 팡이", file: "chr_pangi_base.png", price: 0 }, // 🌟 0P 기본 캐릭터
+    { id: "chr_elephant", name: "코끼리", file: "chr_elephant_base.png", price: 5 },
+    { id: "chr_giraffe", name: "기린", file: "chr_giraffe_base.png", price: 4 },
+    { id: "chr_hippo", name: "하마", file: "chr_hippo_base.png", price: 6 },
+    { id: "chr_lion", name: "사자", file: "chr_lion_base.png", price: 8 },
+    { id: "chr_ostrich", name: "타조", file: "chr_ostrich_base.png", price: 3 },
+    { id: "chr_owl", name: "부엉이", file: "chr_owl_base.png", price: 7 },
+    { id: "chr_rabbit", name: "토끼", file: "chr_rabbit_base.png", price: 4 },
   ];
 
-  // 👕 의류 리스트
+  // 👕 의류 리스트 (실제 파일명 연동 완료)
   const CLOTHES = [
     { id: "cloth_none", name: "입지 않음", file: "", price: 0 },
     { id: "cloth_gi_white", name: "화이트 도복", file: "cloth_gi_white.png", price: 2 },
-    { id: "cloth_gi_white", name: "레드 도복", file: "cloth_gi_red.png", price: 2 },
-    { id: "cloth_gi_white", name: "블랙 도복", file: "cloth_gi_black.png", price: 2 },
-    { id: "cloth_gi_blue", name: "블루 도복", file: "cloth_gi_blue.png", price: 6 },
-    { id: "cloth_gi_white", name: "경찰", file: "police.png", price: 2 },
-    { id: "cloth_gi_white", name: "소방관", file: "fireman.png", price: 2 },
+    { id: "cloth_gi_blue", name: "블루 도복", file: "cloth_gi_blue.png", price: 4 },
+    { id: "cloth_gi_red", name: "레드 도복", file: "cloth_gi_red.png", price: 5 },
+    { id: "cloth_gi_black", name: "블랙 도복", file: "cloth_gi_black.png", price: 8 },
+    { id: "cloth_fireman", name: "소방관 복장", file: "cloth_fireman.png", price: 6 },
+    { id: "cloth_police", name: "경찰 복장", file: "cloth_police.png", price: 7 }
   ];
 
-  // 🕶 악세사리 리스트
+  // 🕶 악세사리 리스트 (실제 파일명 연동 완료)
   const ACCESSORIES = [
     { id: "acc_none", name: "착용 안함", file: "", price: 0 },
-    { id: "acc_sunglasses", name: "선글라스", file: "acc_sunglasses.png", price: 3 },
-    { id: "acc_goldmedal", name: "금메달", file: "acc_goldmedal.png", price: 5 },
+    { id: "acc_ribbon", name: "리본", file: "acc_ribbon.png", price: 2 },
+    { id: "acc_necklace", name: "목걸이", file: "acc_necklace.png", price: 8 },
+    { id: "acc_scarf", name: "목도리", file: "acc_scarf.png", price: 4 },
+    { id: "acc_rainbow_hat", name: "무지개모자", file: "acc_rainbow_hat.png", price: 5 },
+    { id: "acc_beanie", name: "비니모자", file: "acc_beanie.png", price: 3 },
+    { id: "acc_sunglasses", name: "선글라스", file: "acc_sunglasses.png", price: 6 },
+    { id: "acc_snapback", name: "스냅백", file: "acc_snapback.png", price: 4 },
+    { id: "acc_glasses", name: "안경", file: "acc_glasses.png", price: 3 },
+    { id: "acc_baseball_cap", name: "야구모자", file: "acc_baseball_cap.png", price: 5 },
+    { id: "acc_heart_sunglasses", name: "하트선글라스", file: "acc_heart_sunglasses.png", price: 7 }
   ];
 
   // 🚗 카트(차량) 리스트 (실제 이미지 파일명 완벽 반영)
   const KARTS = [
-    { id: "kart_crocodile", name: "악어 카트", file: "kart_crocodile.png", price: 0 }, // 🌟 기본 지급 차량
+    { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0 }, // 🌟 0P 기본 차량
+    { id: "kart_crocodile", name: "악어 카트", file: "kart_crocodile.png", price: 0 }, // 
     { id: "kart_fire_truck", name: "소방차", file: "kart_fire_truck.png", price: 5 },
     { id: "kart_giraffe", name: "기린 카트", file: "kart_giraffe.png", price: 4 },
     { id: "kart_hippo", name: "하마 카트", file: "kart_hippo.png", price: 6 },
@@ -768,14 +779,14 @@ export default function CounterPangPang() {
   // 💖 포인트 하트 구매 일일 제한 관리 상태
   const [heartBuyData, setHeartBuyData] = useState({ date: "", count: 0 });
 // 🚗 [1단계] 자동차 스킨 및 내 보관함(My Page) 상태 관리
-  const [ownedCars, setOwnedCars] = useState(["kart_crocodile"]); // 보유 중인 차량 목록 (기본차 포함)
-  const [equippedCar, setEquippedCar] = useState("kart_crocodile"); // 현재 장착(탑승) 중인 차량
+  const [ownedCars, setOwnedCars] = useState<string[]>(["kart_basic"]); 
+  const [equippedCar, setEquippedCar] = useState("kart_basic");
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
   const [activeCategory, setActiveCategory] = useState("info");
   const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
   // 👤 캐릭터 보관함 및 장착 상태
-  const [equippedCharacter, setEquippedCharacter] = useState("pangi_base"); 
-  const [ownedCharacters, setOwnedCharacters] = useState<string[]>(["pangi_base"]);
+  const [equippedCharacter, setEquippedCharacter] = useState("chr_pangi"); 
+  const [ownedCharacters, setOwnedCharacters] = useState<string[]>(["chr_pangi"]);
 
   // 👕 의류 보관함 및 장착 상태
   const [equippedClothes, setEquippedClothes] = useState("none");
