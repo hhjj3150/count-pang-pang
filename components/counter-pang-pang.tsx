@@ -21,8 +21,12 @@ interface SaveData {
   unlocked: number
   records: Record<number, number>
   muted: boolean
-  points: number // 👈 포인트 저장 공간 추가!
+  points: number
+  lifetimePoints: number // 🌟 누적 획득 포인트 (승급용)
+  monthlyPoints: number  // 🌟 월간 획득 포인트 (랭킹용)
+  monthlyDate: string    // 🌟 월간 랭킹 초기화 기준 달 (YYYY-MM)
 }
+
 
 interface Question {
   level: number // 로직 기준 레벨 (0/1 동일)
@@ -471,8 +475,36 @@ export default function CounterPangPang() {
   const [records, setRecords] = useState<Record<number, number>>({})
   const [muted, setMuted] = useState(false)
   const [points, setPoints] = useState(0);
+  const [lifetimePoints, setLifetimePoints] = useState(0); // 🌟 누적 포인트
+  const [monthlyPoints, setMonthlyPoints] = useState(0);   // 🌟 월간 포인트
+  const [monthlyDate, setMonthlyDate] = useState(today().slice(0, 7)); // 🌟 이번 달 (예: 2026-10)
   const [isFever, setIsFever] = useState(false);
   const [fastCombo, setFastCombo] = useState(0);
+
+  // 🌟 [핵심 수술] 포인트 획득 자동 감지 센서!
+  // 게임이나 출석으로 points가 올라가면, 센서가 감지해서 누적/월간 포인트도 같이 올려줍니다.
+  const prevPointsRef = useRef(0);
+  useEffect(() => {
+    if (!loaded) {
+      prevPointsRef.current = points;
+      return;
+    }
+    const diff = points - prevPointsRef.current;
+    
+    // 포인트를 '벌었을 때'만 작동 (상점에서 써서 깎일 때는 무시함!)
+    if (diff > 0) {
+      setLifetimePoints(prev => prev + diff);
+      
+      const currentMonth = today().slice(0, 7);
+      if (monthlyDate !== currentMonth) {
+        setMonthlyPoints(diff); // 달이 바뀌면 초기화 후 획득
+        setMonthlyDate(currentMonth);
+      } else {
+        setMonthlyPoints(prev => prev + diff); // 같은 달이면 계속 누적
+      }
+    }
+    prevPointsRef.current = points;
+  }, [points, loaded, monthlyDate]);
   // 🏆 유저 레벨(unlocked)에 따른 12단계 띠(Belt) 뱃지 반환 함수
   const getBeltTitle = (level: number) => {
     if (level >= 11) return { badge: "👑 그랜드 마스터", style: "bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-zinc-900 ring-1 ring-yellow-300 shadow-md" };
@@ -790,45 +822,7 @@ export default function CounterPangPang() {
     setShowAttendance(false);
   };
   const [toast, setToast] = useState<string | null>(null)
-  {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
-          <div className="mt-2 flex w-full items-center gap-2">
-            <div className="flex w-20 items-center justify-center gap-1 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80">
-              {points}P
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                sfxClick();
-                setShowAttendance(true);
-              }}
-              className="flex flex-[2] items-center justify-center gap-1 rounded-2xl bg-emerald-400/80 py-2.5 text-sm font-bold text-emerald-950 active:scale-95"
-            >
-              📅 출석체크
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                sfxClick();
-                setShowVault(true);
-              }}
-              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-yellow-300/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
-            >
-              🛒 포인트 상점
-            </button>
-            {/* 🚘 내 차고 (마이페이지) 버튼 */}
-            <button
-              type="button"
-              onClick={() => {
-                sfxClick();
-                setShowMyPage(true);
-              }}
-              className="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-slate-800 py-2.5 text-sm font-bold text-white shadow-sm active:scale-95"
-            >
-              🚘 내 차고
-            </button>
-          </div>
+  
 // --- 📥 다운로드 미리보기 상태 ---
   const [previewItem, setPreviewItem] = useState<{lv: number, idx: number, price: number} | null>(null);
   // --- 💌 초대하기 및 일일 보상 시스템 ---
@@ -911,7 +905,19 @@ export default function CounterPangPang() {
         setUnlocked(d.unlocked ?? 0)
        setRecords(d.records ?? {})
         setMuted(!!d.muted)
-        setPoints(d.points ?? 0) // 👈 앱을 켤 때 저장된 포인트 불러오기!
+        setPoints(d.points ?? 0)
+        setLifetimePoints(d.lifetimePoints ?? 0) // 🌟 누적 데이터 불러오기
+        
+        // 🌟 월간 초기화 방어 로직 (접속했는데 저번 달 데이터면 0으로 포맷)
+        const currentMonth = today().slice(0, 7);
+        if (d.monthlyDate && d.monthlyDate !== currentMonth) {
+          setMonthlyPoints(0);
+          setMonthlyDate(currentMonth);
+        } else {
+          setMonthlyPoints(d.monthlyPoints ?? 0);
+          setMonthlyDate(d.monthlyDate ?? currentMonth);
+        }
+
         if (d.nickname) setScreen("INTRO")
       }
     } catch {
@@ -919,6 +925,16 @@ export default function CounterPangPang() {
     }
     setLoaded(true)
   }, [])
+
+  // 🌟 모든 데이터 영구 저장 엔진 추가
+  useEffect(() => {
+    if (!loaded) return;
+    const data: SaveData = {
+      nickname, hearts, heartDate, unlocked, records, muted, points,
+      lifetimePoints, monthlyPoints, monthlyDate
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate]);
 
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
@@ -1548,8 +1564,11 @@ export default function CounterPangPang() {
 
           {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
           <div className="mt-2 flex w-full items-center gap-2">
-            <div className="flex w-20 items-center justify-center gap-1 rounded-2xl bg-sky-200/60 py-2.5 text-sm font-bold text-black/80">
-              {points}P
+            
+            {/* 👇 테스트용 계기판: 소비용과 누적용을 동시에 보여줍니다 */}
+            <div className="flex flex-col w-24 items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 text-xs font-bold text-black/80">
+              <span className="text-blue-700">현재: {points}P</span>
+              <span className="text-[10px] text-amber-700">누적: {lifetimePoints}P</span>
             </div>
 
             <button
