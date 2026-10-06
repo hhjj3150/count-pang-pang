@@ -505,24 +505,57 @@ export default function CounterPangPang() {
     }
     prevPointsRef.current = points;
   }, [points, loaded, monthlyDate]);
-  // 🏆 유저 레벨(unlocked)에 따른 12단계 띠(Belt) 뱃지 반환 함수
-  const getBeltTitle = (level: number) => {
-    if (level >= 11) return { badge: "👑 그랜드 마스터", style: "bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-zinc-900 ring-1 ring-yellow-300 shadow-md" };
-    if (level >= 10) return { badge: "🟥 레드 벨트", style: "bg-red-600 text-white shadow-sm" };
-    if (level >= 9) return { badge: "🟥⬜ 레드화이트", style: "bg-gradient-to-r from-red-600 50% to-white 50% text-black shadow-sm ring-1 ring-gray-200" };
-    if (level >= 8) return { badge: "🟥⬛ 레드블랙", style: "bg-gradient-to-r from-red-600 50% to-zinc-900 50% text-white shadow-sm" };
-    if (level >= 7) return { badge: "⬛ 블랙 벨트", style: "bg-zinc-900 text-yellow-400 ring-1 ring-yellow-400/30 shadow-md" };
-    if (level >= 6) return { badge: "🟫 브라운 벨트", style: "bg-amber-800 text-white shadow-sm" };
-    if (level >= 5) return { badge: "🟪 퍼플 벨트", style: "bg-purple-600 text-white shadow-sm" };
-    if (level >= 4) return { badge: "🟦 블루 벨트", style: "bg-blue-600 text-white shadow-sm" };
-    if (level >= 3) return { badge: "🟩 그린 벨트", style: "bg-green-600 text-white shadow-sm" };
-    if (level >= 2) return { badge: "🟧 오렌지 벨트", style: "bg-orange-500 text-white shadow-sm" };
-    if (level >= 1) return { badge: "🟨 옐로우 벨트", style: "bg-yellow-400 text-black shadow-sm" };
-    return { badge: "⬜ 화이트 벨트", style: "bg-white text-gray-700 border border-gray-300 shadow-sm" };
+  // 🏆 누적 포인트(lifetimePoints)에 따른 주짓수 정통 그랄(Stripe) 승급 함수
+  // 🏆 누적 포인트(lifetimePoints)에 따른 주짓수 정통 그랄(Stripe) 승급 함수
+  const getBeltInfo = (lp: number) => {
+    const ranks = [
+      // ⬜ 화이트 벨트 구간 (0 ~ 10,000) - 2000P마다 1그랄
+      { req: 0,     badge: "⬜ 화이트",        style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 2000,  badge: "⬜ 화이트 1그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 4000,  badge: "⬜ 화이트 2그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 6000,  badge: "⬜ 화이트 3그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 8000,  badge: "⬜ 화이트 4그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      
+      // 🟦 블루 벨트 구간 (10,000 ~ 30,000) - 4000P마다 1그랄
+      { req: 10000, badge: "🟦 블루",        style: "bg-blue-600 text-white shadow-sm" },
+      { req: 14000, badge: "🟦 블루 1그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      { req: 18000, badge: "🟦 블루 2그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      { req: 22000, badge: "🟦 블루 3그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      { req: 26000, badge: "🟦 블루 4그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      
+      // 🟪 퍼플 벨트 구간 (30,000 ~ 60,000) - 6000P마다 1그랄
+      { req: 30000, badge: "🟪 퍼플",        style: "bg-purple-600 text-white shadow-sm" },
+      { req: 36000, badge: "🟪 퍼플 1그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      { req: 42000, badge: "🟪 퍼플 2그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      { req: 48000, badge: "🟪 퍼플 3그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      { req: 54000, badge: "🟪 퍼플 4그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      
+      // 🟫 브라운 벨트 구간 (60,000 ~ 100,000) - 8000P마다 1그랄
+      { req: 60000, badge: "🟫 브라운",        style: "bg-amber-800 text-white shadow-sm" },
+      { req: 68000, badge: "🟫 브라운 1그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      { req: 76000, badge: "🟫 브라운 2그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      { req: 84000, badge: "🟫 브라운 3그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      { req: 92000, badge: "🟫 브라운 4그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      
+      // ⬛ 블랙 벨트 (100,000 ~ )
+      { req: 100000, badge: "⬛ 블랙 벨트",    style: "bg-zinc-900 text-yellow-400 ring-1 ring-yellow-400/30 shadow-md" },
+    ];
+    
+    let currentRankIndex = 0;
+    for (let i = 0; i < ranks.length; i++) {
+      if (lp >= ranks[i].req) currentRankIndex = i;
+      else break;
+    }
+    
+    return { 
+      currentRank: ranks[currentRankIndex], 
+      nextRank: currentRankIndex < ranks.length - 1 ? ranks[currentRankIndex + 1] : null 
+    };
   };
 
-  // 내 실제 레벨에 맞는 칭호 세팅 완료!
-  const myTitle = getBeltTitle(unlocked || 0);
+  // 내 실제 누적 포인트에 맞는 칭호와 다음 목표 세팅!
+  const myRankInfo = getBeltInfo(lifetimePoints);
+  const myTitle = myRankInfo.currentRank;
 // 🎬 12단계 배경 데이터 (경로: /assets/mp4/)
   // 🎬 배경 데이터 (경로: /assets/mp4/)
   const BACKGROUNDS = [
@@ -2157,13 +2190,48 @@ export default function CounterPangPang() {
                 type="button"
                 onClick={() => {
                   sfxClick();
-                  setTempEquippedCar(null); // X 누르면 임시 선택한 것들 모두 취소!
+                  setTempEquippedCar(null);
                   setShowMyPage(false);
                 }}
                 className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-lg text-zinc-900 hover:bg-black/10 active:scale-90"
               >
                 ✕
               </button>
+            </div>
+
+            {/* 🌟 승급 대시보드 (경험치 바) 부착 */}
+            <div className="flex-none bg-white p-5 border-b border-gray-100 shadow-sm z-10 relative overflow-hidden">
+              {/* 대시보드 배경 장식 */}
+              <div className="absolute -right-6 -top-6 text-8xl opacity-5 pointer-events-none">🥋</div>
+              
+              <div className="relative flex justify-between items-end mb-2">
+                <div>
+                  <p className="text-xs font-bold text-gray-400 mb-1">나의 띠 등급</p>
+                  <span className={`rounded-md px-2 py-1 text-xs font-black ${myTitle.style}`}>
+                    {myTitle.badge}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-gray-400 mb-1">누적 경험치</p>
+                  <p className="text-sm font-black text-slate-800">{lifetimePoints.toLocaleString()} P</p>
+                </div>
+              </div>
+              
+              {myRankInfo.nextRank ? (
+                <>
+                  <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden mt-3 ring-1 ring-inset ring-gray-200">
+                    <div 
+                      className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-700 ease-out" 
+                      style={{ width: `${Math.min(100, Math.max(0, ((lifetimePoints - myTitle.req) / (myRankInfo.nextRank.req - myTitle.req)) * 100))}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] font-bold text-gray-500 text-right mt-1.5">
+                    다음 승급(<span className="text-emerald-600">{myRankInfo.nextRank.badge}</span>)까지 {(myRankInfo.nextRank.req - lifetimePoints).toLocaleString()}P 남음
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs font-bold text-emerald-500 text-right mt-3">🎉 최고 등급(블랙 벨트)에 도달했습니다!</p>
+              )}
             </div>
 
             {/* 2. 스크롤 영역 (자동으로 남는 공간을 꽉 채우며 스크롤됨) */}
