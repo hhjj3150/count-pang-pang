@@ -1565,10 +1565,10 @@ export default function CounterPangPang() {
           {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
           <div className="mt-2 flex w-full items-center gap-2">
             
-            {/* 👇 테스트용 계기판: 소비용과 누적용을 동시에 보여줍니다 */}
-            <div className="flex flex-col w-24 items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 text-xs font-bold text-black/80">
+            {/* 👇 테스트용 계기판: 소비용과 월간 누적용을 동시에 보여줍니다 */}
+            <div className="flex flex-col w-[110px] items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 text-xs font-bold text-black/80">
               <span className="text-blue-700">현재: {points}P</span>
-              <span className="text-[10px] text-amber-700">누적: {lifetimePoints}P</span>
+              <span className="text-[10px] text-amber-700">월간 누적: {monthlyPoints}P</span>
             </div>
 
             <button
