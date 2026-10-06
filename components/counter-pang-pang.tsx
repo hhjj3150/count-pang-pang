@@ -1865,7 +1865,53 @@ export default function CounterPangPang() {
               {/* 문제 글씨가 잘 보이게 위쪽에만 살짝 그라데이션 그림자 깔기 */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" aria-hidden />
           
-
+{/* 🌟 게임 화면: 종이인형 레이어 아바타 구역 */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-72 h-72 flex items-center justify-center z-0 pointer-events-none">
+          
+          {equippedCar === "kart_basic" ? (
+            /* 🚨 기본 차량 상태: 캐릭터 탑승 없이 차량만 단독 표시 */
+            <img 
+              src={`/assets/karts/kart_default_yellow.png`} 
+              alt="기본 차량" 
+              className="absolute w-full h-full object-contain z-10 drop-shadow-xl" 
+            />
+          ) : (
+            /* 🏎️ 카트 장착 상태: 카트 + 운전캐릭터 + 옷 + 악세사리 겹쳐 입히기 */
+            <>
+              {/* 1층 (z-10): 카트 (맨 밑장) */}
+              <img 
+                src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file}`} 
+                className="absolute w-full h-full object-contain z-10 drop-shadow-xl" 
+                alt="카트" 
+              />
+              
+              {/* 2층 (z-20): 캐릭터 (자동으로 _base 글자를 _drive로 바꿔서 핸들 잡은 이미지 호출) */}
+              <img 
+                src={`/assets/characters/${CHARACTERS.find(c => c.id === equippedCharacter)?.file.replace('_base', '_drive')}`} 
+                className="absolute w-full h-full object-contain z-20" 
+                alt="캐릭터" 
+              />
+              
+              {/* 3층 (z-30): 의류 (선택했을 때만 위에 겹침) */}
+              {equippedClothes !== "cloth_none" && (
+                <img 
+                  src={`/assets/clothes/${CLOTHES.find(c => c.id === equippedClothes)?.file}`} 
+                  className="absolute w-full h-full object-contain z-30" 
+                  alt="의류" 
+                />
+              )}
+              
+              {/* 4층 (z-40): 악세사리 (맨 윗장) */}
+              {equippedAccessory !== "acc_none" && (
+                <img 
+                  src={`/assets/accessories/${ACCESSORIES.find(c => c.id === equippedAccessory)?.file}`} 
+                  className="absolute w-full h-full object-contain z-40" 
+                  alt="악세사리" 
+                />
+              )}
+            </>
+          )}
+        </div>
               
 
 <div className="relative z-10 flex h-full flex-col items-center pt-4 pb-2 px-4">
