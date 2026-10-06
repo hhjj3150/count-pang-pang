@@ -728,6 +728,7 @@ export default function CounterPangPang() {
   const [ownedCars, setOwnedCars] = useState(["default"]); // 보유 중인 차량 목록 (기본차 포함)
   const [equippedCar, setEquippedCar] = useState("default"); // 현재 장착(탑승) 중인 차량
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
+  const [activeCategory, setActiveCategory] = useState("car"); // 🌟 현재 선택된 마이페이지 탭 (car, bg, character 등)
   const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
 
   // 앱 실행 시 저장된 차량 데이터 불러오기
@@ -2236,9 +2237,30 @@ export default function CounterPangPang() {
 
             {/* 2. 스크롤 영역 (자동으로 남는 공간을 꽉 채우며 스크롤됨) */}
             <div className="flex-1 overflow-y-auto px-5 py-6 cpp-no-scrollbar">
+              {/* 🌟 카테고리 탭 메뉴 */}
+              <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0">
+                <button 
+                  onClick={() => setActiveCategory("info")}
+                  className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                >
+                  👤 내 정보
+                </button>
+                <button 
+                  onClick={() => setActiveCategory("car")}
+                  className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                >
+                  🚗 차량
+                </button>
+                <button 
+                  onClick={() => setActiveCategory("bg")}
+                  className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                >
+                  🏞️ 테마
+                </button>
+              </div>
               
               {/* 닉네임 설정 구역 */}
-              <div className="mb-8">
+              <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
                 <h4 className="mb-3 text-sm font-bold text-slate-700">✏️ 닉네임 설정</h4>
                 <div className="flex gap-2">
                   <input 
@@ -2252,7 +2274,7 @@ export default function CounterPangPang() {
                 <p className="mt-2 text-[11px] font-bold text-gray-500">* 하단의 저장 버튼을 눌러야 최종 반영됩니다.</p>
               </div>
              {/* 🎬 배경 상점 & 장착 영역 (미리보기 썸네일 추가) */}
-            <div className="mb-8">
+            <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
               <h4 className="mb-3 text-sm font-bold text-slate-700">🛍️ 테마 상점 (미리보기)</h4>
               <div className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-1">
                 {BACKGROUNDS.map((bg) => {
@@ -2322,7 +2344,7 @@ export default function CounterPangPang() {
             </div>
 
              {/* 🚘 내 차고 구역 (상점 통합) */}
-            <div className="mb-8">
+            <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
               <h4 className="mb-3 text-sm font-bold text-slate-700">🚘 내 차고 (스킨 구매 및 장착)</h4>
               <div className="grid grid-cols-2 gap-4">
                 {[
