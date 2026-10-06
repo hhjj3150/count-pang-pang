@@ -2344,7 +2344,7 @@ export default function CounterPangPang() {
             </div>
 
              {/* 🚘 내 차고 구역 (상점 통합) */}
-            <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
+            <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
               <h4 className="mb-3 text-sm font-bold text-slate-700">🚘 내 차고 (스킨 구매 및 장착)</h4>
               <div className="grid grid-cols-2 gap-4">
                 {[
