@@ -2313,7 +2313,7 @@ export default function CounterPangPang() {
         </div>
               
               {/* 닉네임 설정 구역 */}
-              {/* 🐾 캐릭터 상점 구역 */}
+             {/* 🐾 캐릭터 상점 구역 */}
         <div className="mb-8" style={{ display: activeCategory === "char" ? "block" : "none" }}>
           <h4 className="mb-3 text-sm font-bold text-slate-700">🐾 내 캐릭터</h4>
           <div className="grid grid-cols-2 gap-4">
@@ -2322,7 +2322,9 @@ export default function CounterPangPang() {
               const isSelected = equippedCharacter === item.id;
               return (
                 <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file}</div>
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
+                    {item.file ? <img src={`/assets/characters/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
+                  </div>
                   <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
                   <div className="mt-2 flex justify-center">
                     {isOwned ? (
@@ -2350,7 +2352,9 @@ export default function CounterPangPang() {
               const isSelected = equippedClothes === item.id;
               return (
                 <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file || "기본 (없음)"}</div>
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
+                    {item.file ? <img src={`/assets/clothes/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
+                  </div>
                   <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
                   <div className="mt-2 flex justify-center">
                     {isOwned ? (
@@ -2378,7 +2382,9 @@ export default function CounterPangPang() {
               const isSelected = equippedAccessory === item.id;
               return (
                 <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file || "기본 (없음)"}</div>
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
+                    {item.file ? <img src={`/assets/accessories/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
+                  </div>
                   <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
                   <div className="mt-2 flex justify-center">
                     {isOwned ? (
@@ -2396,92 +2402,8 @@ export default function CounterPangPang() {
             })}
           </div>
         </div>
-                <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
-                <h4 className="mb-3 text-sm font-bold text-slate-700">✏️ 닉네임 설정</h4>
-                <div className="flex gap-2">
-                  <input 
-                    type="text"
-                    value={nickInput}
-                    onChange={(e) => setNickInput(e.target.value)}
-                    placeholder="새 닉네임 입력" 
-                    className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-blue-500"
-                  />
-                </div>
-                <p className="mt-2 text-[11px] font-bold text-gray-500">* 하단의 저장 버튼을 눌러야 최종 반영됩니다.</p>
-              </div>
-             {/* 🎬 배경 상점 & 장착 영역 (미리보기 썸네일 추가) */}
-            <div className="mb-8" style={{ display: activeCategory === "info" ? "block" : "none" }}>
-              <h4 className="mb-3 text-sm font-bold text-slate-700">🛍️ 테마 상점 (미리보기)</h4>
-              {/* 🏞️ 배경 상점 & 장착 영역 (미리보기 썸네일 추가) */}
-<div className="mb-8" style={{ display: activeCategory === "bg" ? "block" : "none" }}>
-                {BACKGROUNDS.map((bg) => {
-                  const isUnlocked = (unlocked || 0) >= bg.unlockLevel;
-                  const isOwned = ownedBgs.includes(bg.file);
-                  const isEquipped = equippedBg === bg.file;
-                  
-                  // mp4 파일명을 png로 바꿔서 썸네일 이미지 경로 자동 생성
-                  const thumbnailFile = bg.file.replace('.mp4', '.png'); 
 
-                  return (
-                    <div key={bg.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 border border-slate-200">
-                      
-                      {/* 🖼️ 왼쪽: 썸네일 + 텍스트 영역 */}
-                      <div className="flex items-center gap-3">
-                        {/* 썸네일 이미지 영역 */}
-                        <div className="relative h-12 w-9 flex-shrink-0 overflow-hidden rounded-md bg-gray-200 shadow-sm border border-gray-300">
-                          <img 
-                            src={`/assets/thumbnails/${thumbnailFile}`} 
-                            alt={bg.name}
-                            // 🌟 핵심: 구매 안 했으면 흑백(grayscale) + 어둡게(brightness-50) 필터 적용!
-                            className={`h-full w-full object-cover transition-all duration-300 ${isOwned ? '' : 'grayscale brightness-50 opacity-80'}`}
-                          />
-                          {/* 안 샀으면 이미지 중앙에 반투명한 락(🔒) 아이콘 띄우기 */}
-                          {!isOwned && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-white drop-shadow-md text-[10px]">🔒</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 텍스트 영역 */}
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-slate-800">{bg.name}</span>
-                          <span className="text-[10px] text-slate-500 mt-0.5">
-                            {isUnlocked ? `Lv.${bg.unlockLevel} 해금됨` : `🔒 Lv.${bg.unlockLevel} 달성 시 오픈`}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* 🔘 오른쪽: 버튼 영역 */}
-                      <div>
-                        {!isUnlocked ? (
-                          <button disabled className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-400">잠김</button>
-                        ) : isEquipped ? (
-                          <button disabled className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm">장착중</button>
-                        ) : isOwned ? (
-                          <button 
-                            onClick={() => { setEquippedBg(bg.file); }}
-                            className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm active:scale-95 transition-transform"
-                          >
-                            장착하기
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => { buyBackground(bg.file, bg.price); }}
-                            className="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-black text-slate-900 shadow-sm active:scale-95 transition-transform"
-                          >
-                            {bg.price.toLocaleString()} P
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-             {/* 🚘 내 차고 구역 (상점 통합) */}
-            {/* 🚗 내 차고 구역 (차량 상점 통합) */}
+        {/* 🚗 내 차고 구역 (차량 상점 통합) */}
         <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
           <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 내 차고</h4>
           <div className="grid grid-cols-2 gap-4">
@@ -2490,8 +2412,9 @@ export default function CounterPangPang() {
               const isSelected = equippedCar === item.id;
               return (
                 <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  {/* 나중에 이곳을 실제 <img src="..." /> 로 변경할 예정입니다 */}
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-[10px] text-slate-400 break-all px-1">{item.file}</div>
+                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
+                    {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
+                  </div>
                   <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
                   <div className="mt-2 flex justify-center">
                     {isOwned ? (
