@@ -1865,49 +1865,50 @@ export default function CounterPangPang() {
               {/* 문제 글씨가 잘 보이게 위쪽에만 살짝 그라데이션 그림자 깔기 */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" aria-hidden />
           
-              {/* 🌟 게임 화면: 마리오 카트 스타일 종이인형 아바타 구역 */}
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
+              {/* 🌟 게임 화면: 종이인형 레이어 아바타 (위치/핏 정밀 조정) */}
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
           
           {equippedCar === "kart_basic" ? (
-            /* 🚨 기본 차량: 팡이 탑승 없이 노란 차만 단독 표시 */
+            /* 🚨 기본 차량: 탑승 없이 노란 차만 단독 표시 */
             <img 
               src={`/assets/karts/kart_default_yellow.png`} 
               alt="기본 차량" 
-              className="absolute bottom-0 w-4/5 object-contain z-10 drop-shadow-xl" 
+              className="absolute bottom-0 w-[90%] object-contain drop-shadow-xl z-10" 
             />
           ) : (
             /* 🏎️ 카트 장착 상태: 카트 위에 캐릭터 세트 얹기 */
             <>
-              {/* 1층 (z-10): 카트 (맨 밑, 큼직하게 배치) */}
+              {/* 1층 (z-10): 카트 */}
               <img 
                 src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file}`} 
-                className="absolute bottom-0 w-full object-contain z-10 drop-shadow-xl" 
+                className="absolute bottom-0 w-full object-contain drop-shadow-xl z-10" 
                 alt="카트" 
               />
               
-              {/* 🌟 탑승객 묶음: 캐릭터+옷+악세사리 (카트 앞유리/좌석 쪽으로 살짝 올려서 배치) */}
-              <div className="absolute bottom-12 w-3/5 h-3/5 flex items-center justify-center z-20">
-                {/* 2층: 캐릭터 */}
+              {/* 🌟 탑승객 묶음: 캐릭터+옷+악세사리 */}
+              <div className="absolute bottom-[25%] w-[60%] h-[60%] flex flex-col items-center justify-end z-20">
+                
+                {/* 2층: 캐릭터 본체 */}
                 <img 
                   src={`/assets/characters/${CHARACTERS.find(c => c.id === equippedCharacter)?.file.replace('_base', '_drive')}`} 
                   className="absolute w-full h-full object-contain z-20" 
                   alt="캐릭터" 
                 />
                 
-                {/* 3층: 의류 */}
+                {/* 3층: 의류 (몸통 부분으로 축소 및 내리기) */}
                 {equippedClothes !== "cloth_none" && (
                   <img 
                     src={`/assets/clothes/${CLOTHES.find(c => c.id === equippedClothes)?.file}`} 
-                    className="absolute w-full h-full object-contain z-30" 
+                    className="absolute bottom-[5%] w-[85%] h-[65%] object-contain z-30" 
                     alt="의류" 
                   />
                 )}
                 
-                {/* 4층: 악세사리 (빨간 리본 등) */}
+                {/* 4층: 악세사리 (목/얼굴 쪽으로 축소 및 배치) */}
                 {equippedAccessory !== "acc_none" && (
                   <img 
                     src={`/assets/accessories/${ACCESSORIES.find(c => c.id === equippedAccessory)?.file}`} 
-                    className="absolute w-full h-full object-contain z-40 drop-shadow-sm" 
+                    className="absolute bottom-[20%] w-[50%] h-[35%] object-contain z-40 drop-shadow-sm" 
                     alt="악세사리" 
                   />
                 )}
@@ -1970,21 +1971,7 @@ export default function CounterPangPang() {
                     [@media(max-height:600px)]:w-32 [@media(max-height:600px)]:h-24 
                     [@media(max-height:550px)]:w-28 [@media(max-height:550px)]:h-20"
                   >
-                    <GameImage
-              src={
-                equippedCar === "suv" ? "/assets/suv.png" :
-                equippedCar === "police" ? "/assets/경찰차.png" :
-                equippedCar === "sports" ? "/assets/스포츠카.png" :
-                equippedCar === "fire" ? "/assets/소방차.png" :
-                equippedCar === "forklift" ? "/assets/포크레인.png" :
-                equippedCar === "tank" ? "/assets/탱크.png" :
-                "/assets/car.png"
-              }
-              alt="달리는 자동차"
-              fallback={<span style={{ fontSize: "3.5rem" }}>{equippedCar === "default" ? "🚕" : "🚘"}</span>}
-              /* origin-bottom 추가: 바닥을 고정하고 위로만 확대되도록 설정 */
-              className={`w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] cpp-bounce transition-transform origin-bottom ${equippedCar === "forklift" ? "scale-[1.4]" : "scale-125"}`}
-            />
+                   
                     {/* 번호판도 박스 크기에 맞춰 축소! origin-bottom으로 자동차 바닥에 찰싹 고정 */}
                     <div className="absolute bottom-0 left-1/2 origin-bottom -translate-x-1/2 transform whitespace-nowrap z-30
                       scale-90 
