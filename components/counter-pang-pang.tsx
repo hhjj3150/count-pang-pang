@@ -2466,11 +2466,30 @@ export default function CounterPangPang() {
                             const isOwned = ownedEmoticons && ownedEmoticons.includes(itemId); // 이미 구매했는지 확인
 
                             return (
-                              <div key={emotion.id} className="flex flex-col items-center bg-white rounded-lg p-1 ring-1 ring-black/5 shadow-sm">
-                                <div className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50 ${isLocked ? "opacity-40 grayscale" : ""}`}>
-                                  <img src={`/assets/emoticons/${fileName}`} alt={emotion.name} className="h-full w-full object-cover" />
+                              <div key={emotion.id} className="flex flex-col items-center bg-white rounded-lg p-1.5 ring-1 ring-black/5 shadow-sm">
+                                <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50">
+                                  
+                                  {/* 🌟 미구매 상태면 어둡게 실루엣 처리, 구매 완료면 밝게 표시! */}
+                                  <img 
+                                    src={`/assets/emoticons/${fileName}`} 
+                                    alt={emotion.name} 
+                                    className={`h-full w-full object-cover transition-all duration-300 ${
+                                      isLocked ? "opacity-20 grayscale" : !isOwned ? "brightness-[0.25] contrast-125 drop-shadow-sm" : "brightness-100 drop-shadow-md"
+                                    }`}
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      if (e.currentTarget.nextElementSibling) {
+                                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                                      }
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 hidden items-center justify-center bg-slate-200 text-[9px] font-bold text-slate-500 text-center p-0.5 break-keep">
+                                    {emotion.name}
+                                  </div>
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-600 my-1">{emotion.name}</span>
+                                <span className={`text-[10px] font-bold my-1 ${!isOwned ? "text-slate-400" : "text-slate-700"}`}>
+                                  {emotion.name}
+                                </span>
                                 
                                 {isLocked ? (
                                   <button disabled className="w-full py-1 rounded text-[9px] font-bold bg-gray-200 text-gray-400 cursor-not-allowed">잠김</button>
@@ -2480,7 +2499,7 @@ export default function CounterPangPang() {
                                   <button 
                                     type="button"
                                     onClick={() => buyEmoticon(itemId, pack.price, `${pack.name} (${emotion.name})`)}
-                                    className="w-full py-1 rounded text-[9px] font-black bg-yellow-400 text-slate-900 active:scale-95 shadow-sm"
+                                    className="w-full py-1 rounded text-[9px] font-black bg-yellow-400 text-slate-900 active:scale-95 shadow-sm transition-transform"
                                   >
                                     {pack.price} P
                                   </button>
