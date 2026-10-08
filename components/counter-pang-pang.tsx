@@ -1873,7 +1873,7 @@ export default function CounterPangPang() {
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" aria-hidden />
           
               {/* 🌟 게임 화면: 완성형(원세트) 아바타 구역 */}
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
                 
                 {/* 🏎️ 카트(세트) 장착 상태: 겹치기 없이 완성된 이미지 딱 1장만 깔끔하게 출력! */}
                 <img 
