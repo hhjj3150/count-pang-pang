@@ -2469,18 +2469,18 @@ export default function CounterPangPang() {
                               <div key={emotion.id} className="flex flex-col items-center bg-white rounded-lg p-1.5 ring-1 ring-black/5 shadow-sm">
                                 <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50">
                                   
-                                  {/* 🌟 미구매 상태면 어둡게 실루엣 처리 + 로딩 속도 최적화(lazy) */}
+                                  {/* 🌟 속도 개선(lazy) 및 미구매 완벽 실루엣(흑백+어둡게) 처리! */}
                                   <img 
                                     src={`/assets/emoticons/${fileName}`} 
                                     alt={emotion.name} 
-                                    loading="lazy" 
+                                    loading="lazy"
                                     decoding="async"
                                     className={`h-full w-full object-cover transition-all duration-300 ${
                                       isLocked 
                                         ? "opacity-10 grayscale" 
                                         : !isOwned 
-                                          ? "opacity-40 grayscale brightness-50" 
-                                          : "opacity-100 drop-shadow-md"
+                                          ? "opacity-30 grayscale brightness-50" // 👈 구매 전: 흑백 & 어둡게 확 가림
+                                          : "opacity-100 drop-shadow-md" // 👈 구매 후: 컬러풀하게 짠!
                                     }`}
                                     onError={(e) => {
                                       e.currentTarget.style.display = 'none';
