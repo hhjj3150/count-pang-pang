@@ -2469,12 +2469,18 @@ export default function CounterPangPang() {
                               <div key={emotion.id} className="flex flex-col items-center bg-white rounded-lg p-1.5 ring-1 ring-black/5 shadow-sm">
                                 <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50">
                                   
-                                  {/* 🌟 미구매 상태면 어둡게 실루엣 처리, 구매 완료면 밝게 표시! */}
+                                  {/* 🌟 미구매 상태면 어둡게 실루엣 처리 + 로딩 속도 최적화(lazy) */}
                                   <img 
                                     src={`/assets/emoticons/${fileName}`} 
                                     alt={emotion.name} 
+                                    loading="lazy" 
+                                    decoding="async"
                                     className={`h-full w-full object-cover transition-all duration-300 ${
-                                      isLocked ? "opacity-20 grayscale" : !isOwned ? "brightness-[0.25] contrast-125 drop-shadow-sm" : "brightness-100 drop-shadow-md"
+                                      isLocked 
+                                        ? "opacity-10 grayscale" 
+                                        : !isOwned 
+                                          ? "opacity-40 grayscale brightness-50" 
+                                          : "opacity-100 drop-shadow-md"
                                     }`}
                                     onError={(e) => {
                                       e.currentTarget.style.display = 'none';
