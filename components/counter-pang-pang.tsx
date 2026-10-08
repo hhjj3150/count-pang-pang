@@ -1875,10 +1875,10 @@ export default function CounterPangPang() {
               {/* 🌟 게임 화면: 완성형(원세트) 아바타 구역 */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
                 
-                {/* 🏎️ 카트(세트) 장착 상태: 겹치기 없이 완성된 이미지 딱 1장만 깔끔하게 출력! */}
+                {/* 🏎️ 카트(세트) 장착 상태: 옛날 데이터 오류 방어 로직 추가! */}
                 <img 
-                  src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file}`} 
-                  className="absolute bottom-0 w-[90%] object-contain drop-shadow-xl z-10" 
+                  src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file || "kart_default_yellow.png"}`} 
+                  className="absolute bottom-0 w-[90%] object-contain drop-shadow-xl z-10 cpp-bounce origin-bottom" 
                   alt="카트 스킨" 
                 />
                 
@@ -2279,7 +2279,7 @@ export default function CounterPangPang() {
 
         {/* 🚗 내 차고 구역 (차량 상점 통합) */}
         <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
-          <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 내 차고</h4>
+          <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 카트(세트)</h4>
           <div className="grid grid-cols-2 gap-4">
             {KARTS.map(item => {
               const isOwned = ownedCars.includes(item.id);
@@ -2292,11 +2292,22 @@ export default function CounterPangPang() {
                   <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
                   <div className="mt-2 flex justify-center">
                     {isOwned ? (
-                      <button onClick={() => setEquippedCar(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                      <button 
+                        onClick={() => {
+                          sfxClick();
+                          setEquippedCar(item.id);
+                          localStorage.setItem("cp_equipped_car", item.id); // 👈 핵심: 탑승 즉시 영구 저장!
+                          flashToast(`${item.name} 탑승 완료! 💨`);
+                        }} 
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}
+                      >
                         {isSelected ? "탑승중" : "탑승"}
                       </button>
                     ) : (
-                      <button onClick={() => { setOwnedCars(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
+                      <button 
+                        onClick={() => buyCar(item.id, item.price)} // 👈 핵심: 정식 구매 함수 연결 (포인트 차감 + 영구 저장)
+                        className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm"
+                      >
                         {item.price} P
                       </button>
                     )}
