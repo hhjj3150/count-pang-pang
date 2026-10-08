@@ -826,6 +826,35 @@ export default function CounterPangPang() {
                 <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 테마</button>
               </div>
   // 앱 실행 시 저장된 차량 데이터 불러오기
+  // --- 📸 이모티콘 보유 및 구매 관련 상태 & 함수 ---
+  const [ownedEmoticons, setOwnedEmoticons] = useState<string[]>(() => {
+    const saved = localStorage.getItem("cp_owned_emoticons");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // 앱 실행 시 저장된 이모티콘 데이터 불러오기
+  useEffect(() => {
+    const savedEmots = localStorage.getItem("cp_owned_emoticons");
+    if (savedEmots) setOwnedEmoticons(JSON.parse(savedEmots));
+  }, []);
+
+  // 📸 이모티콘 구매 함수
+  const buyEmoticon = (itemId: string, price: number, itemName: string) => {
+    if (points < price) {
+      flashToast(`포인트가 부족해요! (${points}P / ${price}P) 😥`);
+      return;
+    }
+    sfxClick();
+    const newPoints = points - price;
+    setPoints(newPoints);
+    localStorage.setItem("cp_points", newPoints.toString());
+
+    const updated = [...ownedEmoticons, itemId];
+    setOwnedEmoticons(updated);
+    localStorage.setItem("cp_owned_emoticons", JSON.stringify(updated));
+
+    flashToast(`${itemName} 구매 완료! 🎉`);
+  };
   useEffect(() => {
     const savedOwned = localStorage.getItem("cp_owned_cars");
     if (savedOwned) setOwnedCars(JSON.parse(savedOwned));
@@ -2412,83 +2441,10 @@ export default function CounterPangPang() {
               {/* 📸 이모티콘 구매 탭 */}
               <div style={{ display: shopCategory === "emoticon" ? "block" : "none" }}>
                 <p className="mb-4 text-center text-sm font-bold text-zinc-700">
-                  열린 팡이를 터치하면 닉네임이 새겨져 저장됩니다 📸
+                  마음에 드는 캐릭터 감정 이모티콘을 포인트로 구매해 보세요! 🎨
                 </p>
 
-                {/* 🌟 미리보기 팝업 */}
-                {previewItem && (
-                  <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md">
-                    <h3 className="mb-2 text-2xl font-black text-zinc-900">{previewItem.title}</h3>
-                    <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
-
-                    <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/60 ring-4 ring-yellow-400/80 shadow-xl">
-                      <GameImage
-                        src={`/assets/emoticons/${previewItem.file}`}
-                        alt="preview"
-                        fallback={<div className="h-full w-full bg-white/50 flex items-center justify-center text-amber-900/40 text-sm font-bold">이미지 준비중</div>}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (points < previewItem.price) {
-                          flashToast(`포인트가 부족해요! (${points}P / ${previewItem.price}P) 😥`);
-                          return;
-                        }
-
-                        setPoints(p => p - previewItem.price);
-
-                        const imgSrc = `/assets/emoticons/${previewItem.file}`;
-                        const img = new Image();
-                        img.crossOrigin = "anonymous";
-                        img.onload = () => {
-                          const canvas = document.createElement("canvas");
-                          canvas.width = img.width;
-                          canvas.height = img.height;
-                          const ctx = canvas.getContext("2d");
-                          if (ctx) {
-                            ctx.drawImage(img, 0, 0);
-                            const fontSize = Math.max(16, img.width * 0.1);
-                            ctx.font = `900 ${fontSize}px sans-serif`;
-                            ctx.textAlign = "right";
-                            ctx.textBaseline = "bottom";
-                            ctx.lineWidth = fontSize * 0.2;
-                            ctx.strokeStyle = "white";
-                            ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                            ctx.fillStyle = "#333333";
-                            ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-
-                            const a = document.createElement("a");
-                            a.href = canvas.toDataURL("image/png");
-                            a.download = `${previewItem.file}`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-
-                            flashToast(`${previewItem.price}P 사용! 이모티콘 저장 완료! 🎉`);
-                            setPreviewItem(null);
-                          }
-                        };
-                        img.src = imgSrc;
-                      }}
-                      className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-zinc-900 shadow-lg active:scale-95"
-                    >
-                      📥 {previewItem.price}P로 다운받기
-                    </button>
-
-                    <button
-                      onClick={() => setPreviewItem(null)}
-                      className="mt-5 text-sm font-bold text-zinc-500 underline"
-                    >
-                      돌아가기
-                    </button>
-                  </div>
-                )}
-
                 <div className="space-y-6">
-                  
                   {EMOTICON_PACKS.map(pack => {
                     const isLocked = unlocked < pack.unlockLevel;
 
@@ -2496,31 +2452,40 @@ export default function CounterPangPang() {
                       <div key={pack.id} className="rounded-xl bg-yellow-900/5 p-3 ring-1 ring-yellow-900/10">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-bold text-zinc-800">{pack.name} 팩 {isLocked && "🔒"}</h4>
-                          {isLocked && <span className="text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold shadow-sm">Lv.{pack.unlockLevel} 해제</span>}
+                          {isLocked ? (
+                            <span className="text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold shadow-sm">Lv.{pack.unlockLevel} 해제</span>
+                          ) : (
+                            <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold shadow-sm">단품 각 {pack.price} P</span>
+                          )}
                         </div>
                         
                         <div className="grid grid-cols-5 gap-2">
                           {EMOTIONS.map(emotion => {
-                            const fileName = `${pack.id}_${emotion.id}.png`;
-                            
+                            const itemId = `${pack.id}_${emotion.id}`;
+                            const fileName = `${itemId}.png`;
+                            const isOwned = ownedEmoticons && ownedEmoticons.includes(itemId); // 이미 구매했는지 확인
+
                             return (
-                              <button
-                                key={emotion.id}
-                                type="button"
-                                disabled={isLocked}
-                                onClick={() => {
-                                  sfxClick();
-                                  setPreviewItem({ title: `${pack.name} - ${emotion.name}`, file: fileName, price: pack.price });
-                                }}
-                                className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/5 transition-all ${
-                                  isLocked ? "cursor-not-allowed opacity-40 grayscale" : "active:scale-95 shadow-sm"
-                                }`}
-                              >
-                                <img src={`/assets/emoticons/${fileName}`} alt={emotion.name} className="h-full w-full object-cover" />
-                                <div className="absolute bottom-0 w-full bg-white/90 py-1 text-center text-[10px] font-black text-amber-700 backdrop-blur-sm">
-                                  {isLocked ? "🔒" : emotion.name}
+                              <div key={emotion.id} className="flex flex-col items-center bg-white rounded-lg p-1 ring-1 ring-black/5 shadow-sm">
+                                <div className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50 ${isLocked ? "opacity-40 grayscale" : ""}`}>
+                                  <img src={`/assets/emoticons/${fileName}`} alt={emotion.name} className="h-full w-full object-cover" />
                                 </div>
-                              </button>
+                                <span className="text-[10px] font-bold text-slate-600 my-1">{emotion.name}</span>
+                                
+                                {isLocked ? (
+                                  <button disabled className="w-full py-1 rounded text-[9px] font-bold bg-gray-200 text-gray-400 cursor-not-allowed">잠김</button>
+                                ) : isOwned ? (
+                                  <button disabled className="w-full py-1 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">보유중</button>
+                                ) : (
+                                  <button 
+                                    type="button"
+                                    onClick={() => buyEmoticon(itemId, pack.price, `${pack.name} (${emotion.name})`)}
+                                    className="w-full py-1 rounded text-[9px] font-black bg-yellow-400 text-slate-900 active:scale-95 shadow-sm"
+                                  >
+                                    {pack.price} P
+                                  </button>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
