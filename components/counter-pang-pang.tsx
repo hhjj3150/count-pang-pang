@@ -2488,6 +2488,7 @@ export default function CounterPangPang() {
                 )}
 
                 <div className="space-y-6">
+                  
                   {EMOTICON_PACKS.map(pack => {
                     const isLocked = unlocked < pack.unlockLevel;
 
