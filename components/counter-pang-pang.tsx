@@ -613,6 +613,27 @@ export default function CounterPangPang() {
     { id: "acc_heart_sunglasses", name: "하트선글라스", file: "acc_heart_sunglasses.png", price: 7 }
   ];
 
+// 📸 이모티콘 팩 리스트 (9종 캐릭터 x 5가지 감정)
+  const EMOTICON_PACKS = [
+    { id: "pangi", name: "팡이", price: 30, unlockLevel: 0 },
+    { id: "croc", name: "주둥이 짧은 악어", price: 50, unlockLevel: 1 },
+    { id: "elephant", name: "코가 짧은 코끼리", price: 70, unlockLevel: 2 },
+    { id: "giraffe", name: "목이 짧은 기린", price: 90, unlockLevel: 3 },
+    { id: "hippo", name: "입이 작은 하마", price: 110, unlockLevel: 4 },
+    { id: "lion", name: "대머리 사자", price: 130, unlockLevel: 5 },
+    { id: "ostrich", name: "다리가 짧은 타조", price: 150, unlockLevel: 6 },
+    { id: "owl", name: "눈이 작은 부엉이", price: 170, unlockLevel: 7 },
+    { id: "rabbit", name: "귀가 작은 토끼", price: 190, unlockLevel: 8 },
+  ];
+
+  const EMOTIONS = [
+    { id: "joy", name: "기쁨" },
+    { id: "sad", name: "슬픔" },
+    { id: "angry", name: "화남" },
+    { id: "love", name: "사랑해" },
+    { id: "cheer", name: "화이팅" },
+  ];
+
   // 🚗 카트(세트) 리스트 (실제 폴더의 이미지 파일명과 100% 일치)
   const KARTS = [
     { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0 },
@@ -931,7 +952,8 @@ export default function CounterPangPang() {
   const [toast, setToast] = useState<string | null>(null)
   
 // --- 📥 다운로드 미리보기 상태 ---
-  const [previewItem, setPreviewItem] = useState<{lv: number, idx: number, price: number} | null>(null);
+  const [previewItem, setPreviewItem] = useState<{title: string, file: string, price: number} | null>(null);
+  
   // --- 💌 초대하기 및 일일 보상 시스템 ---
   const [inviteCount, setInviteCount] = useState(0);
 
@@ -2396,14 +2418,14 @@ export default function CounterPangPang() {
                 {/* 🌟 미리보기 팝업 */}
                 {previewItem && (
                   <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md">
-                    <h3 className="mb-2 text-2xl font-black text-zinc-900">Lv.{previewItem.lv} 팡이</h3>
+                    <h3 className="mb-2 text-2xl font-black text-zinc-900">{previewItem.title}</h3>
                     <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
 
                     <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/60 ring-4 ring-yellow-400/80 shadow-xl">
                       <GameImage
-                        src={`/assets/${previewItem.lv}-${previewItem.idx}.png`}
+                        src={`/assets/emoticons/${previewItem.file}`}
                         alt="preview"
-                        fallback={<div className="h-full w-full bg-white/50" />}
+                        fallback={<div className="h-full w-full bg-white/50 flex items-center justify-center text-amber-900/40 text-sm font-bold">이미지 준비중</div>}
                         className="h-full w-full object-cover"
                       />
                     </div>
@@ -2418,7 +2440,7 @@ export default function CounterPangPang() {
 
                         setPoints(p => p - previewItem.price);
 
-                        const imgSrc = `/assets/${previewItem.lv}-${previewItem.idx}.png`;
+                        const imgSrc = `/assets/emoticons/${previewItem.file}`;
                         const img = new Image();
                         img.crossOrigin = "anonymous";
                         img.onload = () => {
@@ -2440,12 +2462,12 @@ export default function CounterPangPang() {
 
                             const a = document.createElement("a");
                             a.href = canvas.toDataURL("image/png");
-                            a.download = `pangi_lv${previewItem.lv}_${previewItem.idx}.png`;
+                            a.download = `${previewItem.file}`;
                             document.body.appendChild(a);
                             a.click();
                             document.body.removeChild(a);
 
-                            flashToast(`${previewItem.price}P 사용! Lv.${previewItem.lv} 이모티콘 저장 완료! 🎉`);
+                            flashToast(`${previewItem.price}P 사용! 이모티콘 저장 완료! 🎉`);
                             setPreviewItem(null);
                           }
                         };
@@ -2466,34 +2488,36 @@ export default function CounterPangPang() {
                 )}
 
                 <div className="space-y-6">
-                  {Array.from({ length: 11 }, (_, i) => {
-                    const lv = i + 1;
-                    const isLocked = lv > unlocked;
+                  {EMOTICON_PACKS.map(pack => {
+                    const isLocked = unlocked < pack.unlockLevel;
 
                     return (
-                      <div key={lv} className="rounded-xl bg-yellow-900/5 p-3 ring-1 ring-yellow-900/10">
-                        <h4 className="mb-3 text-sm font-bold text-zinc-800">Lv.{lv} 팡이 팩 {isLocked && "🔒"}</h4>
+                      <div key={pack.id} className="rounded-xl bg-yellow-900/5 p-3 ring-1 ring-yellow-900/10">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-bold text-zinc-800">{pack.name} 팩 {isLocked && "🔒"}</h4>
+                          {isLocked && <span className="text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold shadow-sm">Lv.{pack.unlockLevel} 해제</span>}
+                        </div>
+                        
                         <div className="grid grid-cols-5 gap-2">
-                          {Array.from({ length: 10 }, (_, j) => {
-                            const imgNum = j + 1;
-                            const price = 30 + (lv - 1) * 20;
-
+                          {EMOTIONS.map(emotion => {
+                            const fileName = `${pack.id}_${emotion.id}.png`;
+                            
                             return (
                               <button
-                                key={imgNum}
+                                key={emotion.id}
                                 type="button"
                                 disabled={isLocked}
                                 onClick={() => {
                                   sfxClick();
-                                  setPreviewItem({ lv, idx: imgNum, price });
+                                  setPreviewItem({ title: `${pack.name} - ${emotion.name}`, file: fileName, price: pack.price });
                                 }}
                                 className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/5 transition-all ${
                                   isLocked ? "cursor-not-allowed opacity-40 grayscale" : "active:scale-95 shadow-sm"
                                 }`}
                               >
-                                <img src={`/assets/${lv}-${imgNum}.png`} alt={`Lv.${lv}-${imgNum}`} className="h-full w-full object-cover" />
+                                <img src={`/assets/emoticons/${fileName}`} alt={emotion.name} className="h-full w-full object-cover" />
                                 <div className="absolute bottom-0 w-full bg-white/90 py-1 text-center text-[10px] font-black text-amber-700 backdrop-blur-sm">
-                                  {isLocked ? "🔒 잠김" : `${price} P`}
+                                  {isLocked ? "🔒" : emotion.name}
                                 </div>
                               </button>
                             );
