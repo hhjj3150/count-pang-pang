@@ -613,19 +613,27 @@ export default function CounterPangPang() {
     { id: "acc_heart_sunglasses", name: "하트선글라스", file: "acc_heart_sunglasses.png", price: 7 }
   ];
 
-  // 🚗 카트(차량) 리스트 (실제 이미지 파일명 완벽 반영)
+  // 🚗 카트(세트) 리스트 (실제 폴더의 이미지 파일명과 100% 일치)
   const KARTS = [
-    { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0 }, // 🌟 0P 기본 차량
-    { id: "kart_crocodile", name: "악어 카트", file: "kart_crocodile.png", price: 0 }, // 
-    { id: "kart_fire_truck", name: "소방차", file: "kart_fire_truck.png", price: 5 },
-    { id: "kart_giraffe", name: "기린 카트", file: "kart_giraffe.png", price: 4 },
-    { id: "kart_hippo", name: "하마 카트", file: "kart_hippo.png", price: 6 },
-    { id: "kart_lion", name: "사자 카트", file: "kart_lion.png", price: 8 },
-    { id: "kart_ostrich", name: "타조 카트", file: "kart_ostrich.png", price: 3 },
-    { id: "kart_owl", name: "부엉이 카트", file: "kart_owl.png", price: 5 },
-    { id: "kart_police", name: "경찰차", file: "kart_police.png", price: 7 },
-    { id: "kart_rabbit", name: "토끼 카트", file: "kart_rabbit.png", price: 4 },
-    { id: "kart_tank", name: "탱크", file: "kart_tank.png", price: 10 }
+    { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0 },
+    { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 0 },
+    { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 5 },
+    { id: "kart_fire_truck", name: "소방 카트", file: "kart_fire_truck.png", price: 5 },
+    { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 4 },
+    { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 6 },
+    { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 8 },
+    { id: "kart_ostrich", name: "다리가 짧은 타조 카트", file: "kart_ostrich.png", price: 3 },
+    { id: "kart_owl", name: "눈이 작은부엉이 카트", file: "kart_owl.png", price: 5 },
+    { id: "kart_police", name: "경찰 카트", file: "kart_police.png", price: 7 },
+    { id: "kart_rabbit", name: "귀가작은 토끼 카트", file: "kart_rabbit.png", price: 4 },
+    { id: "kart_tank", name: "탱크 카트", file: "kart_tank.png", price: 10 },
+    // 👇 여기서부터 새롭게 추가된 일반 자동차 6종 👇
+    { id: "car_suv", name: "SUV", file: "suv.png", price: 5 },
+    { id: "car_police", name: "경찰차", file: "경찰차.png", price: 7 },
+    { id: "car_fire", name: "소방차", file: "소방차.png", price: 6 },
+    { id: "car_sports", name: "스포츠카", file: "스포츠카.png", price: 8 },
+    { id: "car_tank", name: "전투 탱크", file: "탱크.png", price: 10 },
+    { id: "car_forklift", name: "포크레인", file: "포크레인.png", price: 9 }
   ];
 
   // 🌟 가로수드라이브를 기본 장착 배경으로 설정! (해변의 드라이브도 기본 보유)
@@ -788,14 +796,13 @@ export default function CounterPangPang() {
   const [equippedCharacter, setEquippedCharacter] = useState("chr_pangi"); 
   const [ownedCharacters, setOwnedCharacters] = useState<string[]>(["chr_pangi"]);
 
-  // 👕 의류 보관함 및 장착 상태
-  const [equippedClothes, setEquippedClothes] = useState("none");
-  const [ownedClothes, setOwnedClothes] = useState<string[]>(["none"]);
-
-  // 🕶️ 악세사리 보관함 및 장착 상태
-  const [equippedAccessory, setEquippedAccessory] = useState("none");
-  const [ownedAccessories, setOwnedAccessories] = useState<string[]>(["none"]);
-
+  {/* 🌟 카테고리 탭 메뉴 (의류, 악세사리 삭제 / 차량 -> 카트(세트) 변경) */}
+              <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
+                <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
+                <button onClick={() => setActiveCategory("char")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "char" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🐾 캐릭터</button>
+                <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏎️ 카트(세트)</button>
+                <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 테마</button>
+              </div>
   // 앱 실행 시 저장된 차량 데이터 불러오기
   useEffect(() => {
     const savedOwned = localStorage.getItem("cp_owned_cars");
@@ -1865,57 +1872,17 @@ export default function CounterPangPang() {
               {/* 문제 글씨가 잘 보이게 위쪽에만 살짝 그라데이션 그림자 깔기 */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" aria-hidden />
           
-              {/* 🌟 게임 화면: 종이인형 레이어 아바타 (위치/핏 정밀 조정) */}
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
-          
-          {equippedCar === "kart_basic" ? (
-            /* 🚨 기본 차량: 탑승 없이 노란 차만 단독 표시 */
-            <img 
-              src={`/assets/karts/kart_default_yellow.png`} 
-              alt="기본 차량" 
-              className="absolute bottom-0 w-[90%] object-contain drop-shadow-xl z-10" 
-            />
-          ) : (
-            /* 🏎️ 카트 장착 상태: 카트 위에 캐릭터 세트 얹기 */
-            <>
-              {/* 1층 (z-10): 카트 */}
-              <img 
-                src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file}`} 
-                className="absolute bottom-0 w-full object-contain drop-shadow-xl z-10" 
-                alt="카트" 
-              />
-              
-              {/* 🌟 탑승객 묶음: 캐릭터+옷+악세사리 */}
-              <div className="absolute bottom-[25%] w-[60%] h-[60%] flex flex-col items-center justify-end z-20">
+              {/* 🌟 게임 화면: 완성형(원세트) 아바타 구역 */}
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-64 h-64 flex items-end justify-center z-0 pointer-events-none">
                 
-                {/* 2층: 캐릭터 본체 */}
+                {/* 🏎️ 카트(세트) 장착 상태: 겹치기 없이 완성된 이미지 딱 1장만 깔끔하게 출력! */}
                 <img 
-                  src={`/assets/characters/${CHARACTERS.find(c => c.id === equippedCharacter)?.file.replace('_base', '_drive')}`} 
-                  className="absolute w-full h-full object-contain z-20" 
-                  alt="캐릭터" 
+                  src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file}`} 
+                  className="absolute bottom-0 w-[90%] object-contain drop-shadow-xl z-10" 
+                  alt="카트 스킨" 
                 />
                 
-                {/* 3층: 의류 (몸통 부분으로 축소 및 내리기) */}
-                {equippedClothes !== "cloth_none" && (
-                  <img 
-                    src={`/assets/clothes/${CLOTHES.find(c => c.id === equippedClothes)?.file}`} 
-                    className="absolute bottom-[5%] w-[85%] h-[65%] object-contain z-30" 
-                    alt="의류" 
-                  />
-                )}
-                
-                {/* 4층: 악세사리 (목/얼굴 쪽으로 축소 및 배치) */}
-                {equippedAccessory !== "acc_none" && (
-                  <img 
-                    src={`/assets/accessories/${ACCESSORIES.find(c => c.id === equippedAccessory)?.file}`} 
-                    className="absolute bottom-[20%] w-[50%] h-[35%] object-contain z-40 drop-shadow-sm" 
-                    alt="악세사리" 
-                  />
-                )}
               </div>
-            </>
-          )}
-        </div>
               
 
 <div className="relative z-10 flex h-full flex-col items-center pt-4 pb-2 px-4">
@@ -2207,78 +2174,7 @@ export default function CounterPangPang() {
           </div>
         )}
         {/* ============================ 🛒 포인트 상점 모달 ============================ */}
-        {/* ==================== 🚘 내 차고 (마이페이지) 모달 ==================== */}
-      {showMyPage && (
-        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-          <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-slate-50 backdrop-blur-md">
-            {/* 헤더 */}
-            <div className="flex items-center justify-between border-b border-black/5 bg-slate-100 px-5 py-4">
-              <h3 className="text-lg font-black text-slate-900">🚘 내 차고</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  sfxClick();
-                  setShowMyPage(false);
-                }}
-                className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-lg text-zinc-900 hover:bg-black/10 active:scale-90"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 보유 차량 목록 (보유한 차만 보임) */}
-            <div className="overflow-y-auto px-5 py-6 cpp-no-scrollbar" style={{ maxHeight: 'calc(60vh - 60px)' }}>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { id: "default", name: "기본 자동차", src: "🚕" }, // 임시 기본차 (이모지 또는 추후 이미지로 변경)
-                  { id: "suv", name: "SUV", src: "/assets/suv.png" },
-                  { id: "police", name: "경찰차", src: "/assets/경찰차.png" },
-                  { id: "sports", name: "스포츠카", src: "/assets/스포츠카.png" },
-                  { id: "fire", name: "소방차", src: "/assets/소방차.png" },
-                  { id: "forklift", name: "포크레인", src: "/assets/포크레인.png" },
-                  { id: "tank", name: "탱크", src: "/assets/탱크.png" }
-                ].filter(car => ownedCars.includes(car.id)).map(car => (
-                  <div key={car.id} className={`relative flex flex-col items-center justify-between rounded-2xl p-4 ring-2 transition-all ${equippedCar === car.id ? 'bg-blue-50 ring-blue-500' : 'bg-white ring-gray-100 shadow-sm'}`}>
-                    {equippedCar === car.id && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black text-white shadow-sm">
-                        탑승 중
-                      </div>
-                    )}
-                    
-                    {car.id === "default" ? (
-                      <div className="mb-3 text-4xl">{car.src}</div> 
-                    ) : (
-                      <img src={car.src} alt={car.name} className="mb-3 h-12 w-auto object-contain drop-shadow-md" />
-                    )}
-                    
-                    <span className="mb-3 text-xs font-black text-zinc-800">{car.name}</span>
-                    
-                    {equippedCar !== car.id ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          sfxClick();
-                          setEquippedCar(car.id);
-                          localStorage.setItem("cp_equipped_car", car.id);
-                          flashToast(`${car.name} (으)로 갈아탔어요! 부릉부릉 💨`);
-                        }}
-                        className="w-full rounded-xl bg-slate-800 py-2 text-xs font-black text-white shadow-sm active:scale-95"
-                      >
-                        장착하기
-                      </button>
-                    ) : (
-                      <button disabled className="w-full rounded-xl bg-blue-100 py-2 text-xs font-black text-blue-600">
-                        장착됨
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ==================== 🚘 내 차고 (마이페이지) 모달 ==================== */}
+        
      {/* ==================== 👤 종합 마이페이지 (내 정보 관리) 모달 ==================== */}
       {showMyPage && (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
@@ -2379,65 +2275,7 @@ export default function CounterPangPang() {
           </div>
         </div>
 
-        {/* 👕 의류 상점 구역 */}
-        <div className="mb-8" style={{ display: activeCategory === "clothes" ? "block" : "none" }}>
-          <h4 className="mb-3 text-sm font-bold text-slate-700">👕 의류</h4>
-          <div className="grid grid-cols-2 gap-4">
-            {CLOTHES.map(item => {
-              const isOwned = ownedClothes.includes(item.id);
-              const isSelected = equippedClothes === item.id;
-              return (
-                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
-                    {item.file ? <img src={`/assets/clothes/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
-                  </div>
-                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
-                  <div className="mt-2 flex justify-center">
-                    {isOwned ? (
-                      <button onClick={() => setEquippedClothes(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
-                        {isSelected ? "장착중" : "장착"}
-                      </button>
-                    ) : (
-                      <button onClick={() => { setOwnedClothes(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
-                        {item.price} P
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 🕶️ 악세사리 상점 구역 */}
-        <div className="mb-8" style={{ display: activeCategory === "acc" ? "block" : "none" }}>
-          <h4 className="mb-3 text-sm font-bold text-slate-700">🕶️ 악세사리</h4>
-          <div className="grid grid-cols-2 gap-4">
-            {ACCESSORIES.map(item => {
-              const isOwned = ownedAccessories.includes(item.id);
-              const isSelected = equippedAccessory === item.id;
-              return (
-                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
-                    {item.file ? <img src={`/assets/accessories/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
-                  </div>
-                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
-                  <div className="mt-2 flex justify-center">
-                    {isOwned ? (
-                      <button onClick={() => setEquippedAccessory(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
-                        {isSelected ? "장착중" : "장착"}
-                      </button>
-                    ) : (
-                      <button onClick={() => { setOwnedAccessories(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
-                        {item.price} P
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+       
 
         {/* 🚗 내 차고 구역 (차량 상점 통합) */}
         <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
