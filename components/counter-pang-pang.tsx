@@ -791,6 +791,7 @@ export default function CounterPangPang() {
   const [equippedCar, setEquippedCar] = useState("kart_basic");
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
   const [activeCategory, setActiveCategory] = useState("info");
+  const [shopCategory, setShopCategory] = useState("emoticon"); // 🌟 포인트 상점 탭 상태
   const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
   // 👤 캐릭터 보관함 및 장착 상태
   const [equippedCharacter, setEquippedCharacter] = useState("chr_pangi"); 
@@ -2231,107 +2232,88 @@ export default function CounterPangPang() {
 
             {/* 2. 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto px-5 py-6 cpp-no-scrollbar">
-              {/* 🌟 카테고리 탭 메뉴 (캐릭터, 의류, 악세사리 탭 완전 삭제 완료) */}
+              {/* 🌟 카테고리 탭 메뉴 */}
               <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
                 <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
-                <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏎️ 카트(세트)</button>
-                <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 테마</button>
+                <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🚗 내 차고</button>
+                <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 내 테마</button>
               </div>
 
-              {/* 🚗 내 차고 구역 (차량 상점 통합) */}
+              {/* 🚗 내 차고 구역 (보유 차량만 표시) */}
               <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
-                <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 카트(세트)</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  {KARTS.map(item => {
-                    const isOwned = ownedCars.includes(item.id);
-                    const isSelected = equippedCar === item.id;
-                    return (
-                      <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                        <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
-                          {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
-                        </div>
-                        <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
-                        <div className="mt-2 flex justify-center">
-                          {isOwned ? (
+                <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 장착 가능한 카트</h4>
+                {ownedCars.length === 0 ? (
+                   <p className="text-sm text-gray-500 text-center py-10">보유 중인 카트가 없습니다.<br/>포인트 상점에서 구매해 보세요!</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {KARTS.filter(item => ownedCars.includes(item.id)).map(item => {
+                      const isSelected = equippedCar === item.id;
+                      return (
+                        <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                          <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
+                            {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
+                          </div>
+                          <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
+                          <div className="mt-2 flex justify-center">
                             <button 
                               onClick={() => {
                                 sfxClick();
                                 setEquippedCar(item.id);
                                 localStorage.setItem("cp_equipped_car", item.id);
-                                flashToast(`${item.name} 탑승 완료! 💨`);
+                                flashToast(`${item.name} 장착 완료! 💨`);
                               }} 
-                              className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}
+                              className={`w-full py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600 active:scale-95"}`}
                             >
-                              {isSelected ? "탑승중" : "탑승"}
+                              {isSelected ? "장착중" : "장착"}
                             </button>
-                          ) : (
-                            <button 
-                              onClick={() => buyCar(item.id, item.price)}
-                              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm"
-                            >
-                              {item.price} P
-                            </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {/* 🏞️ 테마(배경) 구역 */}
-              <div className="mb-8" style={{ display: activeCategory === "bg" ? "block" : "none" }}>
-                <h4 className="mb-3 text-sm font-bold text-slate-700">🏞️ 내 테마 (배경 영상)</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  {BACKGROUNDS.map(item => {
-                    const isOwned = ownedBgs.includes(item.file);
-                    const isSelected = equippedBg === item.file;
-                    const isLocked = unlocked < item.unlockLevel; // 내 레벨이 안 되면 잠김 처리
-                    
-                    return (
-                      <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                        
-                        {/* 썸네일 구역: 영상의 0.1초 첫 프레임을 캡처해서 사진처럼 보여줌 (데이터 절약) */}
-                        <div className="h-20 bg-slate-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative shadow-inner">
-                          <video src={`/assets/mp4/${item.file}#t=0.1`} className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none" preload="metadata" />
-                          <span className="relative z-10 text-white font-black text-xs drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-center px-1 break-keep">
-                            {item.name}
-                          </span>
-                        </div>
 
-                        <div className="mt-2 flex justify-center">
-                          {isLocked ? (
-                            <button disabled className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-gray-200 text-gray-500">
-                              Lv.{item.unlockLevel} 해제
-                            </button>
-                          ) : isOwned ? (
+              {/* 🏞️ 테마(배경) 구역 (보유 테마만 표시) */}
+              <div className="mb-8" style={{ display: activeCategory === "bg" ? "block" : "none" }}>
+                <h4 className="mb-3 text-sm font-bold text-slate-700">🏞️ 장착 가능한 테마</h4>
+                {ownedBgs.length === 0 ? (
+                   <p className="text-sm text-gray-500 text-center py-10">보유 중인 테마가 없습니다.<br/>포인트 상점에서 구매해 보세요!</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {BACKGROUNDS.filter(item => ownedBgs.includes(item.file)).map(item => {
+                      const isSelected = equippedBg === item.file;
+                      return (
+                        <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                          <div className="h-20 bg-slate-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative shadow-inner">
+                            <video src={`/assets/mp4/${item.file}#t=0.1`} className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none" preload="metadata" />
+                            <span className="relative z-10 text-white font-black text-xs drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-center px-1 break-keep">
+                              {item.name}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex justify-center">
                             <button 
                               onClick={() => {
                                 sfxClick();
                                 setEquippedBg(item.file);
-                                localStorage.setItem("cp_equipped_bg", item.file); // 배경 장착 상태 영구 저장!
+                                localStorage.setItem("cp_equipped_bg", item.file);
                                 flashToast(`${item.name} 테마가 적용되었습니다! 🏞️`);
                               }} 
-                              className={`w-full py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}
+                              className={`w-full py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600 active:scale-95"}`}
                             >
                               {isSelected ? "적용중" : "적용"}
                             </button>
-                          ) : (
-                            <button 
-                              onClick={() => buyBackground(item.file, item.price)}
-                              className="w-full py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm active:scale-95"
-                            >
-                              {item.price} P
-                            </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
             </div>
 
-            {/* 3. 하단 닫기 버튼 (저장 버튼 대신 심플하게 변경) */}
+            {/* 3. 하단 닫기 버튼 */}
             <div className="flex-none border-t border-gray-200 bg-white p-4 pb-6">
               <button
                 type="button"
@@ -2351,8 +2333,10 @@ export default function CounterPangPang() {
       {/* ============================ 🛒 포인트 상점 모달 ============================ */}
       {showVault && (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-          <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-yellow-50/95 backdrop-blur-md shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4">
+          <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-yellow-50/95 backdrop-blur-md shadow-2xl flex flex-col">
+            
+            {/* 상점 헤더 */}
+            <div className="flex items-center justify-between px-5 py-4 flex-none border-b border-yellow-400/20">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-black text-zinc-900">🛒 포인트 상점</h3>
                 <span className="rounded-full bg-yellow-400/30 px-2 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-500/50">
@@ -2371,8 +2355,8 @@ export default function CounterPangPang() {
               </button>
             </div>
 
-            <div className="max-h-[60vh] overflow-y-auto px-5 pb-8 cpp-no-scrollbar">
-              {/* 💖 하트 즉시 충전 */}
+            <div className="flex-1 overflow-y-auto px-5 pt-4 pb-8 cpp-no-scrollbar">
+              {/* 💖 하트 즉시 충전 (어떤 탭에서든 고정 노출) */}
               <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -2396,120 +2380,190 @@ export default function CounterPangPang() {
                 </button>
               </div>
 
-              <p className="mb-4 text-center text-sm font-bold text-zinc-700">
-                열린 팡이를 터치하면 닉네임이 새겨져 저장됩니다 📸
-              </p>
-
-              {/* 🌟 미리보기 팝업 */}
-              {previewItem && (
-                <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md">
-                  <h3 className="mb-2 text-2xl font-black text-zinc-900">Lv.{previewItem.lv} 팡이</h3>
-                  <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
-
-                  <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/60 ring-4 ring-yellow-400/80 shadow-xl">
-                    <GameImage
-                      src={`/assets/${previewItem.lv}-${previewItem.idx}.png`}
-                      alt="preview"
-                      fallback={<div className="h-full w-full bg-white/50" />}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (points < previewItem.price) {
-                        flashToast(`포인트가 부족해요! (${points}P / ${previewItem.price}P) 😥`);
-                        return;
-                      }
-
-                      setPoints(p => p - previewItem.price);
-
-                      const imgSrc = `/assets/${previewItem.lv}-${previewItem.idx}.png`;
-                      const img = new Image();
-                      img.crossOrigin = "anonymous";
-                      img.onload = () => {
-                        const canvas = document.createElement("canvas");
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext("2d");
-                        if (ctx) {
-                          ctx.drawImage(img, 0, 0);
-                          const fontSize = Math.max(16, img.width * 0.1);
-                          ctx.font = `900 ${fontSize}px sans-serif`;
-                          ctx.textAlign = "right";
-                          ctx.textBaseline = "bottom";
-                          ctx.lineWidth = fontSize * 0.2;
-                          ctx.strokeStyle = "white";
-                          ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                          ctx.fillStyle = "#333333";
-                          ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-
-                          const a = document.createElement("a");
-                          a.href = canvas.toDataURL("image/png");
-                          a.download = `pangi_lv${previewItem.lv}_${previewItem.idx}.png`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-
-                          flashToast(`${previewItem.price}P 사용! Lv.${previewItem.lv} 이모티콘 저장 완료! 🎉`);
-                          setPreviewItem(null);
-                        }
-                      };
-                      img.src = imgSrc;
-                    }}
-                    className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-zinc-900 shadow-lg active:scale-95"
-                  >
-                    📥 {previewItem.price}P로 다운받기
-                  </button>
-
-                  <button
-                    onClick={() => setPreviewItem(null)}
-                    className="mt-5 text-sm font-bold text-zinc-500 underline"
-                  >
-                    돌아가기
-                  </button>
-                </div>
-              )}
-
-              <div className="space-y-6">
-                {Array.from({ length: 11 }, (_, i) => {
-                  const lv = i + 1;
-                  const isLocked = lv > unlocked;
-
-                  return (
-                    <div key={lv} className="rounded-xl bg-yellow-900/5 p-3 ring-1 ring-yellow-900/10">
-                      <h4 className="mb-3 text-sm font-bold text-zinc-800">Lv.{lv} 팡이 팩 {isLocked && "🔒"}</h4>
-                      <div className="grid grid-cols-5 gap-2">
-                        {Array.from({ length: 10 }, (_, j) => {
-                          const imgNum = j + 1;
-                          const price = 30 + (lv - 1) * 20;
-
-                          return (
-                            <button
-                              key={imgNum}
-                              type="button"
-                              disabled={isLocked}
-                              onClick={() => {
-                                sfxClick();
-                                setPreviewItem({ lv, idx: imgNum, price });
-                              }}
-                              className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/5 transition-all ${
-                                isLocked ? "cursor-not-allowed opacity-40 grayscale" : "active:scale-95 shadow-sm"
-                              }`}
-                            >
-                              <img src={`/assets/${lv}-${imgNum}.png`} alt={`Lv.${lv}-${imgNum}`} className="h-full w-full object-cover" />
-                              <div className="absolute bottom-0 w-full bg-white/90 py-1 text-center text-[10px] font-black text-amber-700 backdrop-blur-sm">
-                                {isLocked ? "🔒 잠김" : `${price} P`}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* 🌟 상점 카테고리 탭 */}
+              <div className="flex gap-2 mb-6 pb-2 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
+                <button onClick={() => { sfxClick(); setShopCategory("emoticon"); }} className={`px-4 py-2 text-sm font-black rounded-xl transition-all shadow-sm ${shopCategory === "emoticon" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>📸 이모티콘</button>
+                <button onClick={() => { sfxClick(); setShopCategory("car"); }} className={`px-4 py-2 text-sm font-black rounded-xl transition-all shadow-sm ${shopCategory === "car" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏎️ 카트</button>
+                <button onClick={() => { sfxClick(); setShopCategory("bg"); }} className={`px-4 py-2 text-sm font-black rounded-xl transition-all shadow-sm ${shopCategory === "bg" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏞️ 배경</button>
               </div>
+
+              {/* 📸 이모티콘 구매 탭 */}
+              <div style={{ display: shopCategory === "emoticon" ? "block" : "none" }}>
+                <p className="mb-4 text-center text-sm font-bold text-zinc-700">
+                  열린 팡이를 터치하면 닉네임이 새겨져 저장됩니다 📸
+                </p>
+
+                {/* 🌟 미리보기 팝업 */}
+                {previewItem && (
+                  <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md">
+                    <h3 className="mb-2 text-2xl font-black text-zinc-900">Lv.{previewItem.lv} 팡이</h3>
+                    <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
+
+                    <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/60 ring-4 ring-yellow-400/80 shadow-xl">
+                      <GameImage
+                        src={`/assets/${previewItem.lv}-${previewItem.idx}.png`}
+                        alt="preview"
+                        fallback={<div className="h-full w-full bg-white/50" />}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (points < previewItem.price) {
+                          flashToast(`포인트가 부족해요! (${points}P / ${previewItem.price}P) 😥`);
+                          return;
+                        }
+
+                        setPoints(p => p - previewItem.price);
+
+                        const imgSrc = `/assets/${previewItem.lv}-${previewItem.idx}.png`;
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.onload = () => {
+                          const canvas = document.createElement("canvas");
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          const ctx = canvas.getContext("2d");
+                          if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            const fontSize = Math.max(16, img.width * 0.1);
+                            ctx.font = `900 ${fontSize}px sans-serif`;
+                            ctx.textAlign = "right";
+                            ctx.textBaseline = "bottom";
+                            ctx.lineWidth = fontSize * 0.2;
+                            ctx.strokeStyle = "white";
+                            ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                            ctx.fillStyle = "#333333";
+                            ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+
+                            const a = document.createElement("a");
+                            a.href = canvas.toDataURL("image/png");
+                            a.download = `pangi_lv${previewItem.lv}_${previewItem.idx}.png`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+
+                            flashToast(`${previewItem.price}P 사용! Lv.${previewItem.lv} 이모티콘 저장 완료! 🎉`);
+                            setPreviewItem(null);
+                          }
+                        };
+                        img.src = imgSrc;
+                      }}
+                      className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-zinc-900 shadow-lg active:scale-95"
+                    >
+                      📥 {previewItem.price}P로 다운받기
+                    </button>
+
+                    <button
+                      onClick={() => setPreviewItem(null)}
+                      className="mt-5 text-sm font-bold text-zinc-500 underline"
+                    >
+                      돌아가기
+                    </button>
+                  </div>
+                )}
+
+                <div className="space-y-6">
+                  {Array.from({ length: 11 }, (_, i) => {
+                    const lv = i + 1;
+                    const isLocked = lv > unlocked;
+
+                    return (
+                      <div key={lv} className="rounded-xl bg-yellow-900/5 p-3 ring-1 ring-yellow-900/10">
+                        <h4 className="mb-3 text-sm font-bold text-zinc-800">Lv.{lv} 팡이 팩 {isLocked && "🔒"}</h4>
+                        <div className="grid grid-cols-5 gap-2">
+                          {Array.from({ length: 10 }, (_, j) => {
+                            const imgNum = j + 1;
+                            const price = 30 + (lv - 1) * 20;
+
+                            return (
+                              <button
+                                key={imgNum}
+                                type="button"
+                                disabled={isLocked}
+                                onClick={() => {
+                                  sfxClick();
+                                  setPreviewItem({ lv, idx: imgNum, price });
+                                }}
+                                className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/5 transition-all ${
+                                  isLocked ? "cursor-not-allowed opacity-40 grayscale" : "active:scale-95 shadow-sm"
+                                }`}
+                              >
+                                <img src={`/assets/${lv}-${imgNum}.png`} alt={`Lv.${lv}-${imgNum}`} className="h-full w-full object-cover" />
+                                <div className="absolute bottom-0 w-full bg-white/90 py-1 text-center text-[10px] font-black text-amber-700 backdrop-blur-sm">
+                                  {isLocked ? "🔒 잠김" : `${price} P`}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 🏎️ 카트 구매 탭 */}
+              <div style={{ display: shopCategory === "car" ? "block" : "none" }}>
+                <div className="grid grid-cols-2 gap-4">
+                  {KARTS.map(item => {
+                    const isOwned = ownedCars.includes(item.id);
+                    return (
+                      <div key={item.id} className="relative p-3 rounded-xl border-2 border-slate-200 bg-white">
+                        <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
+                          {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본</span>}
+                        </div>
+                        <p className="font-bold text-sm text-slate-700 text-center mb-2">{item.name}</p>
+                        {isOwned ? (
+                          <button disabled className="w-full py-1.5 rounded-lg text-xs font-bold bg-gray-200 text-gray-500">보유중</button>
+                        ) : (
+                          <button 
+                            onClick={() => buyCar(item.id, item.price)} 
+                            className="w-full py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm active:scale-95"
+                          >
+                            {item.price} P 구매
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 🏞️ 배경 구매 탭 */}
+              <div style={{ display: shopCategory === "bg" ? "block" : "none" }}>
+                <div className="grid grid-cols-2 gap-4">
+                  {BACKGROUNDS.map(item => {
+                    const isOwned = ownedBgs.includes(item.file);
+                    const isLocked = unlocked < item.unlockLevel;
+                    return (
+                      <div key={item.id} className="relative p-3 rounded-xl border-2 border-slate-200 bg-white">
+                        <div className="h-20 bg-slate-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative shadow-inner">
+                          <video src={`/assets/mp4/${item.file}#t=0.1`} className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none" preload="metadata" />
+                          <span className="relative z-10 text-white font-black text-xs drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] px-1 text-center break-keep">{item.name}</span>
+                        </div>
+                        <div className="mt-2">
+                          {isLocked ? (
+                            <button disabled className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-gray-200 text-gray-500">Lv.{item.unlockLevel} 해제</button>
+                          ) : isOwned ? (
+                            <button disabled className="w-full py-1.5 rounded-lg text-xs font-bold bg-gray-200 text-gray-500">보유중</button>
+                          ) : (
+                            <button 
+                              onClick={() => buyBackground(item.file, item.price)} 
+                              className="w-full py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm active:scale-95"
+                            >
+                              {item.price} P 구매
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
