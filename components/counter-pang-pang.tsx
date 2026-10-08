@@ -2175,10 +2175,9 @@ export default function CounterPangPang() {
         )}
         {/* ============================ 🛒 포인트 상점 모달 ============================ */}
         
-     {/* ==================== 👤 종합 마이페이지 (내 정보 관리) 모달 ==================== */}
+        {/* ==================== 👤 종합 마이페이지 (내 정보 관리) 모달 ==================== */}
       {showMyPage && (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-          {/* 창 전체 길이를 제한하고 flex-col로 배치하여 하단 버튼을 고정시킵니다 */}
           <div className="flex max-h-[85vh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-3xl border-t border-white/50 bg-slate-50 backdrop-blur-md">
             
             {/* 1. 고정 헤더 */}
@@ -2188,7 +2187,6 @@ export default function CounterPangPang() {
                 type="button"
                 onClick={() => {
                   sfxClick();
-                  setTempEquippedCar(null);
                   setShowMyPage(false);
                 }}
                 className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-lg text-zinc-900 hover:bg-black/10 active:scale-90"
@@ -2197,9 +2195,8 @@ export default function CounterPangPang() {
               </button>
             </div>
 
-            {/* 🌟 승급 대시보드 (경험치 바) 부착 */}
+            {/* 🌟 승급 대시보드 (경험치 바) */}
             <div className="flex-none bg-white p-5 border-b border-gray-100 shadow-sm z-10 relative overflow-hidden">
-              {/* 대시보드 배경 장식 */}
               <div className="absolute -right-6 -top-6 text-8xl opacity-5 pointer-events-none">🥋</div>
               
               <div className="relative flex justify-between items-end mb-2">
@@ -2232,303 +2229,49 @@ export default function CounterPangPang() {
               )}
             </div>
 
-            {/* 2. 스크롤 영역 (자동으로 남는 공간을 꽉 채우며 스크롤됨) */}
+            {/* 2. 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto px-5 py-6 cpp-no-scrollbar">
-              {/* 🌟 카테고리 탭 메뉴 */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
-          <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
-          <button onClick={() => setActiveCategory("char")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "char" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🐾 캐릭터</button>
-          <button onClick={() => setActiveCategory("clothes")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "clothes" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👕 의류</button>
-          <button onClick={() => setActiveCategory("acc")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "acc" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🕶️ 악세</button>
-          <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🚗 차량</button>
-          <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 테마</button>
-        </div>
-              
-              {/* 닉네임 설정 구역 */}
-             {/* 🐾 캐릭터 상점 구역 */}
-        <div className="mb-8" style={{ display: activeCategory === "char" ? "block" : "none" }}>
-          <h4 className="mb-3 text-sm font-bold text-slate-700">🐾 내 캐릭터</h4>
-          <div className="grid grid-cols-2 gap-4">
-            {CHARACTERS.map(item => {
-              const isOwned = ownedCharacters.includes(item.id);
-              const isSelected = equippedCharacter === item.id;
-              return (
-                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
-                    {item.file ? <img src={`/assets/characters/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
-                  </div>
-                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
-                  <div className="mt-2 flex justify-center">
-                    {isOwned ? (
-                      <button onClick={() => setEquippedCharacter(item.id)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}>
-                        {isSelected ? "장착중" : "장착"}
-                      </button>
-                    ) : (
-                      <button onClick={() => { setOwnedCharacters(prev => [...prev, item.id]); alert(`${item.name} 구매 완료!`); }} className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm">
-                        {item.price} P
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-       
-
-        {/* 🚗 내 차고 구역 (차량 상점 통합) */}
-        <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
-          <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 카트(세트)</h4>
-          <div className="grid grid-cols-2 gap-4">
-            {KARTS.map(item => {
-              const isOwned = ownedCars.includes(item.id);
-              const isSelected = equippedCar === item.id;
-              return (
-                <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
-                    {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
-                  </div>
-                  <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
-                  <div className="mt-2 flex justify-center">
-                    {isOwned ? (
-                      <button 
-                        onClick={() => {
-                          sfxClick();
-                          setEquippedCar(item.id);
-                          localStorage.setItem("cp_equipped_car", item.id); // 👈 핵심: 탑승 즉시 영구 저장!
-                          flashToast(`${item.name} 탑승 완료! 💨`);
-                        }} 
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}
-                      >
-                        {isSelected ? "탑승중" : "탑승"}
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => buyCar(item.id, item.price)} // 👈 핵심: 정식 구매 함수 연결 (포인트 차감 + 영구 저장)
-                        className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm"
-                      >
-                        {item.price} P
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-              {/* 악세사리 영역 */}
-              <div className="mb-2">
-                <h4 className="mb-3 text-sm font-bold text-slate-700">🎀 악세사리 & 이모티콘</h4>
-                <div className="flex h-20 items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-xs font-bold text-gray-400">
-                  다음 업데이트를 기대해 주세요! ✨
-                </div>
+              {/* 🌟 카테고리 탭 메뉴 (캐릭터, 의류, 악세사리 탭 완전 삭제 완료) */}
+              <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
+                <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
+                <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏎️ 카트(세트)</button>
+                <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 테마</button>
               </div>
 
-            </div>
-
-            {/* 3. 하단 고정 저장 버튼 */}
-            <div className="flex-none border-t border-gray-200 bg-white p-4 pb-6">
-              <button
-                type="button"
-                onClick={() => {
-                  sfxClick();
-                  
-                  // 1. 차량을 선택한 게 있다면, 이제 진짜 장착 처리!
-                  if (tempEquippedCar) {
-                    setEquippedCar(tempEquippedCar);
-                    localStorage.setItem("cp_equipped_car", tempEquippedCar);
-                  }
-                  
-                  // (참고: 닉네임 저장 로직은 여기에 추후 연결)
-                  
-                  // 창 닫고, 임시값 지우고, 성공 알림 띄우기
-                  setTempEquippedCar(null);
-                  setShowMyPage(false);
-                  flashToast("✅ 모든 설정이 성공적으로 저장되었습니다!");
-                }}
-                className="w-full rounded-2xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg active:scale-95"
-              >
-                💾 변경사항 저장하기
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-        {showVault && (
-          <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-
-            {/* 1. 상점 메인 배경: 아주 연한 투명 노란색 (bg-yellow-50/95) */}
-            <div className="max-h-[80%] w-full max-w-[440px] overflow-hidden rounded-t-3xl border-t border-white/50 bg-yellow-50/95 backdrop-blur-md shadow-2xl">
-              <div className="flex items-center justify-between px-5 py-4">
-                <div className="flex items-center gap-2">
-                  {/* 글씨 색상 어둡게 변경 */}
-                  <h3 className="text-lg font-black text-zinc-900">🛒 포인트 상점</h3>
-                  <span className="rounded-full bg-yellow-400/30 px-2 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-500/50">
-                    보유: {points}P
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfxClick()
-                    setShowVault(false)
-                  }}
-                  className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-zinc-900 text-lg hover:bg-black/10 active:scale-90"
-                  aria-label="닫기"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 ▼▼▼ */}
-             {/* ▼▼▼ 도감형 이모티콘 다운로드 화면 (여기서부터 스크롤 시작!) ▼▼▼ */}
-              <div className="max-h-[60vh] overflow-y-auto px-5 pb-8 cpp-no-scrollbar">
-                
-                {/* 💖 하트 즉시 충전 (스크롤 영역 안으로 쏙 들어옴) */}
-                <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">💖</span>
-                      <div>
-                        <h4 className="text-sm font-black text-zinc-900">하트 즉시 충전</h4>
-                        <p className="text-[11px] font-bold text-zinc-500">50P로 하트 1개 충전</p>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
-                      오늘 잔여: {3 - (heartBuyData.date === new Date().toISOString().slice(0, 10) ? heartBuyData.count : 0)}회
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={buyHeartWithPoints}
-                    className="w-full rounded-xl bg-gradient-to-b from-rose-400 to-rose-500 py-3 text-sm font-black text-white shadow-[0_3px_0_#be123c] active:translate-y-0.5 active:shadow-none"
-                  >
-                    💖 하트 +1 충전하기 (50P)
-                  </button>
-                </div>
-
-               
-                <p className="mb-4 text-center text-sm font-bold text-zinc-700">
-                  열린 팡이를 터치하면 닉네임이 새겨져 저장됩니다 📸
-                </p>
-
-                {/* 🌟 2. 미리보기 팝업창 배경: 연하고 투명한 노란색 (bg-yellow-100/95) */}
-                {previewItem && (
-                  <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md">
-                    <h3 className="mb-2 text-2xl font-black text-zinc-900">Lv.{previewItem.lv} 팡이</h3>
-                    <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
-                    
-                    <div className="relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/60 ring-4 ring-yellow-400/80 shadow-xl">
-                      <GameImage 
-                        src={`/assets/${previewItem.lv}-${previewItem.idx}.png`} 
-                        alt="preview" 
-                        fallback={<div className="h-full w-full bg-white/50" />}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    {/* 다운로드 버튼 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (points < previewItem.price) {
-                          flashToast(`포인트가 부족해요! (${points}P / ${previewItem.price}P) 😥`);
-                          return;
-                        }
-                        
-                        setPoints(p => p - previewItem.price);
-                        
-                        const imgSrc = `/assets/${previewItem.lv}-${previewItem.idx}.png`;
-                        const img = new Image();
-                        img.crossOrigin = "anonymous";
-                        img.onload = () => {
-                          const canvas = document.createElement("canvas");
-                          canvas.width = img.width;
-                          canvas.height = img.height;
-                          const ctx = canvas.getContext("2d");
-                          if (ctx) {
-                            ctx.drawImage(img, 0, 0);
-                            const fontSize = Math.max(16, img.width * 0.1);
-                            ctx.font = `900 ${fontSize}px sans-serif`;
-                            ctx.textAlign = "right";
-                            ctx.textBaseline = "bottom";
-                            ctx.lineWidth = fontSize * 0.2;
-                            ctx.strokeStyle = "white";
-                            ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                            ctx.fillStyle = "#333333";
-                            ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                            
-                            const a = document.createElement("a");
-                            a.href = canvas.toDataURL("image/png");
-                            a.download = `pangi_lv${previewItem.lv}_${previewItem.idx}.png`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            
-                            flashToast(`${previewItem.price}P 사용! Lv.${previewItem.lv} 이모티콘 저장 완료! 🎉`);
-                            setPreviewItem(null); 
-                          }
-                        };
-                        img.src = imgSrc;
-                      }}
-                      className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-zinc-900 shadow-lg active:scale-95"
-                    >
-                      📥 {previewItem.price}P로 다운받기
-                    </button>
-
-                    {/* 돌아가기 버튼 */}
-                    <button 
-                      onClick={() => setPreviewItem(null)}
-                      className="mt-5 text-sm font-bold text-zinc-500 underline"
-                    >
-                      돌아가기
-                    </button>
-                  </div>
-                )}
-
-                <div className="space-y-6">
-                  {/* 레벨별 이모티콘 목록 */}
-                  {Array.from({ length: 11 }, (_, i) => {
-                    const lv = i + 1; 
-                    const isLocked = lv > unlocked;
-                    
+              {/* 🚗 내 차고 구역 (차량 상점 통합) */}
+              <div className="mb-8" style={{ display: activeCategory === "car" ? "block" : "none" }}>
+                <h4 className="mb-3 text-sm font-bold text-slate-700">🚗 카트(세트)</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {KARTS.map(item => {
+                    const isOwned = ownedCars.includes(item.id);
+                    const isSelected = equippedCar === item.id;
                     return (
-                      <div key={lv} className="rounded-xl bg-yellow-900/5 p-3 ring-1 ring-yellow-900/10">
-                        <h4 className="mb-3 text-sm font-bold text-zinc-800">Lv.{lv} 팡이 팩 {isLocked && "🔒"}</h4>
-                        
-                        <div className="grid grid-cols-5 gap-2">
-                          {Array.from({ length: 10 }, (_, j) => {
-                            const imgNum = j + 1; 
-                            const price = 30 + (lv - 1) * 20; 
-
-                            return (
-                              <button
-                                key={imgNum}
-                                type="button"
-                                disabled={isLocked}
-                                onClick={() => {
-                                  sfxClick();
-                                  setPreviewItem({ lv, idx: imgNum, price });
-                                }}
-                                className={`relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/5 transition-all ${
-                                  isLocked ? "cursor-not-allowed opacity-40 grayscale" : "active:scale-95 shadow-sm"
-                                }`}
-                              >
-                                <img
-                                  src={`/assets/${lv}-${imgNum}.png`}
-                                  alt={`Lv.${lv}-${imgNum}`}
-                                  className="h-full w-full object-cover"
-                                />
-                                <div className="absolute bottom-0 w-full bg-white/90 py-1 text-center text-[10px] font-black text-amber-700 backdrop-blur-sm">
-                                  {isLocked ? "🔒 잠김" : `${price} P`}
-                                </div>
-                              </button>
-                            );
-                          })}
+                      <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                        <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
+                          {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
+                        </div>
+                        <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
+                        <div className="mt-2 flex justify-center">
+                          {isOwned ? (
+                            <button 
+                              onClick={() => {
+                                sfxClick();
+                                setEquippedCar(item.id);
+                                localStorage.setItem("cp_equipped_car", item.id);
+                                flashToast(`${item.name} 탑승 완료! 💨`);
+                              }} 
+                              className={`px-4 py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}
+                            >
+                              {isSelected ? "탑승중" : "탑승"}
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => buyCar(item.id, item.price)}
+                              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm"
+                            >
+                              {item.price} P
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -2536,8 +2279,24 @@ export default function CounterPangPang() {
                 </div>
               </div>
             </div>
+
+            {/* 3. 하단 닫기 버튼 (저장 버튼 대신 심플하게 변경) */}
+            <div className="flex-none border-t border-gray-200 bg-white p-4 pb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  sfxClick();
+                  setShowMyPage(false);
+                }}
+                className="w-full rounded-2xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg active:scale-95"
+              >
+                닫기
+              </button>
+            </div>
+
           </div>
-        )}
+        </div>
+      )}
       {/* ============================ 🚨 앱 종료 연출 모달 (순수 UI 버튼 작업) ============================ */}
         {exitPhase && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
