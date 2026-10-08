@@ -2278,6 +2278,57 @@ export default function CounterPangPang() {
                   })}
                 </div>
               </div>
+              {/* 🏞️ 테마(배경) 구역 */}
+              <div className="mb-8" style={{ display: activeCategory === "bg" ? "block" : "none" }}>
+                <h4 className="mb-3 text-sm font-bold text-slate-700">🏞️ 내 테마 (배경 영상)</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {BACKGROUNDS.map(item => {
+                    const isOwned = ownedBgs.includes(item.file);
+                    const isSelected = equippedBg === item.file;
+                    const isLocked = unlocked < item.unlockLevel; // 내 레벨이 안 되면 잠김 처리
+                    
+                    return (
+                      <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                        
+                        {/* 썸네일 구역: 영상의 0.1초 첫 프레임을 캡처해서 사진처럼 보여줌 (데이터 절약) */}
+                        <div className="h-20 bg-slate-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative shadow-inner">
+                          <video src={`/assets/mp4/${item.file}#t=0.1`} className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none" preload="metadata" />
+                          <span className="relative z-10 text-white font-black text-xs drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-center px-1 break-keep">
+                            {item.name}
+                          </span>
+                        </div>
+
+                        <div className="mt-2 flex justify-center">
+                          {isLocked ? (
+                            <button disabled className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-gray-200 text-gray-500">
+                              Lv.{item.unlockLevel} 해제
+                            </button>
+                          ) : isOwned ? (
+                            <button 
+                              onClick={() => {
+                                sfxClick();
+                                setEquippedBg(item.file);
+                                localStorage.setItem("cp_equipped_bg", item.file); // 배경 장착 상태 영구 저장!
+                                flashToast(`${item.name} 테마가 적용되었습니다! 🏞️`);
+                              }} 
+                              className={`w-full py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"}`}
+                            >
+                              {isSelected ? "적용중" : "적용"}
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => buyBackground(item.file, item.price)}
+                              className="w-full py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm active:scale-95"
+                            >
+                              {item.price} P
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* 3. 하단 닫기 버튼 (저장 버튼 대신 심플하게 변경) */}
