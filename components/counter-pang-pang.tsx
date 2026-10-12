@@ -827,15 +827,15 @@ export default function CounterPangPang() {
               </div>
   // 앱 실행 시 저장된 차량 데이터 불러오기
   // --- 📸 이모티콘 보유 및 구매 관련 상태 & 함수 ---
-  const [ownedEmoticons, setOwnedEmoticons] = useState<string[]>(() => {
-    const saved = localStorage.getItem("cp_owned_emoticons");
-    return saved ? JSON.parse(saved) : [];
-  });
+  // --- 📸 이모티콘 보유 및 구매 관련 상태 & 함수 ---
+  const [ownedEmoticons, setOwnedEmoticons] = useState<string[]>([]); // 👈 서버 에러 방지를 위해 일단 빈 배열로 시작
 
-  // 앱 실행 시 저장된 이모티콘 데이터 불러오기
+  // 앱 실행 시 저장된 이모티콘 데이터 불러오기 (화면이 켜진 후 안전하게 실행)
   useEffect(() => {
-    const savedEmots = localStorage.getItem("cp_owned_emoticons");
-    if (savedEmots) setOwnedEmoticons(JSON.parse(savedEmots));
+    if (typeof window !== "undefined") {
+      const savedEmots = localStorage.getItem("cp_owned_emoticons");
+      if (savedEmots) setOwnedEmoticons(JSON.parse(savedEmots));
+    }
   }, []);
 
   // 📸 이모티콘 구매 함수
