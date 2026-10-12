@@ -2123,9 +2123,9 @@ export default function CounterPangPang() {
                   <>
                     <GameImage
                       key="cheer"
-                      src="/assets/레벨업이미지.png"
-                      alt="화이팅 팡이"
-                      fallback={<span style={{ fontSize: "6rem" }}>💪</span>}
+                      src="/assets/정답이미지.png" // 👈 레벨업 글씨가 없는 환호 이미지로 교체!
+                      alt="통과 축하"
+                      fallback={<span style={{ fontSize: "6rem" }}>🎉</span>}
                       className="h-40 w-40 object-contain cpp-float"
                     />
                     <p className="mt-4 text-2xl font-black text-white">통과! 🎉</p>
