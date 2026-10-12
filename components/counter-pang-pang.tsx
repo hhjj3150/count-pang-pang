@@ -2447,6 +2447,97 @@ export default function CounterPangPang() {
                   마음에 드는 캐릭터 감정 이모티콘을 포인트로 구매해 보세요! 🎨
                 </p>
 
+                {/* 🌟 팝업창 (미리보기 / 구매 / 다운로드 통합) */}
+                {previewItem && (() => {
+                  const itemId = previewItem.file.replace('.png', '');
+                  const isOwned = ownedEmoticons && ownedEmoticons.includes(itemId);
+                  
+                  return (
+                    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                      <h3 className="mb-2 text-2xl font-black text-zinc-900">{previewItem.title}</h3>
+                      <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
+
+                      {/* 미리보기 이미지 박스 */}
+                      <div className={`relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/80 ring-4 ${isOwned ? 'ring-emerald-400 shadow-emerald-200' : 'ring-yellow-400/80 shadow-yellow-200'} shadow-xl transition-all duration-500`}>
+                        <img
+                          src={`/assets/emoticons/${previewItem.file}`}
+                          alt="preview"
+                          className={`h-full w-full object-cover transition-all duration-500 ${!isOwned ? "opacity-30 grayscale brightness-50 scale-95" : "opacity-100 drop-shadow-md scale-100"}`}
+                        />
+                        {/* 미구매 시 중앙에 큰 자물쇠 아이콘 표시 */}
+                        {!isOwned && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="text-white text-5xl opacity-80 drop-shadow-lg">🔒</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 버튼 영역 (구매 전/후 자동 스위칭) */}
+                      {!isOwned ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // 구매 시 함수 호출! (성공하면 isOwned가 true로 바뀌면서 위 이미지와 버튼이 다운로드로 실시간 변신함)
+                            buyEmoticon(itemId, previewItem.price, previewItem.title);
+                          }}
+                          className="w-full max-w-[240px] rounded-full bg-yellow-400 py-3.5 text-lg font-black text-zinc-900 shadow-lg active:scale-95 transition-all"
+                        >
+                          💰 {previewItem.price}P로 구매하기
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sfxClick();
+                            const imgSrc = `/assets/emoticons/${previewItem.file}`;
+                            const img = new Image();
+                            img.crossOrigin = "anonymous";
+                            img.onload = () => {
+                              const canvas = document.createElement("canvas");
+                              canvas.width = img.width;
+                              canvas.height = img.height;
+                              const ctx = canvas.getContext("2d");
+                              if (ctx) {
+                                ctx.drawImage(img, 0, 0);
+                                const fontSize = Math.max(16, img.width * 0.1);
+                                ctx.font = `900 ${fontSize}px 'MaplestoryOTFBold', sans-serif`;
+                                ctx.textAlign = "right";
+                                ctx.textBaseline = "bottom";
+                                ctx.lineWidth = fontSize * 0.2;
+                                ctx.strokeStyle = "white";
+                                ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                                ctx.fillStyle = "#333333";
+                                ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+
+                                const a = document.createElement("a");
+                                a.href = canvas.toDataURL("image/png");
+                                a.download = `${previewItem.file}`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+
+                                flashToast(`이모티콘 저장 완료! 🎉`);
+                                setPreviewItem(null);
+                              }
+                            };
+                            img.src = imgSrc;
+                          }}
+                          className="w-full max-w-[240px] rounded-full bg-emerald-400 py-3.5 text-lg font-black text-emerald-950 shadow-lg active:scale-95 transition-all"
+                        >
+                          📥 각인해서 다운받기
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => { sfxClick(); setPreviewItem(null); }}
+                        className="mt-5 text-sm font-bold text-zinc-500 underline active:scale-95"
+                      >
+                        돌아가기
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 <div className="space-y-6">
                   {EMOTICON_PACKS.map(pack => {
                     const isLocked = unlocked < pack.unlockLevel;
@@ -2466,13 +2557,17 @@ export default function CounterPangPang() {
                           {EMOTIONS.map(emotion => {
                             const itemId = `${pack.id}_${emotion.id}`;
                             const fileName = `${itemId}.png`;
-                            const isOwned = ownedEmoticons && ownedEmoticons.includes(itemId); // 이미 구매했는지 확인
+                            const isOwned = ownedEmoticons && ownedEmoticons.includes(itemId);
 
                             return (
                               <div key={emotion.id} className="flex flex-col items-center bg-white rounded-lg p-1.5 ring-1 ring-black/5 shadow-sm">
-                                <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50">
-                                  
-                                  {/* 🌟 속도 개선(lazy) 및 미구매 완벽 실루엣(흑백+어둡게) 처리! */}
+                                {/* 🌟 썸네일 이미지 자체를 클릭해도 팝업이 뜨도록 버튼으로 감싸기 */}
+                                <button 
+                                  type="button"
+                                  disabled={isLocked}
+                                  onClick={() => { sfxClick(); setPreviewItem({ title: `${pack.name} (${emotion.name})`, file: fileName, price: pack.price }); }}
+                                  className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50 active:scale-95 transition-transform"
+                                >
                                   <img 
                                     src={`/assets/emoticons/${fileName}`} 
                                     alt={emotion.name} 
@@ -2482,8 +2577,8 @@ export default function CounterPangPang() {
                                       isLocked 
                                         ? "opacity-10 grayscale" 
                                         : !isOwned 
-                                          ? "opacity-30 grayscale brightness-50" // 👈 구매 전: 흑백 & 어둡게 확 가림
-                                          : "opacity-100 drop-shadow-md" // 👈 구매 후: 컬러풀하게 짠!
+                                          ? "opacity-30 grayscale brightness-50" 
+                                          : "opacity-100 drop-shadow-md"
                                     }`}
                                     onError={(e) => {
                                       e.currentTarget.style.display = 'none';
@@ -2495,7 +2590,8 @@ export default function CounterPangPang() {
                                   <div className="absolute inset-0 hidden items-center justify-center bg-slate-200 text-[9px] font-bold text-slate-500 text-center p-0.5 break-keep">
                                     {emotion.name}
                                   </div>
-                                </div>
+                                </button>
+
                                 <span className={`text-[10px] font-bold my-1 ${!isOwned ? "text-slate-400" : "text-slate-700"}`}>
                                   {emotion.name}
                                 </span>
@@ -2503,11 +2599,17 @@ export default function CounterPangPang() {
                                 {isLocked ? (
                                   <button disabled className="w-full py-1 rounded text-[9px] font-bold bg-gray-200 text-gray-400 cursor-not-allowed">잠김</button>
                                 ) : isOwned ? (
-                                  <button disabled className="w-full py-1 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">보유중</button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => { sfxClick(); setPreviewItem({ title: `${pack.name} (${emotion.name})`, file: fileName, price: pack.price }); }}
+                                    className="w-full py-1 rounded text-[9px] font-black bg-emerald-400 text-emerald-950 active:scale-95 shadow-sm transition-transform"
+                                  >
+                                    다운로드
+                                  </button>
                                 ) : (
                                   <button 
                                     type="button"
-                                    onClick={() => buyEmoticon(itemId, pack.price, `${pack.name} (${emotion.name})`)}
+                                    onClick={() => { sfxClick(); setPreviewItem({ title: `${pack.name} (${emotion.name})`, file: fileName, price: pack.price }); }}
                                     className="w-full py-1 rounded text-[9px] font-black bg-yellow-400 text-slate-900 active:scale-95 shadow-sm transition-transform"
                                   >
                                     {pack.price} P
