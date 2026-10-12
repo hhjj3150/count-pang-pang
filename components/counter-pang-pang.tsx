@@ -1316,11 +1316,14 @@ export default function CounterPangPang() {
   const onKey = (k: string) => {
     if (locked) return
     sfxClick()
+    if (typeof window !== "undefined" && navigator.vibrate) navigator.vibrate(30); // 📱 숫자 입력 시 짧은 진동
     setInput((v) => (v.length >= 4 ? v : v + k))
   }
+  
   const onBackspace = () => {
     if (locked) return
     sfxClick()
+    if (typeof window !== "undefined" && navigator.vibrate) navigator.vibrate(30); // 📱 지우기 입력 시 짧은 진동
     setInput((v) => v.slice(0, -1))
   }
   const onNumSubmit = () => {
