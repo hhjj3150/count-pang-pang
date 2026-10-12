@@ -488,12 +488,14 @@ export default function CounterPangPang() {
   // 🌟 [핵심 수술] 포인트 획득 자동 감지 센서!
   // 게임이나 출석으로 points가 올라가면, 센서가 감지해서 누적/월간 포인트도 같이 올려줍니다.
   const prevPointsRef = useRef(0);
+  const pointsSyncedRef = useRef(false); // 저장 데이터 불러온 직후 기준점 잡았는지 여부
  useEffect(() => {
-    if (!loaded) {
+    if (!loaded) return;
+    if (!pointsSyncedRef.current) {
+      // 🛡️ 저장된 포인트/띠를 '획득'으로 착각하지 않도록, 불러오기 완료 직후 값을 기준점으로 기억
+      pointsSyncedRef.current = true;
       prevPointsRef.current = points;
-      // 최초 실행 시 현재 띠를 기억해 둡니다.
-      const initialRank = getBeltInfo(lifetimePoints).currentRank;
-      prevBeltRef.current = initialRank.badge;
+      prevBeltRef.current = getBeltInfo(lifetimePoints).currentRank.badge;
       return;
     }
     const diff = points - prevPointsRef.current;
@@ -782,27 +784,17 @@ export default function CounterPangPang() {
   const [chosenLevel, setChosenLevel] = useState(0)
   // 화면이 처음 켜질 때, 저장된 레벨이 있으면 불러오기
   useEffect(() => {
-    const savedLevel = localStorage.getItem("pangpang_level");
-    if (savedLevel) {
-      setChosenLevel(parseInt(savedLevel, 10));
-    }
+    if (typeof window === "undefined") return;
+    const savedLevel = parseInt(localStorage.getItem("pangpang_level") ?? "", 10);
+    if (!Number.isNaN(savedLevel)) setChosenLevel(savedLevel);
   }, []);
 
   // 레벨이 변할 때마다 영구 기억 장치에 자동으로 덮어쓰기
+  // (불러오기 완료 전에는 저장하지 않아야 초기값 0이 저장된 레벨을 덮어쓰지 않음)
   useEffect(() => {
+    if (!loaded) return;
     localStorage.setItem("pangpang_level", chosenLevel.toString());
-  }, [chosenLevel]);
-  useEffect(() => {
-    const savedLevel = localStorage.getItem("pangpang_level");
-    if (savedLevel) {
-      setChosenLevel(parseInt(savedLevel, 10));
-    }
-  }, []);
-
-  // 레벨이 변할 때마다 영구 기억 장치에 자동으로 덮어쓰기
-  useEffect(() => {
-    localStorage.setItem("pangpang_level", chosenLevel.toString());
-  }, [chosenLevel]);
+  }, [chosenLevel, loaded]);
   const [questions, setQuestions] = useState<Question[]>([])
   const [qIndex, setQIndex] = useState(0)
   const [input, setInput] = useState("")
@@ -836,15 +828,6 @@ export default function CounterPangPang() {
   const [equippedCharacter, setEquippedCharacter] = useState("chr_pangi"); 
   const [ownedCharacters, setOwnedCharacters] = useState<string[]>(["chr_pangi"]);
 
-  {/* 🌟 카테고리 탭 메뉴 (의류, 악세사리 삭제 / 차량 -> 카트(세트) 변경) */}
-              <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
-                <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
-                <button onClick={() => setActiveCategory("char")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "char" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🐾 캐릭터</button>
-                <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏎️ 카트(세트)</button>
-                <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 테마</button>
-              </div>
-  // 앱 실행 시 저장된 차량 데이터 불러오기
-  // --- 📸 이모티콘 보유 및 구매 관련 상태 & 함수 ---
   // --- 📸 이모티콘 보유 및 구매 관련 상태 & 함수 ---
   const [ownedEmoticons, setOwnedEmoticons] = useState<string[]>([]); // 👈 서버 에러 방지를 위해 일단 빈 배열로 시작
 
