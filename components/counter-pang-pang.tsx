@@ -480,27 +480,45 @@ export default function CounterPangPang() {
   const [monthlyDate, setMonthlyDate] = useState(today().slice(0, 7)); // 🌟 이번 달 (예: 2026-10)
   const [isFever, setIsFever] = useState(false);
   const [fastCombo, setFastCombo] = useState(0);
+  // 🥋 승급 애니메이션 상태
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [promotionBelt, setPromotionBelt] = useState<{ badge: string; style: string } | null>(null);
+  const prevBeltRef = useRef<string | null>(null); // 이전 띠 기억용
 
   // 🌟 [핵심 수술] 포인트 획득 자동 감지 센서!
   // 게임이나 출석으로 points가 올라가면, 센서가 감지해서 누적/월간 포인트도 같이 올려줍니다.
   const prevPointsRef = useRef(0);
-  useEffect(() => {
+ useEffect(() => {
     if (!loaded) {
       prevPointsRef.current = points;
+      // 최초 실행 시 현재 띠를 기억해 둡니다.
+      const initialRank = getBeltInfo(lifetimePoints).currentRank;
+      prevBeltRef.current = initialRank.badge;
       return;
     }
     const diff = points - prevPointsRef.current;
     
-    // 포인트를 '벌었을 때'만 작동 (상점에서 써서 깎일 때는 무시함!)
     if (diff > 0) {
+      const nextTotalPoints = lifetimePoints + diff;
       setLifetimePoints(prev => prev + diff);
+      
+      // 🥋 승급 감지 모니터링
+      const oldBelt = prevBeltRef.current;
+      const newBeltInfo = getBeltInfo(nextTotalPoints).currentRank;
+      
+      if (oldBelt && oldBelt !== newBeltInfo.badge) {
+        // 이전 띠와 다른 더 높은 띠로 올라갔다면 즉시 축하 연출 발동!
+        setPromotionBelt(newBeltInfo);
+        setShowPromotionModal(true);
+        prevBeltRef.current = newBeltInfo.badge; // 새로운 띠로 기억 갱신
+      }
       
       const currentMonth = today().slice(0, 7);
       if (monthlyDate !== currentMonth) {
-        setMonthlyPoints(diff); // 달이 바뀌면 초기화 후 획득
+        setMonthlyPoints(diff);
         setMonthlyDate(currentMonth);
       } else {
-        setMonthlyPoints(prev => prev + diff); // 같은 달이면 계속 누적
+        setMonthlyPoints(prev => prev + diff);
       }
     }
     prevPointsRef.current = points;
@@ -2685,6 +2703,87 @@ export default function CounterPangPang() {
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+      {/* ============================ 🥋 띠 승급 축하 애니메이션 모달 ============================ */}
+      {showPromotionModal && promotionBelt && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 px-6 backdrop-blur-md animate-in fade-in duration-300">
+          
+          {/* 🌟 화려하게 터지는 폭죽(Confetti) 배경 효과 */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {Array.from({ length: 40 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  top: `${Math.random() * 80}%`,
+                  left: `${Math.random() * 100}%`,
+                  width: `${Math.random() * 8 + 4}px`,
+                  height: `${Math.random() * 8 + 4}px`,
+                  backgroundColor: ['#FFD700', '#FF8C00', '#FF4500', '#00FF7F', '#00BFFF', '#FF1493'][Math.floor(Math.random() * 6)],
+                  transform: `scale(${Math.random()})`,
+                  animation: `ping ${Math.random() * 2 + 1}s infinite alternate`
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="relative w-full max-w-sm text-center">
+            
+            {/* 1. 상단 팡팡 연출 */}
+            <div className="relative mb-4 flex justify-center scale-95 animate-bounce">
+              <span className="text-6xl">🎉</span>
+              <span className="absolute -top-4 text-3xl animate-ping">✨</span>
+            </div>
+
+            {/* 2. 대형 3D 스타일 승급 텍스트 */}
+            <h2 
+              className="text-4xl font-extrabold text-yellow-300 tracking-tight drop-shadow-[0_6px_6px_rgba(0,0,0,1)] uppercase animate-in slide-in-from-top-12 duration-500 mb-1"
+              style={{ fontFamily: "'MaplestoryOTFBold', sans-serif", WebkitTextStroke: '1px #b45309' }}
+            >
+              승급을 축하합니다!
+            </h2>
+            <p className="text-xs font-bold text-amber-200/90 tracking-widest drop-shadow mb-8 animate-pulse">BELT PROMOTION</p>
+
+            {/* 3. 승급 띠(벨트) 줌인 & 네온 연출 */}
+            <div className="relative mx-auto my-10 flex h-36 w-72 items-center justify-center rounded-3xl border-4 border-yellow-400/30 bg-gradient-to-b from-zinc-900 to-zinc-950 px-6 shadow-[0_0_50px_rgba(253,224,71,0.2),inset_0_2px_10px_rgba(255,255,255,0.1)] animate-in zoom-in-50 spin-in-12 duration-700">
+              
+              {/* 후광 효과 */}
+              <div className="absolute inset-0 rounded-3xl bg-radial-gradient from-yellow-400/20 to-transparent blur-xl animate-pulse" />
+              
+              <div className="relative flex flex-col items-center z-10 gap-3">
+                <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">NEW GRADE</span>
+                
+                {/* 띠 뱃지 */}
+                <div className={cn("rounded-xl px-6 py-2 text-lg font-black tracking-wide border shadow-2xl scale-110 animate-in zoom-in-75 delay-300 duration-500", promotionBelt.style)}>
+                  {promotionBelt.badge}
+                </div>
+                
+                <span className="text-[10px] font-bold text-emerald-400 animate-pulse">🥋 그랄(Stripe) 장착 완료!</span>
+              </div>
+            </div>
+
+            {/* 4. 장식 파티클들 */}
+            <div className="flex justify-center gap-1.5 mb-10 text-xl pointer-events-none">
+              {['✨', '⭐', '🥋', '🔥', '🏆', '⭐', '✨'].map((emoji, idx) => (
+                <span key={idx} style={{ animationDelay: `${idx * 150}ms` }} className="animate-bounce">{emoji}</span>
+              ))}
+            </div>
+
+            {/* 5. 확인 버튼 */}
+            <button
+              type="button"
+              onClick={() => {
+                new Audio('/assets/피버타임.mp3').play().catch(() => {});
+                sfxClick();
+                setShowPromotionModal(false);
+              }}
+              className="w-full max-w-[200px] rounded-full bg-gradient-to-b from-yellow-300 to-amber-400 py-4 text-lg font-black text-amber-950 shadow-[0_5px_0_#b45309] active:translate-y-1 active:shadow-none hover:brightness-105 transition-all duration-150 animate-in fade-in-50 delay-700"
+            >
+              확인 🥋
+            </button>
+
           </div>
         </div>
       )}
