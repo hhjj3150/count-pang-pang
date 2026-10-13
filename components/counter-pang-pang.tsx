@@ -78,7 +78,7 @@ const LEVEL_DESC: Record<number, string> = {
   6: "앞뒤 차이",
   7: "홀수/짝수만 합",
   8: "?에 들어갈 숫자",
-  9: "이등분 조합 선택",
+  9: "전체합의 이등분\n조합선택", // \n = 카드 안에서 줄바꿈
   10: "붉은 숫자의 곱",
 }
 
@@ -1833,7 +1833,7 @@ export default function CounterPangPang() {
             
             {/* 아랫줄: 이름 표시 (입체 효과 싹 빼고, 깔끔한 평면 글씨 + 반투명 캡슐 배경) */}
             <span 
-              className={cn("whitespace-nowrap text-[11px] font-bold px-2 py-0.5 rounded-full tracking-wide", isLocked ? "bg-black/40 text-white/70" : "bg-black/60 text-white")}
+              className={cn("whitespace-pre text-center leading-tight text-[11px] font-bold px-2 py-0.5 rounded-full tracking-wide", isLocked ? "bg-black/40 text-white/70" : "bg-black/60 text-white")}
             >
               {isLocked ? "🔒 " : ""}{LEVEL_DESC[lv] ?? LEVEL_NAMES[lv]}
             </span>
