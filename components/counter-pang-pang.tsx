@@ -67,6 +67,21 @@ const LEVEL_NAMES: Record<number, string> = {
   11: "그랜드 마스터",
 }
 
+// 🎮 스테이지 선택 카드에 표시되는 레벨별 게임 설명
+const LEVEL_DESC: Record<number, string> = {
+  0: "앞자리 합 1",
+  1: "앞자리 합 2",
+  2: "뒷자리 합",
+  3: "6자리 합",
+  4: "7자리 합",
+  5: "앞뒤 자리 비교",
+  6: "앞뒤 차이",
+  7: "홀수/짝수만 합",
+  8: "?에 들어갈 숫자",
+  9: "이등분 조합 선택",
+  10: "붉은 숫자의 곱",
+}
+
 const LEVEL_TIMER: Record<number, number> = {
   0: 15,
   1: 15,
@@ -1800,11 +1815,19 @@ export default function CounterPangPang() {
               />
             </div>
 {/* 💖 하트 중앙에 표시될 클리어 보상 포인트 텍스트 (잠긴 레벨도 노출, 노란색, 레벨별 차등 지급) */}
-        <div className="pointer-events-none absolute bottom-[12%] left-1/2 z-20 flex -translate-x-1/2 items-center justify-center">
+        <div className="pointer-events-none absolute bottom-[15%] left-1/2 z-20 flex -translate-x-1/2 items-center justify-center">
           <span className="text-sm font-black text-yellow-400 drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]">
             +{lv === 0 ? 5 : Math.min(110, 20 + lv * 10)}P
           </span>
         </div>
+        {/* 🎮 게임 설명 (카드 맨 아래, 잠긴 레벨도 어떤 게임인지 미리 보이도록 항상 표시) */}
+        {LEVEL_DESC[lv] && (
+          <div className="pointer-events-none absolute inset-x-1 bottom-1 z-20 flex justify-center">
+            <span className="whitespace-nowrap rounded-full bg-sky-600/90 px-2 py-0.5 text-[10px] font-bold leading-tight text-white">
+              {LEVEL_DESC[lv]}
+            </span>
+          </div>
+        )}
             {/* 2. 글씨 (레벨은 입체감 유지, 아래 이름은 깔끔한 평면 캡슐 글씨로 변경!) */}
           <div className="relative z-10 flex flex-col items-center gap-1">
             

@@ -15,3 +15,13 @@
 - 모바일 세로 화면 최적화(`max-w-[440px]`).
 - SSR 안전성 필수: `localStorage`, `navigator` 등 브라우저 API는 `useEffect` 안에서, `typeof window !== "undefined"` 방어와 함께 사용.
 - 푸시 전 `next build`로 빌드 통과를 확인합니다. (`next.config.mjs`가 타입 에러를 무시하므로 `npx tsc --noEmit`도 함께 확인)
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
