@@ -696,10 +696,28 @@ export default function CounterPangPang() {
   const [ownedBgs, setOwnedBgs] = useState<string[]>(["가로수드라이브.mp4", "해변의드라이브.mp4"]);
   const [equippedBg, setEquippedBg] = useState<string>("가로수드라이브.mp4");
 
+  // 🏞️ 앱 실행 시 저장된 보유/적용 배경 불러오기 (기본 보유 배경은 항상 유지)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedOwned = localStorage.getItem("cp_owned_bgs");
+      if (savedOwned) {
+        const parsed: string[] = JSON.parse(savedOwned);
+        setOwnedBgs(prev => Array.from(new Set([...prev, ...parsed])));
+      }
+      const savedEquipped = localStorage.getItem("cp_equipped_bg");
+      if (savedEquipped) setEquippedBg(savedEquipped);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const buyBackground = (file: string, price: number) => {
     if (points >= price) {
       setPoints(prev => prev - price);
-      setOwnedBgs(prev => [...prev, file]);
+      const newOwned = Array.from(new Set([...ownedBgs, file]));
+      setOwnedBgs(newOwned);
+      localStorage.setItem("cp_owned_bgs", JSON.stringify(newOwned));
       alert("🎉 배경을 성공적으로 구매했습니다! 이제 장착해보세요.");
     } else {
       alert(`포인트가 부족합니다. (필요 포인트: ${price}P)`);
