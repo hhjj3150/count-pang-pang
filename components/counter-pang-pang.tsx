@@ -104,7 +104,10 @@ const ri = (max: number) => Math.floor(Math.random() * max)
 const rd = () => ri(10)
 const mkDigits = (n: number) => Array.from({ length: n }, rd)
 const sum = (a: number[]) => a.reduce((x, y) => x + y, 0)
-const today = () => new Date().toISOString().slice(0, 10)
+// 📅 휴대폰 현지 시간 기준 날짜 (YYYY-MM-DD). toISOString()은 UTC라 한국에선 오전 9시에 날짜가 바뀌는 문제가 있음
+const localDate = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+const today = () => localDate()
 
 function canSplitEven(arr: number[]) {
   const total = sum(arr)
@@ -917,7 +920,7 @@ export default function CounterPangPang() {
   // 앱 켤 때 오늘 날짜의 하트 구매 횟수 불러오기 (자정 24시 리셋 기준)
   useEffect(() => {
     const saved = localStorage.getItem("cp_heart_buy");
-    const currentToday = new Date().toISOString().slice(0, 10);
+    const currentToday = today();
     if (saved) {
       const parsed = JSON.parse(saved);
       if (parsed.date !== currentToday) {
@@ -933,7 +936,7 @@ export default function CounterPangPang() {
   // 💖 포인트로 하트 구매하는 함수 (50P 소모, 하루 최대 3회)
   const buyHeartWithPoints = () => {
     sfxClick();
-    const currentToday = new Date().toISOString().slice(0, 10);
+    const currentToday = today();
     const currentCount = heartBuyData.date === currentToday ? heartBuyData.count : 0;
 
     if (currentCount >= 3) {
@@ -966,7 +969,7 @@ export default function CounterPangPang() {
     const dt = new Date(d);
     const day = dt.getDay();
     const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(dt.setDate(diff)).toISOString().slice(0, 10);
+    return localDate(new Date(dt.setDate(diff)));
   };
 
   useEffect(() => {
@@ -1088,7 +1091,8 @@ export default function CounterPangPang() {
         let h = typeof d.hearts === "number" ? d.hearts : 5
         let hd = d.heartDate ?? today()
         if (hd !== today()) {
-          h = 5
+          // 💖 날이 바뀌면 5개까지 채워주되, 전날 5개 이상 모아둔 하트는 그대로 유지
+          h = Math.max(h, 5)
           hd = today()
         }
         setNickname(d.nickname ?? null)
@@ -1305,12 +1309,18 @@ export default function CounterPangPang() {
   }, [screen, locked, timeLeft, resolve, isPaused])
   // ▲▲▲ 여기까지 교체 완료 ▲▲▲
 // ⏱️ 실시간 피버 감시자: 남은 시간이 2/3 미만으로 떨어지는 순간 즉시 피버 강제 종료
+  // (문제가 바뀐 직후엔 timeLeft가 아직 이전 문제 값이라 판정을 건너뜀 → 그랜드 마스터에서 피버가 잘못 꺼지던 문제 방지)
+  const feverQRef = useRef(-1);
   useEffect(() => {
+    if (feverQRef.current !== qIndex) {
+      feverQRef.current = qIndex;
+      return;
+    }
     if (isFever && currentQ && timeLeft < currentQ.timer * (2 / 3)) {
       setIsFever(false);
       setFastCombo(0);
     }
-  }, [timeLeft, isFever, currentQ]);
+  }, [timeLeft, isFever, currentQ, qIndex]);
   const startLevel = useCallback(
     (level: number) => {
       if (level > unlocked) {
@@ -1360,67 +1370,44 @@ export default function CounterPangPang() {
     if (typeof window !== "undefined" && navigator.vibrate) navigator.vibrate(30); // 📱 지우기 입력 시 짧은 진동
     setInput((v) => v.slice(0, -1))
   }
-  const onNumSubmit = () => {
-    if (!currentQ || input === "") return
-    const isCorrect = Number(input) === currentQ.answer;
-    
-    // 예제 문제가 아닐 경우 피버 및 점수 계산
-    if (!isExample) {
-      if (isCorrect) {
-          // 1. 1/3 시간 안에 맞혔는지 먼저 체크!
-          const isFast = timeLeft >= currentQ.timer * (2 / 3);
-
-          if (!isFast) {
-            // 🚨 늦게 맞혔을 때: 즉시 피버 해제, 콤보 초기화, 10점만 부여
-            setIsFever(false);
-            setFastCombo(0);
-            setPoints((prev) => prev + 10);
-          } else {
-            // ⚡ 빨리 맞혔을 때: 기존 피버 상태면 15점, 아니면 10점 부여
-            const pointToAdd = isFever ? 15 : 10;
-            setPoints((prev) => prev + pointToAdd);
-
-            // 콤보 증가 및 피버 발동 (3연속 정답 & 4번째 문제 이상)
-            setFastCombo((prev) => {
-              const newCombo = prev + 1;
-              if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
-              return newCombo;
-            });
-          }
-      } else {
-        // 오답 시 피버와 콤보 즉시 해제
-        setIsFever(false);
-        setFastCombo(0);
-      }
+  // 🎯 공통 채점 (숫자 입력 / 비교 / 이등분 모두 같은 규칙)
+  // - 예제 문제(1~3번)는 포인트 없음
+  // - 빨리(남은 시간 2/3 이상) 맞히면: 피버 중 15P, 아니면 10P + 콤보 증가 (3연속이면 피버 발동)
+  // - 늦게 맞히면: 10P, 피버·콤보 해제
+  // - 틀리면: 피버·콤보 해제
+  const applyScore = (isCorrect: boolean) => {
+    if (!currentQ || isExample) return
+    if (!isCorrect) {
+      setIsFever(false);
+      setFastCombo(0);
+      return
     }
+    const isFast = timeLeft >= currentQ.timer * (2 / 3);
+    if (!isFast) {
+      setIsFever(false);
+      setFastCombo(0);
+      setPoints((prev) => prev + 10);
+      return
+    }
+    setPoints((prev) => prev + (isFever ? 15 : 10));
+    setFastCombo((prev) => {
+      const newCombo = prev + 1;
+      if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
+      return newCombo;
+    });
+  }
+
+  const onNumSubmit = () => {
+    if (!currentQ || input === "" || locked) return
+    const isCorrect = Number(input) === currentQ.answer;
+    applyScore(isCorrect);
     resolve(isCorrect);
   }
   const onCompare = (choice: "front" | "back" | "equal") => {
-    if (!currentQ) return
+    if (!currentQ || locked) return
     sfxClick()
     const isCorrect = choice === currentQ.answer;
-    
-    // 예제 문제가 아닐 경우 피버 및 점수 계산
-    if (!isExample) {
-      if (isCorrect) {
-        const pointToAdd = isFever ? 15 : 10;
-        setPoints(prev => prev + pointToAdd);
-
-        if (timeLeft >= currentQ.timer * (2 / 3)) {
-          setFastCombo(prev => {
-            const newCombo = prev + 1;
-            if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
-            return newCombo;
-          });
-        } else {
-          setFastCombo(0);
-        }
-      } else {
-        setIsFever(false);
-        setFastCombo(0);
-      }
-    }
-    
+    applyScore(isCorrect);
     resolve(isCorrect);
   }
   const togglePartition = (i: number) => {
@@ -1429,17 +1416,20 @@ export default function CounterPangPang() {
     setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]))
   }
   const onPartitionSubmit = () => {
-    if (!currentQ) return
+    if (!currentQ || locked) return
     const all = [...currentQ.front, ...currentQ.back]
     const selSum = selected.reduce((a, i) => a + all[i], 0)
     const total = sum(all)
     const valid = selected.length > 0 && selected.length < all.length && selSum === total - selSum
+    applyScore(valid)
     resolve(valid)
   }
   const onPartitionImpossible = () => {
-    if (!currentQ) return
+    if (!currentQ || locked) return
     sfxClick()
-    resolve(!currentQ.canPartition)
+    const isCorrect = !currentQ.canPartition
+    applyScore(isCorrect)
+    resolve(isCorrect)
   }
 
   const rechargeAd = () => {
@@ -2455,7 +2445,7 @@ export default function CounterPangPang() {
                     </div>
                   </div>
                   <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
-                    오늘 잔여: {3 - (heartBuyData.date === new Date().toISOString().slice(0, 10) ? heartBuyData.count : 0)}회
+                    오늘 잔여: {3 - (heartBuyData.date === today() ? heartBuyData.count : 0)}회
                   </span>
                 </div>
 
