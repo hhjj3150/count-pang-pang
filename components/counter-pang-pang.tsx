@@ -1091,7 +1091,8 @@ export default function CounterPangPang() {
         let h = typeof d.hearts === "number" ? d.hearts : 5
         let hd = d.heartDate ?? today()
         if (hd !== today()) {
-          h = 5
+          // 💖 날이 바뀌면 5개까지 채워주되, 전날 5개 이상 모아둔 하트는 그대로 유지
+          h = Math.max(h, 5)
           hd = today()
         }
         setNickname(d.nickname ?? null)
@@ -1369,67 +1370,44 @@ export default function CounterPangPang() {
     if (typeof window !== "undefined" && navigator.vibrate) navigator.vibrate(30); // 📱 지우기 입력 시 짧은 진동
     setInput((v) => v.slice(0, -1))
   }
-  const onNumSubmit = () => {
-    if (!currentQ || input === "") return
-    const isCorrect = Number(input) === currentQ.answer;
-    
-    // 예제 문제가 아닐 경우 피버 및 점수 계산
-    if (!isExample) {
-      if (isCorrect) {
-          // 1. 1/3 시간 안에 맞혔는지 먼저 체크!
-          const isFast = timeLeft >= currentQ.timer * (2 / 3);
-
-          if (!isFast) {
-            // 🚨 늦게 맞혔을 때: 즉시 피버 해제, 콤보 초기화, 10점만 부여
-            setIsFever(false);
-            setFastCombo(0);
-            setPoints((prev) => prev + 10);
-          } else {
-            // ⚡ 빨리 맞혔을 때: 기존 피버 상태면 15점, 아니면 10점 부여
-            const pointToAdd = isFever ? 15 : 10;
-            setPoints((prev) => prev + pointToAdd);
-
-            // 콤보 증가 및 피버 발동 (3연속 정답 & 4번째 문제 이상)
-            setFastCombo((prev) => {
-              const newCombo = prev + 1;
-              if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
-              return newCombo;
-            });
-          }
-      } else {
-        // 오답 시 피버와 콤보 즉시 해제
-        setIsFever(false);
-        setFastCombo(0);
-      }
+  // 🎯 공통 채점 (숫자 입력 / 비교 / 이등분 모두 같은 규칙)
+  // - 예제 문제(1~3번)는 포인트 없음
+  // - 빨리(남은 시간 2/3 이상) 맞히면: 피버 중 15P, 아니면 10P + 콤보 증가 (3연속이면 피버 발동)
+  // - 늦게 맞히면: 10P, 피버·콤보 해제
+  // - 틀리면: 피버·콤보 해제
+  const applyScore = (isCorrect: boolean) => {
+    if (!currentQ || isExample) return
+    if (!isCorrect) {
+      setIsFever(false);
+      setFastCombo(0);
+      return
     }
+    const isFast = timeLeft >= currentQ.timer * (2 / 3);
+    if (!isFast) {
+      setIsFever(false);
+      setFastCombo(0);
+      setPoints((prev) => prev + 10);
+      return
+    }
+    setPoints((prev) => prev + (isFever ? 15 : 10));
+    setFastCombo((prev) => {
+      const newCombo = prev + 1;
+      if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
+      return newCombo;
+    });
+  }
+
+  const onNumSubmit = () => {
+    if (!currentQ || input === "" || locked) return
+    const isCorrect = Number(input) === currentQ.answer;
+    applyScore(isCorrect);
     resolve(isCorrect);
   }
   const onCompare = (choice: "front" | "back" | "equal") => {
-    if (!currentQ) return
+    if (!currentQ || locked) return
     sfxClick()
     const isCorrect = choice === currentQ.answer;
-    
-    // 예제 문제가 아닐 경우 피버 및 점수 계산
-    if (!isExample) {
-      if (isCorrect) {
-        const pointToAdd = isFever ? 15 : 10;
-        setPoints(prev => prev + pointToAdd);
-
-        if (timeLeft >= currentQ.timer * (2 / 3)) {
-          setFastCombo(prev => {
-            const newCombo = prev + 1;
-            if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
-            return newCombo;
-          });
-        } else {
-          setFastCombo(0);
-        }
-      } else {
-        setIsFever(false);
-        setFastCombo(0);
-      }
-    }
-    
+    applyScore(isCorrect);
     resolve(isCorrect);
   }
   const togglePartition = (i: number) => {
@@ -1438,17 +1416,20 @@ export default function CounterPangPang() {
     setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]))
   }
   const onPartitionSubmit = () => {
-    if (!currentQ) return
+    if (!currentQ || locked) return
     const all = [...currentQ.front, ...currentQ.back]
     const selSum = selected.reduce((a, i) => a + all[i], 0)
     const total = sum(all)
     const valid = selected.length > 0 && selected.length < all.length && selSum === total - selSum
+    applyScore(valid)
     resolve(valid)
   }
   const onPartitionImpossible = () => {
-    if (!currentQ) return
+    if (!currentQ || locked) return
     sfxClick()
-    resolve(!currentQ.canPartition)
+    const isCorrect = !currentQ.canPartition
+    applyScore(isCorrect)
+    resolve(isCorrect)
   }
 
   const rechargeAd = () => {
