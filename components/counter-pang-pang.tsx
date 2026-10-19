@@ -1733,18 +1733,18 @@ export default function CounterPangPang() {
             <button
               type="button"
               onClick={handleShare}
-              className="flex flex-1 items-center justify-center gap-1 rounded-2xl bg-sky-200/60 py-3 text-sm font-bold text-black/80 shadow-sm active:scale-95"
+              className="flex flex-none items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-2.5 py-3 text-sm font-bold text-black/80 shadow-sm active:scale-95"
             >
               💌 초대
             </button>
             
-            {/* 오른쪽: 광고 보고 하트 충전하기 (flex-[3]) */}
+            {/* 오른쪽: 광고 보고 하트 충전하기 (남은 폭 전부 사용, 작은 폰에서도 한 줄 유지) */}
             <button
               type="button"
               onClick={rechargeAd}
-              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-sky-200/60 py-3 text-sm font-black text-black/80 active:scale-95"
+              className="flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-1.5 py-3 text-[clamp(10px,3.3vw,14px)] font-black text-black/80 active:scale-95"
             >
-              📺 광고 보고 하트 충전 <span className="rounded-full bg-white/60 px-2 py-0.5 text-xs">+1 💖</span>
+              📺 광고 보고 하트 충전 <span className="rounded-full bg-white/60 px-1 py-0.5 text-[0.8em]">+1 💖</span>
             </button>
           </div>
 
