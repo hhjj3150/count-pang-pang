@@ -404,6 +404,203 @@ function Numpad({
 /* =========================================================================
    메인 앱 컴포넌트
    ========================================================================= */
+/* ------------------------- 🥋 승급 축하 연출 ------------------------- */
+const BELT_NAMES = ["화이트", "블루", "퍼플", "브라운", "블랙"] as const
+type BeltName = (typeof BELT_NAMES)[number]
+
+// 띠 색상 (base: 띠 색, edge: 테두리, bar: 그랄이 감기는 랭크바, stitch: 박음질 선)
+const BELT_COLORS: Record<BeltName, { base: string; edge: string; bar: string; stitch: string }> = {
+  화이트: { base: "#f8fafc", edge: "#cbd5e1", bar: "#18181b", stitch: "rgba(100,116,139,0.45)" },
+  블루: { base: "#2563eb", edge: "#1e3a8a", bar: "#18181b", stitch: "rgba(255,255,255,0.35)" },
+  퍼플: { base: "#7c3aed", edge: "#4c1d95", bar: "#18181b", stitch: "rgba(255,255,255,0.35)" },
+  브라운: { base: "#92400e", edge: "#451a03", bar: "#18181b", stitch: "rgba(255,255,255,0.3)" },
+  블랙: { base: "#18181b", edge: "#000000", bar: "#dc2626", stitch: "rgba(255,255,255,0.25)" },
+}
+
+// "🟦 블루 3그랄" → { name: "블루", stripes: 3 }
+function parseBelt(badge: string): { name: BeltName; stripes: number } {
+  const name = BELT_NAMES.find((n) => badge.includes(n)) ?? "화이트"
+  const m = badge.match(/(\d)그랄/)
+  return { name, stripes: m ? Number(m[1]) : 0 }
+}
+
+// 화면 가운데 크게 보이는 띠 그림 (끝부분 랭크바에 그랄 최대 4개)
+function BeltGraphic({ name, stripes, flyLastStripe = false }: { name: BeltName; stripes: number; flyLastStripe?: boolean }) {
+  const c = BELT_COLORS[name]
+  const stitchLine = { backgroundImage: `repeating-linear-gradient(90deg, ${c.stitch} 0 7px, transparent 7px 12px)` }
+  return (
+    <div
+      className="relative h-16 w-[78vw] max-w-[320px] rounded-lg"
+      style={{
+        background: `linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 45%, rgba(0,0,0,0.18)), ${c.base}`,
+        boxShadow: `0 14px 28px rgba(0,0,0,0.22), inset 0 0 0 2px ${c.edge}`,
+      }}
+    >
+      <div className="absolute inset-x-2 top-2.5 h-px" style={stitchLine} />
+      <div className="absolute inset-x-2 bottom-2.5 h-px" style={stitchLine} />
+      {/* 랭크바 + 그랄 */}
+      <div
+        className="absolute inset-y-0 right-[9%] flex w-[26%] items-stretch justify-evenly px-1"
+        style={{ background: c.bar, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.4)" }}
+      >
+        {[0, 1, 2, 3].map((i) =>
+          i < stripes ? (
+            <span
+              key={i}
+              className={cn(
+                "w-[9px] rounded-[1px] bg-white shadow-[0_0_2px_rgba(0,0,0,0.4)]",
+                flyLastStripe && i === stripes - 1 && "cpp-stripe-fly",
+              )}
+            />
+          ) : (
+            <span key={i} className="w-[9px]" />
+          ),
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PromotionCelebration({ from, to, onClose }: { from?: string; to: { badge: string; style: string }; onClose: () => void }) {
+  const next = parseBelt(to.badge)
+  const prev = from ? parseBelt(from) : { name: next.name, stripes: Math.max(0, next.stripes - 1) }
+  const isBeltUp = prev.name !== next.name
+
+  // 꽃가루 / 불꽃놀이 입자 (처음 한 번만 무작위로 만들기)
+  const petals = useMemo(
+    () =>
+      Array.from({ length: 56 }, (_, i) => ({
+        left: Math.random() * 100,
+        w: 10 + Math.random() * 11,
+        color: ["#f9a8d4", "#fbcfe8", "#fde68a", "#ffffff", "#c4b5fd", "#fda4af"][i % 6],
+        t: 3.6 + Math.random() * 3,
+        d: 1.0 + Math.random() * 2.2,
+        sway: (Math.random() < 0.5 ? -1 : 1) * (20 + Math.random() * 40),
+        round: i % 3 === 0,
+      })),
+    [],
+  )
+  const bursts = useMemo(
+    () =>
+      [
+        { x: 18, y: 16 }, { x: 80, y: 13 }, { x: 50, y: 6 }, { x: 14, y: 46 }, { x: 86, y: 42 }, { x: 52, y: 78 },
+      ].map((b, bi) => ({
+        ...b,
+        color: ["#f43f5e", "#f59e0b", "#8b5cf6", "#10b981", "#3b82f6", "#ec4899"][bi],
+        sparks: Array.from({ length: 20 }, (_, i) => {
+          const a = (i / 20) * Math.PI * 2
+          const r = 65 + Math.random() * 55
+          return { dx: Math.cos(a) * r, dy: Math.sin(a) * r }
+        }),
+        d: 1.4 + bi * 0.3,
+      })),
+    [],
+  )
+
+  return (
+    <div className="cpp-promo-in fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden bg-gradient-to-b from-amber-50 via-rose-50 to-sky-100 px-6">
+      {/* 은은하게 도는 햇살 */}
+      <div className="cpp-promo-rays pointer-events-none absolute left-1/2 top-[42%] h-[180vmax] w-[180vmax] -translate-x-1/2 -translate-y-1/2 rounded-full" />
+      <div className="pointer-events-none absolute left-1/2 top-[42%] h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/70 blur-3xl" />
+
+      {/* 🎆 불꽃놀이 (띠 승급 때만) */}
+      {isBeltUp &&
+        bursts.map((b, bi) => (
+          <div key={bi} className="pointer-events-none absolute" style={{ left: `${b.x}%`, top: `${b.y}%` }}>
+            {b.sparks.map((sp, i) => (
+              <span
+                key={i}
+                className="cpp-spark absolute h-2 w-2 rounded-full"
+                style={{
+                  background: b.color,
+                  boxShadow: `0 0 6px ${b.color}`,
+                  ["--dx" as string]: `${sp.dx}px`,
+                  ["--dy" as string]: `${sp.dy}px`,
+                  ["--d" as string]: `${b.d}s`,
+                } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        ))}
+
+      {/* 🌸 꽃가루 */}
+      <div className="pointer-events-none absolute inset-0">
+        {petals.map((pt, i) => (
+          <span
+            key={i}
+            className="cpp-petal absolute top-0"
+            style={{
+              left: `${pt.left}%`,
+              width: pt.w,
+              height: pt.w * 0.75,
+              background: pt.color,
+              borderRadius: pt.round ? "50%" : "100% 0 100% 0",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
+              ["--t" as string]: `${pt.t}s`,
+              ["--d" as string]: `${pt.d}s`,
+              ["--sway" as string]: `${pt.sway}px`,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+
+      <div className="relative flex w-full max-w-sm flex-col items-center text-center">
+        {/* 상단 문구: 그랄 = '축' 도장 / 띠 = Congratulations */}
+        <div className="flex h-36 items-end justify-center">
+          {isBeltUp ? (
+            <h2 className="cpp-congrats pb-2 text-[clamp(28px,9vw,40px)] font-black italic leading-none drop-shadow-[0_3px_0_rgba(255,255,255,0.8)]">
+              Congratulations!
+            </h2>
+          ) : (
+            <div className="cpp-stamp grid h-32 w-32 place-items-center rounded-full border-[5px] border-amber-300 bg-gradient-to-br from-rose-500 to-red-600 shadow-[0_10px_25px_rgba(225,29,72,0.45),inset_0_0_0_4px_rgba(255,255,255,0.35)]">
+              <span className="text-[72px] font-black leading-none text-white drop-shadow-[0_3px_0_rgba(127,29,29,0.6)]">축</span>
+            </div>
+          )}
+        </div>
+
+        {/* 가운데 큰 띠 */}
+        <div className="relative my-10 grid place-items-center">
+          {isBeltUp ? (
+            <>
+              <div className="cpp-old-belt-out col-start-1 row-start-1">
+                <BeltGraphic name={prev.name} stripes={prev.stripes} />
+              </div>
+              <div className="cpp-belt-fly col-start-1 row-start-1">
+                <BeltGraphic name={next.name} stripes={next.stripes} />
+              </div>
+              <div
+                className="cpp-impact-flash pointer-events-none col-start-1 row-start-1 h-40 w-40 rounded-full bg-white"
+                style={{ animationDelay: "1.25s", filter: "blur(8px)" }}
+              />
+            </>
+          ) : (
+            <div className="cpp-belt-pop">
+              <BeltGraphic name={next.name} stripes={next.stripes} flyLastStripe />
+            </div>
+          )}
+        </div>
+
+        {/* 새 등급 이름 */}
+        <div className="cpp-rise-in" style={{ ["--d" as string]: "1.9s" } as React.CSSProperties}>
+          <div className={cn("inline-block rounded-xl px-6 py-2 text-xl font-black shadow-lg", to.style)}>{to.badge}</div>
+          <p className="mt-3 text-lg font-black text-rose-500 drop-shadow-sm">
+            {isBeltUp ? `${next.name} 띠로 승급했어요! 🥋` : `그랄을 하나 더 감았어요! 🎀`}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="cpp-rise-in mt-8 w-full max-w-[220px] rounded-full bg-gradient-to-b from-yellow-300 to-amber-400 py-4 text-lg font-black text-amber-950 shadow-[0_5px_0_#b45309] active:translate-y-1 active:shadow-none"
+          style={{ ["--d" as string]: "2.3s" } as React.CSSProperties}
+        >
+          확인 🥋
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function CounterPangPang() {
   
   
@@ -500,7 +697,7 @@ export default function CounterPangPang() {
   const [fastCombo, setFastCombo] = useState(0);
   // 🥋 승급 애니메이션 상태
   const [showPromotionModal, setShowPromotionModal] = useState(false);
-  const [promotionBelt, setPromotionBelt] = useState<{ badge: string; style: string } | null>(null);
+  const [promotionBelt, setPromotionBelt] = useState<{ badge: string; style: string; from?: string } | null>(null);
   const prevBeltRef = useRef<string | null>(null); // 이전 띠 기억용
   // 게임 중 승급하면 바로 띄우지 않고 '대기'시켰다가 게임이 끝난 뒤(결과 화면) 보여줌
   const [promotionPending, setPromotionPending] = useState(false);
@@ -533,7 +730,7 @@ export default function CounterPangPang() {
       if (oldBelt && oldBelt !== newBeltInfo.badge) {
         // 이전 띠와 다른 더 높은 띠로 올라갔다면 축하 연출 발동!
         // (게임/결과 화면이면 게임이 끝난 뒤 결과 화면에서 보여주도록 대기)
-        setPromotionBelt(newBeltInfo);
+        setPromotionBelt({ ...newBeltInfo, from: oldBelt });
         if (screenRef.current === "GAME" || screenRef.current === "RESULT") setPromotionPending(true);
         else setShowPromotionModal(true);
         prevBeltRef.current = newBeltInfo.badge; // 새로운 띠로 기억 갱신
@@ -2728,86 +2925,17 @@ export default function CounterPangPang() {
           </div>
         </div>
       )}
-      {/* ============================ 🥋 띠 승급 축하 애니메이션 모달 ============================ */}
+      {/* ============================ 🥋 승급 축하 연출 (그랄: '축' / 띠: Congratulations) ============================ */}
       {showPromotionModal && promotionBelt && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 px-6 backdrop-blur-md animate-in fade-in duration-300">
-          
-          {/* 🌟 화려하게 터지는 폭죽(Confetti) 배경 효과 */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {Array.from({ length: 40 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full"
-                style={{
-                  top: `${Math.random() * 80}%`,
-                  left: `${Math.random() * 100}%`,
-                  width: `${Math.random() * 8 + 4}px`,
-                  height: `${Math.random() * 8 + 4}px`,
-                  backgroundColor: ['#FFD700', '#FF8C00', '#FF4500', '#00FF7F', '#00BFFF', '#FF1493'][Math.floor(Math.random() * 6)],
-                  transform: `scale(${Math.random()})`,
-                  animation: `ping ${Math.random() * 2 + 1}s infinite alternate`
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="relative w-full max-w-sm text-center">
-            
-            {/* 1. 상단 팡팡 연출 */}
-            <div className="relative mb-4 flex justify-center scale-95 animate-bounce">
-              <span className="text-6xl">🎉</span>
-              <span className="absolute -top-4 text-3xl animate-ping">✨</span>
-            </div>
-
-            {/* 2. 대형 3D 스타일 승급 텍스트 */}
-            <h2 
-              className="text-4xl font-extrabold text-yellow-300 tracking-tight drop-shadow-[0_6px_6px_rgba(0,0,0,1)] uppercase animate-in slide-in-from-top-12 duration-500 mb-1"
-              style={{ fontFamily: "'MaplestoryOTFBold', sans-serif", WebkitTextStroke: '1px #b45309' }}
-            >
-              승급을 축하합니다!
-            </h2>
-            <p className="text-xs font-bold text-amber-200/90 tracking-widest drop-shadow mb-8 animate-pulse">BELT PROMOTION</p>
-
-            {/* 3. 승급 띠(벨트) 줌인 & 네온 연출 */}
-            <div className="relative mx-auto my-10 flex h-36 w-72 items-center justify-center rounded-3xl border-4 border-yellow-400/30 bg-gradient-to-b from-zinc-900 to-zinc-950 px-6 shadow-[0_0_50px_rgba(253,224,71,0.2),inset_0_2px_10px_rgba(255,255,255,0.1)] animate-in zoom-in-50 spin-in-12 duration-700">
-              
-              {/* 후광 효과 */}
-              <div className="absolute inset-0 rounded-3xl bg-radial-gradient from-yellow-400/20 to-transparent blur-xl animate-pulse" />
-              
-              <div className="relative flex flex-col items-center z-10 gap-3">
-                <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">NEW GRADE</span>
-                
-                {/* 띠 뱃지 */}
-                <div className={cn("rounded-xl px-6 py-2 text-lg font-black tracking-wide border shadow-2xl scale-110 animate-in zoom-in-75 delay-300 duration-500", promotionBelt.style)}>
-                  {promotionBelt.badge}
-                </div>
-                
-                <span className="text-[10px] font-bold text-emerald-400 animate-pulse">🥋 그랄(Stripe) 장착 완료!</span>
-              </div>
-            </div>
-
-            {/* 4. 장식 파티클들 */}
-            <div className="flex justify-center gap-1.5 mb-10 text-xl pointer-events-none">
-              {['✨', '⭐', '🥋', '🔥', '🏆', '⭐', '✨'].map((emoji, idx) => (
-                <span key={idx} style={{ animationDelay: `${idx * 150}ms` }} className="animate-bounce">{emoji}</span>
-              ))}
-            </div>
-
-            {/* 5. 확인 버튼 */}
-            <button
-              type="button"
-              onClick={() => {
-                new Audio('/assets/피버타임.mp3').play().catch(() => {});
-                sfxClick();
-                setShowPromotionModal(false);
-              }}
-              className="w-full max-w-[200px] rounded-full bg-gradient-to-b from-yellow-300 to-amber-400 py-4 text-lg font-black text-amber-950 shadow-[0_5px_0_#b45309] active:translate-y-1 active:shadow-none hover:brightness-105 transition-all duration-150 animate-in fade-in-50 delay-700"
-            >
-              확인 🥋
-            </button>
-
-          </div>
-        </div>
+        <PromotionCelebration
+          from={promotionBelt.from}
+          to={promotionBelt}
+          onClose={() => {
+            new Audio('/assets/피버타임.mp3').play().catch(() => {});
+            sfxClick();
+            setShowPromotionModal(false);
+          }}
+        />
       )}
       {/* ============================ 🚨 앱 종료 연출 모달 (순수 UI 버튼 작업) ============================ */}
         {exitPhase && (
