@@ -1536,7 +1536,8 @@ export default function CounterPangPang() {
       style={{ height: "100dvh" }}
     >
       <div className="relative mx-auto flex h-full w-full max-w-[440px] flex-col overflow-hidden bg-[#0b1020] text-white">
-        {MuteButton}
+        {/* 🎵 BGM 끄기/켜기 버튼은 로비에서만 표시 */}
+        {screen === "LOBBY" && MuteButton}
 
         {/* 토스트 */}
         {toast && (
@@ -1893,22 +1894,12 @@ export default function CounterPangPang() {
           {/* 상태바 */}
             {/* 상태바 */}
             <header className="flex-none px-4 pb-2 pt-4">
-              {/* relative를 추가해서 중앙 정렬의 기준점을 만들어 줍니다 */}
-              <div className="relative flex items-center justify-between py-1">
-                
-                {/* 1. 레벨 및 포인트 표시 (왼쪽 고정) */}
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-black ring-1 ring-white/20">
-            Lv.{chosenLevel}
-          </span>
-          {/* 포인트 지갑 & 피버 모드 표시 */}
-        <span className="flex items-center gap-1 rounded-full bg-yellow-400/20 px-2 py-1 text-sm font-black text-yellow-400 ring-1 ring-yellow-400/50">
-          {points}P
-        </span>
-        </div>
-
-                {/* 2. 타이머 & 문제 번호 (정중앙으로 강제 고정!) */}
-                <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2">
+              <div className="flex items-center justify-between gap-2 py-1">
+                {/* 1. 왼쪽: 레벨 · 타이머 · 문제 번호 */}
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-black ring-1 ring-white/20">
+                    Lv.{chosenLevel}
+                  </span>
                   <span
                     className={cn(
                       "rounded-full px-3 py-1 text-sm font-black tabular-nums ring-1",
@@ -1921,6 +1912,11 @@ export default function CounterPangPang() {
                     {qIndex + 1}/{TOTAL_Q}
                   </span>
                 </div>
+
+                {/* 2. 오른쪽: 포인트 지갑 (게임 중엔 BGM 버튼 대신 이 자리에 표시) */}
+                <span className="flex items-center gap-1 rounded-full bg-yellow-400/20 px-3 py-1 text-sm font-black tabular-nums text-yellow-400 ring-1 ring-yellow-400/50">
+                  {points}P
+                </span>
               </div>
 
               {/* 진행도 바 (이 부분은 원래 있던 그대로 유지됩니다) */}
