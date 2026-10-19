@@ -502,6 +502,10 @@ export default function CounterPangPang() {
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [promotionBelt, setPromotionBelt] = useState<{ badge: string; style: string } | null>(null);
   const prevBeltRef = useRef<string | null>(null); // 이전 띠 기억용
+  // 게임 중 승급하면 바로 띄우지 않고 '대기'시켰다가 게임이 끝난 뒤(결과 화면) 보여줌
+  const [promotionPending, setPromotionPending] = useState(false);
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
 
   // 🌟 [핵심 수술] 포인트 획득 자동 감지 센서!
   // 게임이나 출석으로 points가 올라가면, 센서가 감지해서 누적/월간 포인트도 같이 올려줍니다.
@@ -527,9 +531,11 @@ export default function CounterPangPang() {
       const newBeltInfo = getBeltInfo(nextTotalPoints).currentRank;
       
       if (oldBelt && oldBelt !== newBeltInfo.badge) {
-        // 이전 띠와 다른 더 높은 띠로 올라갔다면 즉시 축하 연출 발동!
+        // 이전 띠와 다른 더 높은 띠로 올라갔다면 축하 연출 발동!
+        // (게임/결과 화면이면 게임이 끝난 뒤 결과 화면에서 보여주도록 대기)
         setPromotionBelt(newBeltInfo);
-        setShowPromotionModal(true);
+        if (screenRef.current === "GAME" || screenRef.current === "RESULT") setPromotionPending(true);
+        else setShowPromotionModal(true);
         prevBeltRef.current = newBeltInfo.badge; // 새로운 띠로 기억 갱신
       }
       
@@ -1346,6 +1352,20 @@ export default function CounterPangPang() {
     },
     [unlocked, hearts, sfxClick, flashToast],
   )
+
+  // 🥋 대기 중인 승급 축하 화면 표시: 결과 화면 연출(팡!) 이 끝난 뒤, 또는 결과 화면을 벗어나면 바로
+  useEffect(() => {
+    if (!promotionPending || screen === "GAME") return
+    if (screen === "RESULT") {
+      const id = setTimeout(() => {
+        setPromotionPending(false)
+        setShowPromotionModal(true)
+      }, 1700)
+      return () => clearTimeout(id)
+    }
+    setPromotionPending(false)
+    setShowPromotionModal(true)
+  }, [promotionPending, screen])
 
   // 결과 연출 (통과 시 boom -> cheer)
   useEffect(() => {
