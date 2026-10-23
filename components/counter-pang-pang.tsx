@@ -247,7 +247,17 @@ function buildQuestion(chosenLevel: number, index: number): Question {
 
 function exampleText(q: Question) {
   if (q.type === "compare") return q.answer === "front" ? "앞이 큼" : q.answer === "back" ? "뒤가 큼" : "같음"
-  if (q.type === "partition") return q.canPartition ? "이등분 가능 (숫자 선택 후 제출)" : "이등분 불가"
+  if (q.type === "partition") {
+    if (!q.canPartition) return "이등분 불가"
+    // 합이 전체의 절반이 되는 숫자 조합 하나 찾아서 보여주기 (예: 7+1 = 8)
+    const all = [...q.front, ...q.back]
+    const half = sum(all) / 2
+    for (let m = 1; m < (1 << all.length) - 1; m++) {
+      const picked = all.filter((_, i) => (m >> i) & 1)
+      if (sum(picked) === half) return `${picked.join("+")} = ${half}`
+    }
+    return "이등분 가능"
+  }
   return String(q.answer)
 }
 
@@ -689,6 +699,13 @@ export default function CounterPangPang() {
   const [unlocked, setUnlocked] = useState(0)
   const [records, setRecords] = useState<Record<number, number>>({})
   const [muted, setMuted] = useState(false)
+  // 🔇 소리 끄기 상태 (효과음 재생 함수들이 항상 최신 값을 보도록 ref로도 보관)
+  const mutedRef = useRef(muted)
+  mutedRef.current = muted
+  const playSound = (src: string) => {
+    if (mutedRef.current) return
+    new Audio(src).play().catch(() => {})
+  }
   const [points, setPoints] = useState(0);
   const [lifetimePoints, setLifetimePoints] = useState(0); // 🌟 누적 포인트
   const [monthlyPoints, setMonthlyPoints] = useState(0);   // 🌟 월간 포인트
@@ -934,7 +951,7 @@ export default function CounterPangPang() {
     drivingSound.loop = true; 
     drivingSound.volume = 0.4; 
 
-    if (screen === "GAME") {
+    if (screen === "GAME" && !muted) {
       drivingSound.play().catch(e => console.log("주행 소리 재생 대기"));
     } else {
       drivingSound.pause(); 
@@ -944,7 +961,7 @@ export default function CounterPangPang() {
     const handleVis = () => {
       if (document.hidden) {
         drivingSound.pause();
-      } else if (screen === "GAME") {
+      } else if (screen === "GAME" && !muted) {
         drivingSound.play().catch(e => console.log("주행 소리 재생 대기"));
       }
     };
@@ -955,7 +972,7 @@ export default function CounterPangPang() {
       drivingSound.pause();
       document.removeEventListener("visibilitychange", handleVis); // 정리 코드 추가
     };
-  }, [screen]);
+  }, [screen, muted]);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [exitPhase, setExitPhase] = useState<"ask" | "goodbye" | null>(null);
 
@@ -1336,12 +1353,13 @@ export default function CounterPangPang() {
   }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate]);
 
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
-  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase });
+  const [quitConfirm, setQuitConfirm] = useState(false); // 게임 중 뒤로가기 → "그만둘까요?" 확인창
+  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
   useEffect(() => {
-    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase };
-  }, [showVault, showAttendance, previewItem, screen, exitPhase]);
+    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm };
+  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm]);
 
   // 1. 초기 진입 시 기본 방어막 1개 생성
   useEffect(() => {
@@ -1359,10 +1377,10 @@ export default function CounterPangPang() {
   // 3. 팝업이 뜰 때 히스토리 쌓기 (🌟 팝업에서 튕기는 현상 완벽 해결!)
   useEffect(() => {
     if (isPopRef.current) return;
-    if (exitPhase || showVault || showAttendance || previewItem) {
+    if (exitPhase || showVault || showAttendance || previewItem || showMyPage) {
       window.history.pushState(null, "", window.location.href);
     }
-  }, [exitPhase, showVault, showAttendance, previewItem]);
+  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage]);
 
   // 4. 진짜 뒤로가기를 눌렀을 때의 동작 흐름
   useEffect(() => {
@@ -1370,7 +1388,11 @@ export default function CounterPangPang() {
       isPopRef.current = true; // 스마트폰 뒤로가기 감지 켜기
       const current = stateRef.current;
       
-      if (current.exitPhase === "goodbye") {
+      if (current.showPromotionModal) {
+        // 승급 축하 화면은 뒤로가기로 닫기 (다음 뒤로가기에 대비해 방어막 다시 추가)
+        window.history.pushState(null, "", window.location.href);
+        setShowPromotionModal(false);
+      } else if (current.exitPhase === "goodbye") {
         setExitPhase("ask"); 
       } else if (current.exitPhase === "ask") {
         setExitPhase(null);
@@ -1380,7 +1402,19 @@ export default function CounterPangPang() {
         setShowVault(false);
       } else if (current.showAttendance) {
         setShowAttendance(false);
-      } else if (current.screen === "GAME" || current.screen === "RESULT") {
+      } else if (current.showMyPage) {
+        setShowMyPage(false);
+      } else if (current.screen === "GAME") {
+        // 게임 중엔 바로 나가지 않고 "그만둘까요?" 확인 (확인창에서 한 번 더 누르면 계속하기)
+        window.history.pushState(null, "", window.location.href);
+        if (current.quitConfirm) {
+          setQuitConfirm(false);
+          setIsPaused(false);
+        } else {
+          setQuitConfirm(true);
+          setIsPaused(true);
+        }
+      } else if (current.screen === "RESULT") {
         setScreen("LOBBY");
       } else {
         // 메인 화면에서 뒤로가기 -> 앱 꺼짐 방지용 방어막 추가 후 팝업 띄움
@@ -1397,6 +1431,12 @@ export default function CounterPangPang() {
   }, []);
 
   /* --------------------- 사운드 --------------------- */
+  // 🔇 저장된 소리 설정을 배경음악에도 반영 (앱을 다시 켜도 꺼둔 상태 유지)
+  useEffect(() => {
+    const bgm = (window as any).globalBgm as HTMLAudioElement | undefined
+    if (bgm) bgm.muted = muted
+  }, [muted, loaded])
+
   const beep = useCallback(
     (freq: number, dur: number, type: OscillatorType = "sine") => {
       if (muted) return
@@ -1419,12 +1459,8 @@ export default function CounterPangPang() {
     [muted],
   )
   const sfxClick = useCallback(() => beep(620, 0.07), [beep])
-  const sfxRight = useCallback(() => {
-      new Audio('/assets/정답.mp3').play().catch(e => console.log('재생 에러:', e));
-    }, []);
-    const sfxWrong = useCallback(() => {
-      new Audio('/assets/오답.mp3').play().catch(e => console.log('재생 에러:', e));
-    }, []);
+  const sfxRight = useCallback(() => playSound('/assets/정답.mp3'), []);
+  const sfxWrong = useCallback(() => playSound('/assets/오답.mp3'), []);
 
   const flashToast = useCallback((msg: string) => {
     setToast(msg)
@@ -1436,9 +1472,7 @@ export default function CounterPangPang() {
   const isExample = qIndex < 3
 // --- 🎵 피버타임 진입 효과음 ---
   useEffect(() => {
-    if (isFever) {
-      new Audio('/assets/피버타임.mp3').play().catch(e => console.log('재생 에러:', e));
-    }
+    if (isFever) playSound('/assets/피버타임.mp3');
   }, [isFever]);
   // 문제 전환 시 초기화
   useEffect(() => {
@@ -1470,6 +1504,7 @@ export default function CounterPangPang() {
   }, [chosenLevel])
 
   const advance = useCallback(() => {
+    if (screenRef.current !== "GAME") return // 게임 도중 나갔으면 진행 중단
     const next = qIndexRef.current + 1
     if (next >= TOTAL_Q) {
       finishGame()
@@ -1491,7 +1526,7 @@ export default function CounterPangPang() {
         setReaction("wrong")
         sfxWrong()
       }
-      setTimeout(advance, 950)
+      setTimeout(advance, isCorrect ? 950 : 1800) // 틀리면 정답을 볼 수 있게 조금 더 오래 머묾
     },
     [locked, advance, sfxRight, sfxWrong],
   )
@@ -1543,6 +1578,8 @@ export default function CounterPangPang() {
       setQuestions(qs)
       setQIndex(0)
     setCorrectCount(0)
+    setIsPaused(false)
+    setQuitConfirm(false)
     setIsFever(false) // 새 게임 시작 시 피버타임 강제 종료
     setFastCombo(0)   // 연속 정답 콤보 0으로 초기화
     setScreen("GAME")
@@ -1743,7 +1780,7 @@ export default function CounterPangPang() {
       // 동그라미를 빼고, 글씨가 여유 있게 들어가도록 가로 폭(px-4)을 늘린 예쁜 알약 모양
       className="absolute right-3 top-3 z-40 flex h-10 px-4 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white backdrop-blur-md shadow-lg"
     >
-      {muted ? "BGM 켜기" : "BGM 끄기"}
+      {muted ? "🔇 소리 켜기" : "🔊 소리 끄기"}
     </button>
   );
 
@@ -1813,7 +1850,6 @@ export default function CounterPangPang() {
                 type="button"
                 onClick={() => {
                   sfxClick()
-                  setMuted(false)
                   setScreen(nickname ? "LOBBY" : "LOGIN")
                 }}
                 className="w-full rounded-2xl bg-gradient-to-b from-yellow-300 to-amber-400 py-4 text-xl font-black text-amber-950 shadow-[0_6px_0_#b45309] active:translate-y-1 active:shadow-[0_2px_0_#b45309]"
@@ -1853,8 +1889,6 @@ export default function CounterPangPang() {
             sfxClick()
             setNickname(name)
             setScreen("LOBBY")
-            
-            setMuted(false)
 
             if ((window as any).globalBgm) {
               (window as any).globalBgm.play().catch(() => console.log("BGM 재생 대기"));
@@ -2108,8 +2142,43 @@ export default function CounterPangPang() {
             </>
           )}
 
+          {/* ⏸️ 게임 중 뒤로가기 → 그만둘지 확인 (이 동안 타이머 멈춤) */}
+          {quitConfirm && (
+            <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm">
+              <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop">
+                <p className="text-4xl">⏸️</p>
+                <h2 className="mt-2 text-2xl font-black text-zinc-900">게임을 그만둘까요?</h2>
+                <p className="mt-2 text-sm font-bold text-zinc-500">지금 그만두면 사용한 하트 💖는<br />돌려받을 수 없어요.</p>
+                <div className="mt-6 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfxClick()
+                      setQuitConfirm(false)
+                      setIsPaused(false)
+                      setScreen("LOBBY")
+                    }}
+                    className="rounded-2xl bg-zinc-200 py-3.5 text-base font-black text-zinc-700 active:scale-95"
+                  >
+                    그만두기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfxClick()
+                      setQuitConfirm(false)
+                      setIsPaused(false)
+                    }}
+                    className="rounded-2xl bg-gradient-to-b from-yellow-300 to-amber-400 py-3.5 text-base font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none"
+                  >
+                    계속하기 ▶
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 상태바 */}
-            {/* 상태바 */}
             <header className="flex-none px-4 pb-2 pt-4">
               <div className="flex items-center justify-between gap-2 py-1">
                 {/* 1. 왼쪽: 레벨 · 타이머 · 문제 번호 */}
@@ -2214,8 +2283,14 @@ export default function CounterPangPang() {
                   )}
 
                   {/* 예시 정답을 물음표 우측으로 이동! (세로 공간 절약) */}
-                  {isExample && (
+                  {isExample && reaction !== "wrong" && (
                     <div className="rounded-full bg-emerald-400/90 px-3 py-1.5 text-xs font-black text-emerald-950 shadow cpp-pop">
+                      정답: {exampleText(currentQ)}
+                    </div>
+                  )}
+                  {/* ❌ 틀렸을 때(시간 초과 포함) 정답 알려주기 */}
+                  {reaction === "wrong" && (
+                    <div className="rounded-full bg-rose-500 px-3 py-1.5 text-sm font-black text-white shadow-lg ring-2 ring-white/70 cpp-pop">
                       정답: {exampleText(currentQ)}
                     </div>
                   )}
@@ -2382,6 +2457,43 @@ export default function CounterPangPang() {
             </div>
 
             <div className="relative z-10 mt-8 w-full max-w-sm space-y-2">
+              {/* 🔁 바로 이어서 하기 (하트 1개 사용) */}
+              {(() => {
+                // 승급 축하 화면이 아직 대기 중이면 먼저 보여주고, 그다음에 이어서 시작
+                const playNow = (lv: number) => {
+                  if (promotionPending) {
+                    setPromotionPending(false)
+                    setShowPromotionModal(true)
+                    return
+                  }
+                  startLevel(lv)
+                }
+                return (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => playNow(chosenLevel)}
+                  className={cn(
+                    "rounded-2xl py-3.5 text-base font-black active:translate-y-0.5",
+                    passed && chosenLevel < MAX_LEVEL
+                      ? "bg-white/15 text-white ring-1 ring-white/30"
+                      : "col-span-2 bg-gradient-to-b from-sky-300 to-sky-500 text-sky-950 shadow-[0_4px_0_#0369a1]",
+                  )}
+                >
+                  🔁 다시 하기
+                </button>
+                {passed && chosenLevel < MAX_LEVEL && (
+                  <button
+                    type="button"
+                    onClick={() => playNow(chosenLevel + 1)}
+                    className="rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 py-3.5 text-base font-black text-emerald-950 shadow-[0_4px_0_#047857] active:translate-y-0.5"
+                  >
+                    다음 레벨 ▶
+                  </button>
+                )}
+              </div>
+                )
+              })()}
               {passed && (
                 <button
                   type="button"
@@ -2931,7 +3043,7 @@ export default function CounterPangPang() {
           from={promotionBelt.from}
           to={promotionBelt}
           onClose={() => {
-            new Audio('/assets/피버타임.mp3').play().catch(() => {});
+            playSound('/assets/피버타임.mp3');
             sfxClick();
             setShowPromotionModal(false);
           }}
