@@ -131,7 +131,17 @@ function pickDistinct(count: number, poolSize: number) {
   return idx.slice(0, count).sort((a, b) => a - b)
 }
 
-function buildQuestion(chosenLevel: number, index: number): Question {
+// 🧩 한 판(15문제) 만들기
+// 이등분 퍼즐(Lv.9)은 '이등분 불가' 정답을 한 판에 2~3문제만 섞고, 나머지는 숫자 조합을 골라야 하는 문제로 구성
+function buildGame(chosenLevel: number): Question[] {
+  if (chosenLevel === 9) {
+    const impossible = new Set(pickDistinct(2 + ri(2), TOTAL_Q))
+    return Array.from({ length: TOTAL_Q }, (_, i) => buildQuestion(chosenLevel, i, !impossible.has(i)))
+  }
+  return Array.from({ length: TOTAL_Q }, (_, i) => buildQuestion(chosenLevel, i))
+}
+
+function buildQuestion(chosenLevel: number, index: number, wantPartition?: boolean): Question {
   // 그랜드 마스터는 매 문제 Lv1~10 무작위, 그 외엔 선택 레벨(0은 1과 동일 로직)
   const logic = chosenLevel === 11 ? 1 + ri(10) : chosenLevel === 0 ? 1 : chosenLevel
   const timer = LEVEL_TIMER[logic]
@@ -213,8 +223,16 @@ function buildQuestion(chosenLevel: number, index: number): Question {
       }
     }
     case 9: {
-      const { front, back } = base(2 + ri(2))
-      const all = [...front, ...back]
+      // wantPartition: true = 이등분 가능한 번호판, false = 이등분 불가 번호판
+      // (지정이 없으면 그랜드 마스터용: 약 20%만 이등분 불가)
+      const want = wantPartition ?? Math.random() >= 0.2
+      let { front, back } = base(2 + ri(2))
+      let all = [...front, ...back]
+      for (let tries = 0; tries < 500; tries++) {
+        if (sum(all) > 0 && canSplitEven(all) === want) break
+        ;({ front, back } = base(2 + ri(2)))
+        all = [...front, ...back]
+      }
       return {
         level: logic, front, back, hangul, type: "partition", timer,
         title: "이등분 퍼즐", desc: "숫자를 골라 두 그룹의 합을 같게 만드세요",
@@ -1571,7 +1589,7 @@ export default function CounterPangPang() {
       }
       sfxClick()
       setHearts((h) => h - 1)
-      const qs = Array.from({ length: TOTAL_Q }, (_, i) => buildQuestion(level, i))
+      const qs = buildGame(level)
       correctRef.current = 0
       qIndexRef.current = 0
       setChosenLevel(level)
