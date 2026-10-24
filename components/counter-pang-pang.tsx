@@ -53,7 +53,7 @@ const HEART_CAP = 10
 const HANGUL = ["가", "나", "다", "라", "마", "거", "너", "더", "러", "머", "바", "사", "아", "자", "하", "호"]
 
 const LEVEL_NAMES: Record<number, string> = {
-  0: "앞자리 팡팡",
+  0: "게임 방법",
   1: "앞자리 팡팡",
   2: "뒷자리 팡팡",
   3: "구형 완전정복",
@@ -69,8 +69,8 @@ const LEVEL_NAMES: Record<number, string> = {
 
 // 🎮 스테이지 선택 카드 이름 캡슐에 표시되는 레벨별 게임 설명 (없으면 LEVEL_NAMES 사용)
 const LEVEL_DESC: Record<number, string> = {
-  0: "앞자리 합 1",
-  1: "앞자리 합 2",
+  0: "📖 게임 방법",
+  1: "앞자리 합",
   2: "뒷자리 합",
   3: "6자리 합",
   4: "7자리 합",
@@ -624,6 +624,216 @@ function PromotionCelebration({ from, to, onClose }: { from?: string; to: { badg
         >
           확인 🥋
         </button>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
+const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
+
+function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
+  const [page, setPage] = useState(0)
+  const last = TUTORIAL_PAGES.length - 1
+  const go = (n: number) => {
+    playClick()
+    setPage(Math.max(0, Math.min(last, n)))
+  }
+
+  // 👆 좌우로 밀어서 넘기기
+  const touchX = useRef<number | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current == null) return
+    const dx = e.changedTouches[0].clientX - touchX.current
+    touchX.current = null
+    if (dx < -60 && page < last) go(page + 1)
+    if (dx > 60 && page > 0) go(page - 1)
+  }
+
+  // ✏️ 3장 '직접 해 보기' 연습 문제 (시간 제한 없음)
+  const [practice, setPractice] = useState(() => buildQuestion(1, 5))
+  const [pInput, setPInput] = useState("")
+  const [pResult, setPResult] = useState<"idle" | "correct" | "wrong">("idle")
+  const submitPractice = () => {
+    if (pInput === "") return
+    setPResult(Number(pInput) === practice.answer ? "correct" : "wrong")
+  }
+  const newPractice = () => {
+    playClick()
+    setPractice(buildQuestion(1, 5))
+    setPInput("")
+    setPResult("idle")
+  }
+
+  const samplePlate: Question = {
+    level: 1, front: [3, 7], back: [1, 2, 5, 8], hangul: "가", type: "numpad", timer: 15,
+    title: "", desc: "", answer: 10,
+  }
+  const Bubble = ({ children }: { children: React.ReactNode }) => (
+    <div className="rounded-2xl bg-white/90 p-4 text-left text-[15px] font-bold leading-relaxed text-zinc-700 shadow-sm ring-1 ring-black/5">{children}</div>
+  )
+
+  const body = (() => {
+    switch (page) {
+      case 0:
+        return (
+          <>
+            <div className="flex justify-center"><div className="scale-110"><Plate q={samplePlate} /></div></div>
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center text-sm font-black">
+              <div className="rounded-xl bg-sky-100 py-2 text-sky-700">앞자리<br /><span className="text-xs font-bold">2~3자리 숫자</span></div>
+              <div className="rounded-xl bg-amber-100 py-2 text-amber-700">글자<br /><span className="text-xs font-bold">계산 안 해요</span></div>
+              <div className="rounded-xl bg-rose-100 py-2 text-rose-700">뒷자리<br /><span className="text-xs font-bold">4자리 숫자</span></div>
+            </div>
+            <Bubble>🚗 자동차 번호판의 숫자로 계산하는 게임이에요.<br />예) 앞자리 합 = <b className="text-sky-600">3 + 7 = 10</b></Bubble>
+          </>
+        )
+      case 1:
+        return (
+          <>
+            <div className="flex justify-center"><GameImage src="/assets/0-2-2.png" alt="팡이" className="h-28 w-28 object-contain" fallback={<span className="text-6xl">🐣</span>} /></div>
+            <Bubble>
+              <p>① 화면 위에 나오는 <b className="text-amber-600">문제</b>를 읽어요</p>
+              <p className="mt-2">② <b className="text-sky-600">번호판</b>을 보고 계산해요</p>
+              <p className="mt-2">③ 숫자를 누르고 <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">입력</b> 버튼!</p>
+              <p className="mt-3 text-sm text-zinc-500">💡 비교 문제는 버튼을, 이등분 문제는 숫자를 직접 눌러서 골라요.</p>
+            </Bubble>
+          </>
+        )
+      case 2:
+        return (
+          <>
+            <p className="text-center text-base font-black text-zinc-700">앞자리 숫자를 모두 더해 보세요!</p>
+            <div className="flex justify-center"><Plate q={practice} /></div>
+            <div className="flex items-center justify-center gap-2">
+              <div className="min-w-[80px] rounded-2xl bg-zinc-900 px-4 py-2 text-center text-3xl font-black tabular-nums text-white">{pInput || "?"}</div>
+              {pResult === "correct" && <span className="rounded-full bg-emerald-500 px-3 py-1.5 text-sm font-black text-white cpp-pop">정답! 🎉</span>}
+              {pResult === "wrong" && <span className="rounded-full bg-rose-500 px-3 py-1.5 text-sm font-black text-white cpp-shake">다시 해 볼까요? 🤔</span>}
+            </div>
+            {pResult === "correct" ? (
+              <div className="text-center">
+                <p className="text-sm font-bold text-zinc-600">잘했어요! 실제 게임도 이렇게 하면 돼요 👍</p>
+                <button type="button" onClick={newPractice} className="mt-2 rounded-full bg-white px-4 py-2 text-sm font-black text-zinc-700 shadow ring-1 ring-black/10 active:scale-95">🔄 한 문제 더</button>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-zinc-900/90 p-2">
+                <Numpad
+                  value={pInput}
+                  onKey={(k) => { playClick(); setPResult("idle"); setPInput((v) => (v.length >= 4 ? v : v + k)) }}
+                  onBackspace={() => { playClick(); setPResult("idle"); setPInput((v) => v.slice(0, -1)) }}
+                  onSubmit={submitPractice}
+                  disabled={false}
+                />
+              </div>
+            )}
+          </>
+        )
+      case 3:
+        return (
+          <>
+            <div className="flex items-center justify-center gap-2 text-5xl"><span>📝</span><span className="text-3xl font-black text-zinc-700">15문제</span></div>
+            <Bubble>
+              <p>✅ 15문제 중 <b className="text-emerald-600">13개 이상</b> 맞히면 통과! 다음 레벨이 열려요.</p>
+              <p className="mt-2">🟢 처음 <b>3문제</b>는 연습이라 정답을 알려줘요.</p>
+              <p className="mt-2">⏰ 시간이 다 되면 틀린 걸로 처리돼요.</p>
+              <p className="mt-2">❌ 틀리면 <b className="text-rose-500">빨간색으로 정답</b>을 보여줘요.</p>
+            </Bubble>
+          </>
+        )
+      case 4:
+        return (
+          <>
+            <p className="text-center text-5xl font-black italic text-orange-500" style={{ textShadow: "0 0 12px #FFD700, 0 0 24px #FF8C00" }}>FEVER TIME</p>
+            <Bubble>
+              <p>⚡ 시간이 넉넉할 때(⅔ 이상 남았을 때) 맞히면 <b>빠른 정답</b>!</p>
+              <p className="mt-2">🔥 빠른 정답 <b>3번 연속</b>이면 피버 타임 시작!</p>
+              <p className="mt-2">💰 문제당 포인트 <b>10P → 15P</b></p>
+              <p className="mt-2 text-sm text-zinc-500">늦게 맞히거나 틀리면 피버가 꺼져요.</p>
+            </Bubble>
+          </>
+        )
+      case 5:
+        return (
+          <Bubble>
+            <p>💖 <b>하트</b>: 게임 한 판에 1개 사용. 매일 5개까지 다시 채워져요.</p>
+            <p className="mt-3">🪙 <b>포인트</b>: 문제를 맞히고, 레벨을 통과하고, 📅 출석체크, 💌 친구 초대로 모아요.</p>
+            <p className="mt-3">🛒 <b>포인트 상점</b>: 모은 포인트로 카트, 배경, 이모티콘, 하트를 살 수 있어요.</p>
+          </Bubble>
+        )
+      case 6:
+        return (
+          <>
+            <div className="flex flex-col items-center gap-2">
+              {(["화이트", "블루", "퍼플", "브라운", "블랙"] as const).map((n) => (
+                <div key={n} className="flex w-full max-w-[260px] items-center gap-2">
+                  <span className="w-14 text-right text-sm font-black text-zinc-600">{n}</span>
+                  <div className="h-5 flex-1 rounded" style={{ background: BELT_COLORS[n].base, boxShadow: `inset 0 0 0 2px ${BELT_COLORS[n].edge}` }}>
+                    <div className="ml-auto mr-[10%] h-full w-[28%]" style={{ background: BELT_COLORS[n].bar }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Bubble>
+              <p>🥋 지금까지 모은 <b>누적 포인트</b>로 띠가 올라가요. 상점에서 포인트를 써도 줄지 않아요!</p>
+              <p className="mt-2">🎀 띠마다 <b>그랄(줄무늬) 4개</b>를 모으면 다음 띠로 승급해요.</p>
+            </Bubble>
+          </>
+        )
+      default:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            {Array.from({ length: 11 }, (_, i) => i + 1).map((lv) => (
+              <div key={lv} className="flex items-center gap-1.5 rounded-xl bg-white/90 px-2.5 py-2 text-left shadow-sm ring-1 ring-black/5">
+                <span className="text-xs font-black text-amber-600">Lv.{lv}</span>
+                <span className="text-[13px] font-bold leading-tight text-zinc-700">{(LEVEL_DESC[lv] ?? "모든 게임 섞어서").replace("\n", " ")}</span>
+              </div>
+            ))}
+          </div>
+        )
+    }
+  })()
+
+  return (
+    <div
+      className="cpp-promo-in fixed inset-0 z-[90] flex flex-col bg-gradient-to-b from-amber-50 via-rose-50 to-sky-100"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <div className="mx-auto flex h-full w-full max-w-[440px] flex-col px-5 pb-5 pt-4">
+        {/* 상단: 단계 표시 + 건너뛰기 (언제든 가능) */}
+        <div className="flex items-center justify-between">
+          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-black text-zinc-500 shadow-sm">🎓 게임 방법 {page + 1}/{TUTORIAL_PAGES.length}</span>
+          <button type="button" onClick={() => { playClick(); onSkip() }} className="rounded-full bg-white/80 px-3 py-1.5 text-sm font-black text-zinc-600 shadow-sm active:scale-95">
+            건너뛰기 ✕
+          </button>
+        </div>
+
+        <h2 key={`t${page}`} className="mt-4 text-center text-3xl font-black text-zinc-800 cpp-pop">{TUTORIAL_PAGES[page]}</h2>
+
+        <div key={`b${page}`} className="cpp-rise-in mt-4 flex min-h-0 flex-1 flex-col justify-center gap-4 overflow-y-auto cpp-no-scrollbar">
+          {body}
+        </div>
+
+        {/* 하단: 점 표시 + 이전/다음 */}
+        <div className="mt-4 flex justify-center gap-1.5">
+          {TUTORIAL_PAGES.map((_, i) => (
+            <span key={i} className={cn("h-2 rounded-full transition-all", i === page ? "w-6 bg-amber-500" : "w-2 bg-zinc-300")} />
+          ))}
+        </div>
+        <div className="mt-3 grid grid-cols-[1fr_2fr] gap-2">
+          <button type="button" disabled={page === 0} onClick={() => go(page - 1)} className="rounded-2xl bg-white py-3.5 text-base font-black text-zinc-600 shadow-sm ring-1 ring-black/10 disabled:opacity-40">
+            ◀ 이전
+          </button>
+          {page < last ? (
+            <button type="button" onClick={() => go(page + 1)} className="rounded-2xl bg-gradient-to-b from-yellow-300 to-amber-400 py-3.5 text-base font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-0.5">
+              다음 ▶
+            </button>
+          ) : (
+            <button type="button" onClick={() => { playClick(); onFinish() }} className="rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 py-3.5 text-base font-black text-emerald-950 shadow-[0_4px_0_#047857] active:translate-y-0.5">
+              시작하기! 🚀
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -1372,12 +1582,13 @@ export default function CounterPangPang() {
 
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const [quitConfirm, setQuitConfirm] = useState(false); // 게임 중 뒤로가기 → "그만둘까요?" 확인창
-  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm });
+  const [showTutorial, setShowTutorial] = useState(false); // 🎓 Lv.0 튜토리얼(게임 방법)
+  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
   useEffect(() => {
-    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm };
-  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm]);
+    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial };
+  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial]);
 
   // 1. 초기 진입 시 기본 방어막 1개 생성
   useEffect(() => {
@@ -1395,10 +1606,10 @@ export default function CounterPangPang() {
   // 3. 팝업이 뜰 때 히스토리 쌓기 (🌟 팝업에서 튕기는 현상 완벽 해결!)
   useEffect(() => {
     if (isPopRef.current) return;
-    if (exitPhase || showVault || showAttendance || previewItem || showMyPage) {
+    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial) {
       window.history.pushState(null, "", window.location.href);
     }
-  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage]);
+  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial]);
 
   // 4. 진짜 뒤로가기를 눌렀을 때의 동작 흐름
   useEffect(() => {
@@ -1406,7 +1617,11 @@ export default function CounterPangPang() {
       isPopRef.current = true; // 스마트폰 뒤로가기 감지 켜기
       const current = stateRef.current;
       
-      if (current.showPromotionModal) {
+      if (current.showTutorial) {
+        // 튜토리얼에서 뒤로가기 = 건너뛰기 (Lv.1은 열어줌)
+        setShowTutorial(false);
+        setUnlocked((u) => Math.max(u, 1));
+      } else if (current.showPromotionModal) {
         // 승급 축하 화면은 뒤로가기로 닫기 (다음 뒤로가기에 대비해 방어막 다시 추가)
         window.history.pushState(null, "", window.location.href);
         setShowPromotionModal(false);
@@ -1582,6 +1797,12 @@ export default function CounterPangPang() {
   }, [timeLeft, isFever, currentQ, qIndex]);
   const startLevel = useCallback(
     (level: number) => {
+      // 🎓 Lv.0은 게임이 아니라 튜토리얼 (하트 사용 안 함)
+      if (level === 0) {
+        sfxClick()
+        setShowTutorial(true)
+        return
+      }
       if (level > unlocked) {
         flashToast("아직 잠긴 레벨이에요! 🔒")
         return
@@ -1910,6 +2131,8 @@ export default function CounterPangPang() {
             sfxClick()
             setNickname(name)
             setScreen("LOBBY")
+            // 🎓 처음 가입했고 아직 Lv.1이 안 열렸다면 게임 방법을 자동으로 한 번 보여줌
+            if (unlocked < 1) setShowTutorial(true)
 
             if ((window as any).globalBgm) {
               (window as any).globalBgm.play().catch(() => console.log("BGM 재생 대기"));
@@ -2097,7 +2320,7 @@ export default function CounterPangPang() {
 {/* 💖 하트 중앙에 표시될 클리어 보상 포인트 텍스트 (잠긴 레벨도 노출, 노란색, 레벨별 차등 지급) */}
         <div className="pointer-events-none absolute bottom-[12%] left-1/2 z-20 flex -translate-x-1/2 items-center justify-center">
           <span className="text-sm font-black text-yellow-400 drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]">
-            +{lv === 0 ? 5 : Math.min(110, 20 + lv * 10)}P
+            {lv === 0 ? (cleared ? "" : "+5P") : `+${Math.min(110, 20 + lv * 10)}P`}
           </span>
         </div>
             {/* 2. 글씨 (레벨은 입체감 유지, 아래 이름은 깔끔한 평면 캡슐 글씨로 변경!) */}
@@ -3058,6 +3281,28 @@ export default function CounterPangPang() {
         </div>
       )}
       {/* ============================ 🥋 승급 축하 연출 (그랄: '축' / 띠: Congratulations) ============================ */}
+      {/* ============================ 🎓 튜토리얼 (Lv.0 게임 방법) ============================ */}
+      {showTutorial && (
+        <Tutorial
+          playClick={sfxClick}
+          onSkip={() => {
+            // 건너뛰기: Lv.1은 열어주고 보상/별은 없음
+            setShowTutorial(false)
+            if (unlocked < 1) flashToast("Lv.1이 열렸어요! 언제든 Lv.0에서 다시 볼 수 있어요 📖")
+            setUnlocked((u) => Math.max(u, 1))
+          }}
+          onFinish={() => {
+            setShowTutorial(false)
+            setUnlocked((u) => Math.max(u, 1))
+            if ((records[0] ?? 0) < PASS_LINE) {
+              // 처음 끝까지 본 경우에만 ⭐ + 5P (테스트 단계 값, 출시 전 조정 예정)
+              setRecords((r) => ({ ...r, 0: TOTAL_Q }))
+              setPoints((pt) => pt + 5)
+              flashToast("게임 방법 완료! ⭐ +5P, Lv.1이 열렸어요 🎉")
+            }
+          }}
+        />
+      )}
       {showPromotionModal && promotionBelt && (
         <PromotionCelebration
           from={promotionBelt.from}
