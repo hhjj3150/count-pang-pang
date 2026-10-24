@@ -1527,6 +1527,9 @@ export default function CounterPangPang() {
     if (next >= TOTAL_Q) {
       finishGame()
     } else {
+      // 다음 문제로 넘어가는 같은 순간에 입력·선택을 비워서, 이전 문제의 선택이 새 번호판에 잠깐 남지 않게 함
+      setInput("")
+      setSelected([])
       setQIndex(next)
     }
   }, [finishGame])
@@ -2383,7 +2386,7 @@ export default function CounterPangPang() {
               <p className="text-center text-xs text-white/60">
                 번호판 숫자를 눌러 파란 불을 켜세요 · 현재 선택 합{" "}
                 <span className="font-black text-sky-300">
-                  {selected.reduce((a, i) => a + [...currentQ.front, ...currentQ.back][i], 0)}
+                  {selected.reduce((a, i) => a + ([...currentQ.front, ...currentQ.back][i] ?? 0), 0)}
                 </span>
               </p>
               <div className="grid grid-cols-2 gap-2">
