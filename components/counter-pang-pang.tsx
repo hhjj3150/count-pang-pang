@@ -1969,12 +1969,11 @@ export default function CounterPangPang() {
             {/* 왼쪽 닉네임 */}
             <div>
               <p className="text-xs text-black/60">반가워요</p>
-             {/* 실제 유저 레벨 연동 칭호 뱃지 + 닉네임 */}
+             {/* 실제 유저 레벨 연동 칭호 뱃지 (닉네임은 아랫줄 '관리' 버튼 앞에만 표시) */}
               <div className="flex items-center gap-2">
                 <span className={`rounded-md px-2 py-1 text-[11px] font-black ${myTitle.style}`}>
                   {myTitle.badge}
                 </span>
-                <p className="text-lg font-black text-black">{nickname} <span className="text-sm font-bold text-black/60">님</span></p>
               </div>
               <div className="flex items-center gap-2">
                 <p className="text-lg font-black text-black">{nickname} 님</p>
