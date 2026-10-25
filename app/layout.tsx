@@ -5,7 +5,6 @@ import './globals.css'
 export const metadata: Metadata = {
   title: '카운터 팡팡 - 사칙연산 퀴즈 게임',
   description: '초등학생을 위한 캐주얼 사칙연산 퀴즈 모바일 웹 게임. 자동차 번호판으로 계산 실력을 키워요!',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
@@ -40,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="ko">
       <body className="antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

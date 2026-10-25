@@ -630,7 +630,7 @@ function PromotionCelebration({ from, to, onClose }: { from?: string; to: { badg
 }
 
 /* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
-const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
+const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "이등분 퍼즐 (Lv.9)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
 
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -659,6 +659,15 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
     if (pInput === "") return
     setPResult(Number(pInput) === practice.answer ? "correct" : "wrong")
   }
+  // ✂️ 이등분 퍼즐 연습 (고정 예시: 7 4 / 2 6 5 0 → 전체 24, 절반 12)
+  const halfDemo: Question = {
+    level: 9, front: [7, 4], back: [2, 6, 5, 0], hangul: "나", type: "partition", timer: 30,
+    title: "", desc: "", answer: null, canPartition: true,
+  }
+  const [halfSel, setHalfSel] = useState<number[]>([])
+  const [halfOk, setHalfOk] = useState(false)
+  const [halfTry, setHalfTry] = useState(0)
+
   const newPractice = () => {
     playClick()
     setPractice(buildQuestion(1, 5))
@@ -675,8 +684,8 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
   )
 
   const body = (() => {
-    switch (page) {
-      case 0:
+    switch (TUTORIAL_PAGES[page]) {
+      case "번호판 읽는 법":
         return (
           <>
             <div className="flex justify-center"><div className="scale-110"><Plate q={samplePlate} /></div></div>
@@ -688,19 +697,19 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             <Bubble>🚗 자동차 번호판의 숫자로 계산하는 게임이에요.<br />예) 앞자리 합 = <b className="text-sky-600">3 + 7 = 10</b></Bubble>
           </>
         )
-      case 1:
+      case "게임 방법":
         return (
           <>
             <div className="flex justify-center"><GameImage src="/assets/0-2-2.png" alt="팡이" className="h-28 w-28 object-contain" fallback={<span className="text-6xl">🐣</span>} /></div>
             <Bubble>
-              <p>① 화면 위에 나오는 <b className="text-amber-600">문제</b>를 읽어요</p>
-              <p className="mt-2">② <b className="text-sky-600">번호판</b>을 보고 계산해요</p>
+              <p>① 화면 위에 나오는 <b className="text-amber-600">문제 설명</b>을 읽어요</p>
+              <p className="mt-2">② <b className="text-sky-600">번호판</b>을 보고 설명에 따라 계산해요</p>
               <p className="mt-2">③ 숫자를 누르고 <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">입력</b> 버튼!</p>
-              <p className="mt-3 text-sm text-zinc-500">💡 비교 문제는 버튼을, 이등분 문제는 숫자를 직접 눌러서 골라요.</p>
+              <p className="mt-3 text-sm text-zinc-500">💡 대부분의 레벨은 이렇게 하면 돼요. 앞뒤 비교(Lv.5)는 버튼을 누르고, 이등분 퍼즐(Lv.9)은 다음 장에서 따로 알려줄게요.</p>
             </Bubble>
           </>
         )
-      case 2:
+      case "직접 해 보기":
         return (
           <>
             <p className="text-center text-base font-black text-zinc-700">앞자리 숫자를 모두 더해 보세요!</p>
@@ -728,7 +737,45 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             )}
           </>
         )
-      case 3:
+      case "이등분 퍼즐 (Lv.9)": {
+        const all = [...halfDemo.front, ...halfDemo.back]
+        const total = sum(all)
+        const selSum = halfSel.reduce((a, i) => a + all[i], 0)
+        return (
+          <>
+            <Bubble>
+              <p>✂️ 번호판 숫자를 <b>두 묶음</b>으로 나눠서, 두 묶음의 합이 <b className="text-sky-600">똑같게</b> 만드는 게임이에요.</p>
+              <p className="mt-2">① 전체 합을 구해요 → ② <b>절반</b>이 되도록 숫자를 눌러 <b className="text-sky-600">파란 불</b>을 켜요 → ③ <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">제출</b></p>
+            </Bubble>
+            <p className="text-center text-sm font-black text-zinc-600">직접 눌러 보세요! 전체 합 {total} → 절반은 <span className="text-sky-600">{total / 2}</span></p>
+            <div className="flex justify-center">
+              <Plate
+                q={halfDemo}
+                selected={halfSel}
+                onToggle={halfOk ? undefined : (i) => { playClick(); setHalfOk(false); setHalfSel((sel) => (sel.includes(i) ? sel.filter((x) => x !== i) : [...sel, i])) }}
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <span className="rounded-full bg-white px-3 py-1.5 text-sm font-black text-zinc-700 shadow-sm ring-1 ring-black/10">선택한 합 <span className="text-sky-600">{selSum}</span></span>
+              {halfOk ? (
+                <span className="rounded-full bg-emerald-500 px-3 py-1.5 text-sm font-black text-white cpp-pop">정답! {selSum} = {total - selSum} 🎉</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={halfSel.length === 0}
+                  onClick={() => { playClick(); setHalfOk(selSum * 2 === total && halfSel.length < all.length) ; if (selSum * 2 !== total) setHalfTry((t) => t + 1) }}
+                  className="rounded-full bg-gradient-to-b from-emerald-400 to-emerald-500 px-4 py-1.5 text-sm font-black text-emerald-950 shadow disabled:opacity-40"
+                >
+                  제출 ✅
+                </button>
+              )}
+            </div>
+            {!halfOk && halfTry > 0 && <p className="text-center text-sm font-bold text-rose-500">합이 {total / 2}이 되도록 다시 골라 보세요! (예: 4 + 2 + 6)</p>}
+            <p className="text-center text-[13px] font-bold leading-relaxed text-zinc-500">💡 정답 조합은 여러 개일 수 있어요. 어떤 조합이든 합만 같으면 정답!<br />🚫 어떻게 해도 반으로 못 나누면 <b className="text-rose-500">이등분 불가</b> 버튼 (전체 합이 홀수면 무조건 불가)</p>
+          </>
+        )
+      }
+      case "통과 규칙":
         return (
           <>
             <div className="flex items-center justify-center gap-2 text-5xl"><span>📝</span><span className="text-3xl font-black text-zinc-700">15문제</span></div>
@@ -740,7 +787,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             </Bubble>
           </>
         )
-      case 4:
+      case "피버 타임":
         return (
           <>
             <p className="text-center text-5xl font-black italic text-orange-500" style={{ textShadow: "0 0 12px #FFD700, 0 0 24px #FF8C00" }}>FEVER TIME</p>
@@ -752,7 +799,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             </Bubble>
           </>
         )
-      case 5:
+      case "하트 · 포인트 · 상점":
         return (
           <Bubble>
             <p>💖 <b>하트</b>: 게임 한 판에 1개 사용. 매일 5개까지 다시 채워져요.</p>
@@ -760,7 +807,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             <p className="mt-3">🛒 <b>포인트 상점</b>: 모은 포인트로 카트, 배경, 이모티콘, 하트를 살 수 있어요.</p>
           </Bubble>
         )
-      case 6:
+      case "띠 승급":
         return (
           <>
             <div className="flex flex-col items-center gap-2">
@@ -1060,45 +1107,6 @@ export default function CounterPangPang() {
     { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70, unlockLevel: 11 },
   ];
     
-    // 👤 캐릭터 리스트 (7종)
-  // 👤 캐릭터 리스트 (실제 파일명 연동 완료)
-  const CHARACTERS = [
-    { id: "chr_pangi", name: "기본 팡이", file: "chr_pangi_base.png", price: 0 }, // 🌟 0P 기본 캐릭터
-    { id: "chr_elephant", name: "코끼리", file: "chr_elephant_base.png", price: 5 },
-    { id: "chr_giraffe", name: "기린", file: "chr_giraffe_base.png", price: 4 },
-    { id: "chr_hippo", name: "하마", file: "chr_hippo_base.png", price: 6 },
-    { id: "chr_lion", name: "사자", file: "chr_lion_base.png", price: 8 },
-    { id: "chr_ostrich", name: "타조", file: "chr_ostrich_base.png", price: 3 },
-    { id: "chr_owl", name: "부엉이", file: "chr_owl_base.png", price: 7 },
-    { id: "chr_rabbit", name: "토끼", file: "chr_rabbit_base.png", price: 4 },
-  ];
-
-  // 👕 의류 리스트 (실제 파일명 연동 완료)
-  const CLOTHES = [
-    { id: "cloth_none", name: "입지 않음", file: "", price: 0 },
-    { id: "cloth_gi_white", name: "화이트 도복", file: "cloth_gi_white.png", price: 2 },
-    { id: "cloth_gi_blue", name: "블루 도복", file: "cloth_gi_blue.png", price: 4 },
-    { id: "cloth_gi_red", name: "레드 도복", file: "cloth_gi_red.png", price: 5 },
-    { id: "cloth_gi_black", name: "블랙 도복", file: "cloth_gi_black.png", price: 8 },
-    { id: "cloth_fireman", name: "소방관 복장", file: "cloth_fireman.png", price: 6 },
-    { id: "cloth_police", name: "경찰 복장", file: "cloth_police.png", price: 7 }
-  ];
-
-  // 🕶 악세사리 리스트 (실제 파일명 연동 완료)
-  const ACCESSORIES = [
-    { id: "acc_none", name: "착용 안함", file: "", price: 0 },
-    { id: "acc_ribbon", name: "리본", file: "acc_ribbon.png", price: 2 },
-    { id: "acc_necklace", name: "목걸이", file: "acc_necklace.png", price: 8 },
-    { id: "acc_scarf", name: "목도리", file: "acc_scarf.png", price: 4 },
-    { id: "acc_rainbow_hat", name: "무지개모자", file: "acc_rainbow_hat.png", price: 5 },
-    { id: "acc_beanie", name: "비니모자", file: "acc_beanie.png", price: 3 },
-    { id: "acc_sunglasses", name: "선글라스", file: "acc_sunglasses.png", price: 6 },
-    { id: "acc_snapback", name: "스냅백", file: "acc_snapback.png", price: 4 },
-    { id: "acc_glasses", name: "안경", file: "acc_glasses.png", price: 3 },
-    { id: "acc_baseball_cap", name: "야구모자", file: "acc_baseball_cap.png", price: 5 },
-    { id: "acc_heart_sunglasses", name: "하트선글라스", file: "acc_heart_sunglasses.png", price: 7 }
-  ];
-
 // 📸 이모티콘 팩 리스트 (9종 캐릭터 x 5가지 감정)
   const EMOTICON_PACKS = [
     { id: "pangi", name: "팡이", price: 30, unlockLevel: 0 },
@@ -1169,9 +1177,10 @@ export default function CounterPangPang() {
       const newOwned = Array.from(new Set([...ownedBgs, file]));
       setOwnedBgs(newOwned);
       localStorage.setItem("cp_owned_bgs", JSON.stringify(newOwned));
-      alert("🎉 배경을 성공적으로 구매했습니다! 이제 장착해보세요.");
+      sfxClick();
+      flashToast("🎉 배경 구매 완료! 관리 → 내 테마에서 적용해 보세요");
     } else {
-      alert(`포인트가 부족합니다. (필요 포인트: ${price}P)`);
+      flashToast(`포인트가 부족해요! (${points}P / ${price}P) 😥`);
     }
   };
   React.useEffect(() => {
@@ -1201,69 +1210,8 @@ export default function CounterPangPang() {
       document.removeEventListener("visibilitychange", handleVis); // 정리 코드 추가
     };
   }, [screen, muted]);
-  const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [exitPhase, setExitPhase] = useState<"ask" | "goodbye" | null>(null);
 
-  // ▼▼▼ 10장 세트 ZIP 압축 다운로드 & 워터마크 기능 ▼▼▼
-  const downloadLevelPack = async (level: number) => {
-    // 1. 압축 파일 만들기 준비
-    const JSZip = (await import("jszip")).default;
-    const { saveAs } = await import("file-saver");
-    const zip = new JSZip();
-    const folder = zip.folder(`Pangi_Lv_${level}`);
-
-    if (!folder) return;
-
-    // 2. 안내 메시지 (압축 중...)
-    alert(`Lv.${level} 이모티콘 10종 세트를 준비 중입니다! 잠시만 기다려주세요 🎁`);
-
-    // 3. 10개의 이미지를 불러와서 캔버스에 닉네임 박은 뒤 ZIP에 쏙쏙 담기
-    for (let i = 1; i <= 10; i++) {
-      await new Promise<void>((resolve) => {
-        const imageUrl = `/assets/${level}-${i}.png`;
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return resolve();
-
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-
-          // 워터마크 (두꺼운 고딕체)
-          ctx.font = "bold 80px 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif";
-          ctx.textAlign = "center";
-          ctx.lineWidth = 10;
-          ctx.strokeStyle = "white"; 
-          ctx.fillStyle = "black";
-
-          const text = nickname ? `${nickname}` : "GUEST";
-          const x = canvas.width / 2;
-          const y = canvas.height * 0.8; 
-
-          ctx.strokeText(text, x, y);
-          ctx.fillText(text, x, y);
-
-          // 캔버스 이미지를 바이너리(Blob) 데이터로 변환해서 zip 폴더에 추가
-          canvas.toBlob((blob) => {
-            if (blob) {
-              folder.file(`pangi_lv${level}_${i}.png`, blob);
-            }
-            resolve();
-          }, "image/png");
-        };
-        img.onerror = () => resolve();
-        img.src = imageUrl;
-      });
-    }
-
-    // 4. 10장이 모두 담기면 ZIP 파일로 묶어서 한 번에 다운로드 실행!
-    const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, `Pangi_Level_${level}_Emoticons.zip`);
-  };
-  // ▲▲▲ 여기까지 ▲▲▲
   // 게임 상태
   const [chosenLevel, setChosenLevel] = useState(0)
   // 화면이 처음 켜질 때, 저장된 레벨이 있으면 불러오기
@@ -1307,10 +1255,6 @@ export default function CounterPangPang() {
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
   const [activeCategory, setActiveCategory] = useState("info");
   const [shopCategory, setShopCategory] = useState("emoticon"); // 🌟 포인트 상점 탭 상태
-  const [tempEquippedCar, setTempEquippedCar] = useState<string | null>(null); // 💾 저장 버튼 누르기 전 임시 선택 차량
-  // 👤 캐릭터 보관함 및 장착 상태
-  const [equippedCharacter, setEquippedCharacter] = useState("chr_pangi"); 
-  const [ownedCharacters, setOwnedCharacters] = useState<string[]>(["chr_pangi"]);
 
   // --- 📸 이모티콘 보유 및 구매 관련 상태 & 함수 ---
   const [ownedEmoticons, setOwnedEmoticons] = useState<string[]>([]); // 👈 서버 에러 방지를 위해 일단 빈 배열로 시작
@@ -1928,84 +1872,40 @@ export default function CounterPangPang() {
     resolve(isCorrect)
   }
 
+  // 🎁 무료 하트 충전: 하루 3회 (날짜가 바뀌면 다시 3회). 나중에 광고를 붙이면 이 함수에서 광고 시청 후 지급하면 됨
+  const FREE_HEART_PER_DAY = 3
+  const [freeHeart, setFreeHeart] = useState({ date: "", count: 0 })
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const saved = JSON.parse(localStorage.getItem("cp_free_heart") ?? "null")
+      if (saved && saved.date === today()) setFreeHeart(saved)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+  const freeHeartLeft = FREE_HEART_PER_DAY - (freeHeart.date === today() ? freeHeart.count : 0)
   const rechargeAd = () => {
     sfxClick()
+    if (freeHeartLeft <= 0) {
+      flashToast("오늘 무료 충전을 모두 사용했어요! 내일 다시 받을 수 있어요 ⏰")
+      return
+    }
     if (hearts >= HEART_CAP) {
       flashToast("하트가 가득 찼어요!")
       return
     }
+    const next = { date: today(), count: FREE_HEART_PER_DAY - freeHeartLeft + 1 }
+    setFreeHeart(next)
+    localStorage.setItem("cp_free_heart", JSON.stringify(next))
     setHearts((h) => Math.min(HEART_CAP, h + 1))
-    flashToast("광고 시청 완료! 하트 +1 💖")
+    flashToast(`무료 하트 +1 💖 (오늘 남은 횟수 ${FREE_HEART_PER_DAY - next.count}회)`)
   }
 
   const reactionState = reaction === "correct" ? 1 : reaction === "wrong" ? 6 : 3
   const reactionEmoji = reaction === "correct" ? "🎉" : reaction === "wrong" ? "😵" : "🚗"
 
-  /* --------------------- 다운로드 (Canvas 각인) --------------------- */
-  const downloadPang = (level: number) => {
-    const size = 512
-    const canvas = document.createElement("canvas")
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    const finish = () => {
-      // 하단 각인 텍스트
-      const grad = ctx.createLinearGradient(0, size - 120, 0, size)
-      grad.addColorStop(0, "rgba(0,0,0,0)")
-      grad.addColorStop(1, "rgba(0,0,0,0.75)")
-      ctx.fillStyle = grad
-      ctx.fillRect(0, size - 120, size, 120)
-      ctx.fillStyle = "#ffffff"
-      ctx.textAlign = "center"
-      ctx.font = "bold 40px system-ui, sans-serif"
-      ctx.fillText(`${nickname ?? "게스트"} 팡이 마스터`, size / 2, size - 42)
-      ctx.font = "22px system-ui, sans-serif"
-      ctx.fillStyle = "#ffd23f"
-      ctx.fillText(`카운터 팡팡 · Lv.${level} ${LEVEL_NAMES[level]}`, size / 2, size - 78)
-
-      const link = document.createElement("a")
-      link.download = `counter-pangpang-lv${level}.png`
-      link.href = canvas.toDataURL("image/png")
-      link.click()
-      flashToast("팡이 저장 완료! 📥")
-    }
-
-    const drawPlaceholder = () => {
-      const g = ctx.createLinearGradient(0, 0, size, size)
-      g.addColorStop(0, "#ff8fc0")
-      g.addColorStop(1, "#4fc3f7")
-      ctx.fillStyle = g
-      ctx.fillRect(0, 0, size, size)
-      ctx.textAlign = "center"
-      ctx.textBaseline = "middle"
-      ctx.font = "200px serif"
-      ctx.fillText(FACE_EMOJI[level] ?? "🐣", size / 2, size / 2 - 30)
-      ctx.textBaseline = "alphabetic"
-    }
-
-    const img = new Image()
-    img.crossOrigin = "anonymous"
-    img.onload = () => {
-      ctx.fillStyle = "#0b1020"
-      ctx.fillRect(0, 0, size, size)
-      ctx.drawImage(img, 16, 16, size - 32, size - 32)
-      finish()
-    }
-    img.onerror = () => {
-      drawPlaceholder()
-      finish()
-    }
-    img.src = `/assets/${level}-1.png`
-  }
-
   /* --------------------- 렌더 --------------------- */
-  const clearedLevels = useMemo(
-    () => Object.keys(records).map(Number).filter((l) => (records[l] ?? 0) >= PASS_LINE).sort((a, b) => a - b),
-    [records],
-  )
-
  const MuteButton = (
     <button
       type="button"
@@ -2168,7 +2068,6 @@ export default function CounterPangPang() {
               
                 입장하기
               </button>
-              <p className="mt-4 text-center text-xs text-white/50">* 테스트용 · 추후 인증 연동 예정</p>
             </form>
           </section>
         )}
@@ -2232,20 +2131,23 @@ export default function CounterPangPang() {
               💌 초대
             </button>
             
-            {/* 오른쪽: 광고 보고 하트 충전하기 (남은 폭 전부 사용, 작은 폰에서도 한 줄 유지) */}
+            {/* 오른쪽: 무료 하트 충전 (하루 3회, 남은 폭 전부 사용, 작은 폰에서도 한 줄 유지) */}
             <button
               type="button"
               onClick={rechargeAd}
-              className="flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-1.5 py-3 text-[clamp(10px,3.3vw,14px)] font-black text-black/80 active:scale-95"
+              className={cn(
+                "flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-1.5 py-3 text-[clamp(10px,3.3vw,14px)] font-black text-black/80 active:scale-95",
+                freeHeartLeft <= 0 && "opacity-50",
+              )}
             >
-              📺 광고 보고 하트 충전 <span className="rounded-full bg-white/60 px-1 py-0.5 text-[0.8em]">+1 💖</span>
+              🎁 무료 하트 충전 <span className="rounded-full bg-white/60 px-1.5 py-0.5 text-[0.8em]">+1 💖 {freeHeartLeft}/{FREE_HEART_PER_DAY}</span>
             </button>
           </div>
 
           {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
           <div className="mt-2 flex w-full items-center gap-2">
             
-            {/* 👇 테스트용 계기판: 소비용과 월간 누적용을 동시에 보여줍니다 */}
+            {/* 💰 보유 포인트 + 이번 달 누적 포인트 */}
             <div className="flex flex-col w-[110px] items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 text-xs font-bold text-black/80">
               <span className="text-blue-700">현재: {points}P</span>
               <span className="text-[10px] text-amber-700">월간 누적: {monthlyPoints}P</span>
@@ -2883,6 +2785,31 @@ export default function CounterPangPang() {
                 <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
                 <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🚗 내 차고</button>
                 <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 내 테마</button>
+              </div>
+
+              {/* 👤 내 정보 구역 */}
+              <div className="mb-8 space-y-2" style={{ display: activeCategory === "info" ? "block" : "none" }}>
+                <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                  <p className="text-xs font-bold text-slate-400">닉네임</p>
+                  <p className="mt-0.5 text-base font-black text-slate-800">{nickname} 님</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfxClick();
+                    setShowMyPage(false);
+                    setShowTutorial(true);
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl bg-amber-50 px-4 py-3.5 text-sm font-black text-amber-800 ring-1 ring-amber-200 active:scale-[0.99]"
+                >
+                  📖 게임 방법 다시 보기 <span>›</span>
+                </button>
+                <a
+                  href="/privacy"
+                  className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-4 py-3.5 text-sm font-bold text-slate-600 ring-1 ring-slate-200"
+                >
+                  🔒 개인정보처리방침 <span>›</span>
+                </a>
               </div>
 
               {/* 🚗 내 차고 구역 (보유 차량만 표시) */}
