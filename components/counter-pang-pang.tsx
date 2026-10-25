@@ -279,6 +279,16 @@ function exampleText(q: Question) {
   return String(q.answer)
 }
 
+/* ------------------------ 화면용 가벼운 이미지 경로 ------------------------ */
+// 원본 PNG(1254px, 장당 ~1MB)는 이모티콘 저장할 때만 쓰고, 화면에는 미리 줄여 둔 webp를 사용 (데이터 절약)
+//  - sm: 상점·차고 목록용 작은 이미지 / md: 미리보기·게임 화면용 중간 이미지
+const lightImg = (folder: "emoticons" | "karts", file: string, size: "sm" | "md") =>
+  `/assets/${folder}/${size}/${file.replace(/\.png$/, ".webp")}`
+
+// 📱 실행 환경 확인 (카카오톡 앱 안 브라우저는 파일 다운로드가 막혀 있음)
+const isKakaoInApp = () => typeof navigator !== "undefined" && /KAKAOTALK/i.test(navigator.userAgent)
+const isMobileDevice = () => typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
 /* ------------------------ 이미지 (폴백 포함) ------------------------ */
 function GameImage({
   src,
@@ -1463,7 +1473,9 @@ export default function CounterPangPang() {
       // 알림이 겹치지 않게 살짝 시간차를 두고 보상 알림 띄우기
       setTimeout(() => flashToast(`초대 성공! 30P 지급 완료 🎁 (오늘 ${newCount}/5회)`), 1000);
     } catch (error) {
-      console.log('공유 취소 또는 에러:', error);
+      // 사용자가 공유 창을 닫은 경우는 조용히 넘어가고, 공유·복사가 막힌 환경이면 안내
+      if ((error as Error)?.name === "AbortError") return;
+      flashToast("공유가 안 되는 환경이에요 😥 count-pang-pang.vercel.app 주소를 직접 알려 주세요");
     }
   };
   const correctRef = useRef(0)
@@ -1527,6 +1539,7 @@ export default function CounterPangPang() {
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const [quitConfirm, setQuitConfirm] = useState(false); // 게임 중 뒤로가기 → "그만둘까요?" 확인창
   const [showTutorial, setShowTutorial] = useState(false); // 🎓 Lv.0 튜토리얼(게임 방법)
+  const [kakaoGuide, setKakaoGuide] = useState(false); // 카카오톡 앱 안에서 저장 시 '다른 브라우저로 열기' 안내
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
@@ -1639,9 +1652,12 @@ export default function CounterPangPang() {
   const sfxRight = useCallback(() => playSound('/assets/정답.mp3'), []);
   const sfxWrong = useCallback(() => playSound('/assets/오답.mp3'), []);
 
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashToast = useCallback((msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(null), 1600)
+    // 긴 안내는 읽을 수 있게 더 오래 표시 (최소 1.6초, 최대 4초), 새 알림이 오면 이전 타이머는 취소
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToast(null), Math.min(4000, Math.max(1600, msg.length * 70)))
   }, [])
 
   /* --------------------- 게임 진행 --------------------- */
@@ -2203,7 +2219,7 @@ export default function CounterPangPang() {
             {/* 1. 꽉 찬 이미지 */}
             <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl">
               <GameImage
-                src={`/assets/${lv}-7.png`}
+                src={`/assets/cards/${lv}.webp`}
                 alt={`Lv.${lv} 팡이`}
                 fallback={
                   <img
@@ -2383,7 +2399,7 @@ export default function CounterPangPang() {
                 
                 {/* 🏎️ 카트(세트) 장착 상태: 옛날 데이터 오류 방어 로직 추가! */}
                 <img 
-                  src={`/assets/karts/${KARTS.find(k => k.id === equippedCar)?.file || "kart_default_yellow.png"}`} 
+                  src={lightImg("karts", KARTS.find(k => k.id === equippedCar)?.file || "kart_default_yellow.png", "md")} 
                   className="absolute bottom-0 w-[90%] object-contain drop-shadow-xl z-10 cpp-bounce origin-bottom" 
                   alt="카트 스킨" 
                 />
@@ -2824,7 +2840,7 @@ export default function CounterPangPang() {
                       return (
                         <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
                           <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
-                            {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
+                            {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
                           </div>
                           <p className="font-bold text-sm text-slate-700 text-center">{item.name}</p>
                           <div className="mt-2 flex justify-center">
@@ -2979,7 +2995,7 @@ export default function CounterPangPang() {
                       {/* 미리보기 이미지 박스 */}
                       <div className={`relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/80 ring-4 ${isOwned ? 'ring-emerald-400 shadow-emerald-200' : 'ring-yellow-400/80 shadow-yellow-200'} shadow-xl transition-all duration-500`}>
                         <img
-                          src={`/assets/emoticons/${previewItem.file}`}
+                          src={lightImg("emoticons", previewItem.file, "md")}
                           alt="preview"
                           className={`h-full w-full object-cover transition-all duration-500 ${!isOwned ? "opacity-30 grayscale brightness-50 scale-95" : "opacity-100 drop-shadow-md scale-100"}`}
                         />
@@ -3008,42 +3024,65 @@ export default function CounterPangPang() {
                           type="button"
                           onClick={() => {
                             sfxClick();
-                            const imgSrc = `/assets/emoticons/${previewItem.file}`;
+                            // 카카오톡 앱 안에서는 저장이 막혀 있어서 다른 브라우저로 여는 방법을 안내
+                            if (isKakaoInApp()) {
+                              setKakaoGuide(true);
+                              return;
+                            }
+                            const fileName = previewItem.file;
                             const img = new Image();
                             img.crossOrigin = "anonymous";
+                            img.onerror = () => flashToast("이미지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요 😥");
                             img.onload = () => {
+                              // 원본 고화질 이미지에 닉네임 각인
                               const canvas = document.createElement("canvas");
                               canvas.width = img.width;
                               canvas.height = img.height;
                               const ctx = canvas.getContext("2d");
-                              if (ctx) {
-                                ctx.drawImage(img, 0, 0);
-                                const fontSize = Math.max(16, img.width * 0.1);
-                                ctx.font = `900 ${fontSize}px 'MaplestoryOTFBold', sans-serif`;
-                                ctx.textAlign = "right";
-                                ctx.textBaseline = "bottom";
-                                ctx.lineWidth = fontSize * 0.2;
-                                ctx.strokeStyle = "white";
-                                ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
-                                ctx.fillStyle = "#333333";
-                                ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                              if (!ctx) return;
+                              ctx.drawImage(img, 0, 0);
+                              const fontSize = Math.max(16, img.width * 0.1);
+                              ctx.font = `900 ${fontSize}px 'MaplestoryOTFBold', sans-serif`;
+                              ctx.textAlign = "right";
+                              ctx.textBaseline = "bottom";
+                              ctx.lineWidth = fontSize * 0.2;
+                              ctx.strokeStyle = "white";
+                              ctx.strokeText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
+                              ctx.fillStyle = "#333333";
+                              ctx.fillText(`@${nickname}`, canvas.width - (img.width * 0.05), canvas.height - (img.width * 0.05));
 
+                              canvas.toBlob(async (blob) => {
+                                if (!blob) return;
+                                const file = new File([blob], fileName, { type: "image/png" });
+                                // 1) 휴대폰: 공유 창 → '이미지 저장'으로 사진첩에 바로 저장 (아이폰/안드로이드)
+                                if (isMobileDevice() && navigator.canShare?.({ files: [file] })) {
+                                  try {
+                                    await navigator.share({ files: [file], title: "카운터 팡팡 이모티콘" });
+                                    flashToast("이모티콘 공유 창을 열었어요! '이미지 저장'을 누르면 사진첩에 저장돼요 📸");
+                                    setPreviewItem(null);
+                                    return;
+                                  } catch (e) {
+                                    if ((e as Error).name === "AbortError") return; // 사용자가 공유 창을 닫음
+                                  }
+                                }
+                                // 2) 그 외(PC 등): 파일로 다운로드
+                                const url = URL.createObjectURL(blob);
                                 const a = document.createElement("a");
-                                a.href = canvas.toDataURL("image/png");
-                                a.download = `${previewItem.file}`;
+                                a.href = url;
+                                a.download = fileName;
                                 document.body.appendChild(a);
                                 a.click();
                                 document.body.removeChild(a);
-
-                                flashToast(`이모티콘 저장 완료! 🎉`);
+                                setTimeout(() => URL.revokeObjectURL(url), 2000);
+                                flashToast("이모티콘을 다운로드했어요! 📥 (다운로드 폴더를 확인해 주세요)");
                                 setPreviewItem(null);
-                              }
+                              }, "image/png");
                             };
-                            img.src = imgSrc;
+                            img.src = `/assets/emoticons/${fileName}`; // 저장은 원본 고화질로
                           }}
                           className="w-full max-w-[240px] rounded-full bg-emerald-400 py-3.5 text-lg font-black text-emerald-950 shadow-lg active:scale-95 transition-all"
                         >
-                          📥 각인해서 다운받기
+                          📥 닉네임 넣어서 저장하기
                         </button>
                       )}
 
@@ -3088,7 +3127,7 @@ export default function CounterPangPang() {
                                   className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50 active:scale-95 transition-transform"
                                 >
                                   <img 
-                                    src={`/assets/emoticons/${fileName}`} 
+                                    src={lightImg("emoticons", fileName, "sm")} 
                                     alt={emotion.name} 
                                     loading="lazy"
                                     decoding="async"
@@ -3152,7 +3191,7 @@ export default function CounterPangPang() {
                     return (
                       <div key={item.id} className="relative p-3 rounded-xl border-2 border-slate-200 bg-white">
                         <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
-                          {item.file ? <img src={`/assets/karts/${item.file}`} alt={item.name} className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본</span>}
+                          {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본</span>}
                         </div>
                         <p className="font-bold text-sm text-slate-700 text-center mb-2">{item.name}</p>
                         {isOwned ? (
@@ -3208,6 +3247,30 @@ export default function CounterPangPang() {
         </div>
       )}
       {/* ============================ 🥋 승급 축하 연출 (그랄: '축' / 띠: Congratulations) ============================ */}
+      {/* ============================ 📱 카카오톡 앱 안 브라우저 안내 ============================ */}
+      {kakaoGuide && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm" onClick={() => setKakaoGuide(false)}>
+          <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+            <p className="text-4xl">📱</p>
+            <h2 className="mt-2 text-xl font-black text-zinc-900">카카오톡 안에서는<br />저장이 안 돼요</h2>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-zinc-500">
+              크롬·사파리 같은 <b className="text-zinc-700">다른 브라우저</b>로 열면<br />이모티콘을 저장할 수 있어요.
+              <br />(구매한 이모티콘은 이 휴대폰의 다른 브라우저에선 보이지 않을 수 있어요)
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(window.location.href);
+              }}
+              className="mt-5 w-full rounded-2xl bg-yellow-300 py-3.5 text-base font-black text-zinc-900 active:scale-95"
+            >
+              다른 브라우저로 열기
+            </button>
+            <p className="mt-3 text-xs font-bold text-zinc-400">안 되면: 화면 아래 ⋮ 버튼 → &lsquo;다른 브라우저로 열기&rsquo;</p>
+            <button type="button" onClick={() => setKakaoGuide(false)} className="mt-4 text-sm font-bold text-zinc-500 underline">닫기</button>
+          </div>
+        </div>
+      )}
       {/* ============================ 🎓 튜토리얼 (Lv.0 게임 방법) ============================ */}
       {showTutorial && (
         <Tutorial
