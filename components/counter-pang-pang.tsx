@@ -639,6 +639,109 @@ function PromotionCelebration({ from, to, onClose }: { from?: string; to: { badg
   )
 }
 
+/* ------------------------- 📊 학습 기록 · 부모님 리포트 ------------------------- */
+// 기기 안(localStorage "cp_stats")에만 저장. 예제 3문제는 정답을 보여주므로 기록에서 제외, 시간 초과는 오답으로 기록
+interface LearnStats {
+  types: Record<number, { tries: number; correct: number }> // 문제 유형(로직 레벨 1~10)별
+  days: Record<string, { games: number; solved: number; correct: number }> // 날짜별
+  games: { date: string; level: number; score: number }[] // 최근 게임 (최대 30개)
+}
+const EMPTY_STATS: LearnStats = { types: {}, days: {}, games: [] }
+const STATS_KEY = "cp_stats"
+
+function ParentReport({ stats }: { stats: LearnStats }) {
+  const typeRows = Array.from({ length: 10 }, (_, i) => i + 1).map((lv) => {
+    const t = stats.types[lv] ?? { tries: 0, correct: 0 }
+    return { lv, name: (LEVEL_DESC[lv] ?? "").replace("\n", " "), ...t, rate: t.tries ? Math.round((t.correct / t.tries) * 100) : null }
+  })
+  const total = typeRows.reduce((a, r) => ({ tries: a.tries + r.tries, correct: a.correct + r.correct }), { tries: 0, correct: 0 })
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    const key = localDate(d)
+    return { key, label: i === 6 ? "오늘" : `${d.getMonth() + 1}/${d.getDate()}`, games: stats.days[key]?.games ?? 0 }
+  })
+  const weekGames = last7.reduce((a, d) => a + d.games, 0)
+  const maxGames = Math.max(1, ...last7.map((d) => d.games))
+  const rated = typeRows.filter((r) => r.tries >= 5) // 5문제 이상 푼 유형만 강점/약점 판단
+  const best = rated.length ? rated.reduce((a, b) => ((b.rate ?? 0) > (a.rate ?? 0) ? b : a)) : null
+  const weak = rated.length ? rated.reduce((a, b) => ((b.rate ?? 101) < (a.rate ?? 101) ? b : a)) : null
+  const barColor = (r: number) => (r >= 80 ? "bg-emerald-400" : r >= 60 ? "bg-amber-400" : "bg-rose-400")
+
+  if (total.tries === 0) {
+    return (
+      <div className="rounded-xl bg-slate-50 p-6 text-center ring-1 ring-slate-200">
+        <p className="text-4xl">📊</p>
+        <p className="mt-2 text-sm font-bold text-slate-500">아직 기록이 없어요.<br />게임을 하면 여기에 학습 기록이 쌓여요!</p>
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-xl bg-sky-50 p-3 ring-1 ring-sky-100"><p className="text-[11px] font-bold text-sky-500">푼 문제</p><p className="text-lg font-black text-sky-700">{total.tries}</p></div>
+        <div className="rounded-xl bg-emerald-50 p-3 ring-1 ring-emerald-100"><p className="text-[11px] font-bold text-emerald-500">정답률</p><p className="text-lg font-black text-emerald-700">{Math.round((total.correct / total.tries) * 100)}%</p></div>
+        <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-100"><p className="text-[11px] font-bold text-amber-500">최근 7일</p><p className="text-lg font-black text-amber-700">{weekGames}판</p></div>
+      </div>
+
+      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <p className="mb-3 text-sm font-black text-slate-700">📅 최근 7일 게임 수</p>
+        <div className="flex h-24 items-end justify-between gap-1.5">
+          {last7.map((d) => (
+            <div key={d.key} className="flex flex-1 flex-col items-center gap-1">
+              <span className="text-[10px] font-black text-slate-500">{d.games || ""}</span>
+              <div className="w-full rounded-t bg-sky-400" style={{ height: `${(d.games / maxGames) * 60}px`, minHeight: d.games ? 4 : 0 }} />
+              <span className="text-[10px] font-bold text-slate-400">{d.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {(best || weak) && (
+        <div className="space-y-2">
+          {best && <div className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">💪 잘하는 유형: <b>{best.name}</b> ({best.rate}%)</div>}
+          {weak && weak.lv !== best?.lv && (
+            <div className="rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-800 ring-1 ring-rose-200">
+              🎯 더 연습하면 좋은 유형: <b>{weak.name}</b> ({weak.rate}%)<br />
+              <span className="text-xs font-bold text-rose-600">→ Lv.{weak.lv}를 몇 번 더 해 보면 금방 늘어요!</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <p className="mb-3 text-sm font-black text-slate-700">🧮 문제 유형별 정답률</p>
+        <div className="space-y-2">
+          {typeRows.map((r) => (
+            <div key={r.lv} className="flex items-center gap-2">
+              <span className="w-10 text-[11px] font-black text-slate-400">Lv.{r.lv}</span>
+              <span className="w-[92px] truncate text-xs font-bold text-slate-600">{r.name}</span>
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
+                {r.rate !== null && <div className={cn("h-full rounded-full", barColor(r.rate))} style={{ width: `${r.rate}%` }} />}
+              </div>
+              <span className="w-[64px] text-right text-[11px] font-bold text-slate-500">{r.rate === null ? "아직 안 함" : `${r.rate}% (${r.tries})`}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[10px] font-bold text-slate-400">괄호 안은 푼 문제 수예요. 그랜드 마스터(Lv.11)에서 푼 문제도 유형별로 함께 계산돼요.</p>
+      </div>
+
+      {stats.games.length > 0 && (
+        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+          <p className="mb-2 text-sm font-black text-slate-700">🕹️ 최근 게임</p>
+          {stats.games.slice(-5).reverse().map((g, i) => (
+            <div key={i} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-xs font-bold text-slate-600 last:border-0">
+              <span className="text-slate-400">{g.date.slice(5).replace("-", "/")}</span>
+              <span>Lv.{g.level} {LEVEL_NAMES[g.level]}</span>
+              <span className={g.score >= PASS_LINE ? "text-emerald-600" : "text-rose-500"}>{g.score}/{TOTAL_Q} {g.score >= PASS_LINE ? "통과" : "탈락"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
 const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "이등분 퍼즐 (Lv.9)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
 
@@ -1539,7 +1642,97 @@ export default function CounterPangPang() {
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const [quitConfirm, setQuitConfirm] = useState(false); // 게임 중 뒤로가기 → "그만둘까요?" 확인창
   const [showTutorial, setShowTutorial] = useState(false); // 🎓 Lv.0 튜토리얼(게임 방법)
+  // 🔥 오늘의 도전: 매일 열린 레벨 중 하나를 골라, 오늘 처음 통과하면 통과 보너스 2배
+  const [daily, setDaily] = useState<{ date: string; level: number; done: boolean }>({ date: "", level: 0, done: false });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("cp_daily") ?? "null");
+      if (saved && saved.date === today()) setDaily(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    // 오늘 도전 레벨이 아직 없으면 정함 (날짜를 씨앗으로 써서 하루 동안 같은 레벨). Lv.1이 열려야 시작
+    if (!loaded || unlocked < 1) return;
+    const day = today();
+    if (daily.date === day) return;
+    const seed = Number(day.replace(/-/g, ""));
+    const maxLv = Math.min(unlocked, MAX_LEVEL);
+    const next = { date: day, level: 1 + (seed % maxLv), done: false };
+    setDaily(next);
+    localStorage.setItem("cp_daily", JSON.stringify(next));
+  }, [loaded, unlocked, daily.date]);
+  const dailyActive = daily.date === today() && daily.level >= 1;
+
+  // 📊 학습 기록 (부모님 리포트용)
+  const [learnStats, setLearnStats] = useState<LearnStats>(EMPTY_STATS);
+  const [statsLoaded, setStatsLoaded] = useState(false); // 불러오기 전엔 저장하지 않음 (빈 기록이 덮어쓰지 않도록)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(STATS_KEY) ?? "null");
+      if (saved && saved.types && saved.days && saved.games) setLearnStats(saved);
+    } catch {
+      /* ignore */
+    }
+    setStatsLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!statsLoaded) return;
+    localStorage.setItem(STATS_KEY, JSON.stringify(learnStats));
+  }, [learnStats, statsLoaded]);
+  const recordAnswer = (logicLevel: number, isCorrect: boolean) => {
+    const day = today();
+    setLearnStats((st) => {
+      const t = st.types[logicLevel] ?? { tries: 0, correct: 0 };
+      const d = st.days[day] ?? { games: 0, solved: 0, correct: 0 };
+      return {
+        ...st,
+        types: { ...st.types, [logicLevel]: { tries: t.tries + 1, correct: t.correct + (isCorrect ? 1 : 0) } },
+        days: { ...st.days, [day]: { ...d, solved: d.solved + 1, correct: d.correct + (isCorrect ? 1 : 0) } },
+      };
+    });
+  };
+  const recordGame = (level: number, score: number) => {
+    const day = today();
+    setLearnStats((st) => {
+      const d = st.days[day] ?? { games: 0, solved: 0, correct: 0 };
+      // 날짜별 기록은 최근 60일만 보관
+      const days = Object.fromEntries(Object.entries({ ...st.days, [day]: { ...d, games: d.games + 1 } }).sort(([a], [b]) => (a < b ? -1 : 1)).slice(-60));
+      return { ...st, days, games: [...st.games, { date: day, level, score }].slice(-30) };
+    });
+  };
   const [kakaoGuide, setKakaoGuide] = useState(false); // 카카오톡 앱 안에서 저장 시 '다른 브라우저로 열기' 안내
+  // 📲 홈 화면에 추가 (PWA 설치)
+  const installPromptRef = useRef<any>(null); // 안드로이드 크롬이 주는 '설치' 이벤트 보관
+  const [installGuide, setInstallGuide] = useState<null | "ios" | "kakao" | "other" | "done">(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsStandalone(window.matchMedia?.("(display-mode: standalone)").matches || (navigator as any).standalone === true);
+    const onPrompt = (e: Event) => { e.preventDefault(); installPromptRef.current = e; };
+    const onInstalled = () => { installPromptRef.current = null; setIsStandalone(true); };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => { window.removeEventListener("beforeinstallprompt", onPrompt); window.removeEventListener("appinstalled", onInstalled); };
+  }, []);
+  const handleInstall = async () => {
+    sfxClick();
+    if (isStandalone) return setInstallGuide("done");
+    if (installPromptRef.current) {
+      const ev = installPromptRef.current;
+      installPromptRef.current = null;
+      ev.prompt();
+      const choice = await ev.userChoice?.catch(() => null);
+      if (choice?.outcome === "accepted") flashToast("홈 화면에 카운터 팡팡이 추가됐어요! 🚗");
+      return;
+    }
+    if (isKakaoInApp()) return setInstallGuide("kakao");
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) return setInstallGuide("ios");
+    setInstallGuide("other");
+  };
   const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
@@ -1685,16 +1878,25 @@ export default function CounterPangPang() {
     setFinalScore(score)
     setPassed(ok)
     setResultPhase("boom")
+    recordGame(chosenLevel, score)
     if (ok) {
         setRecords((r) => ({ ...r, [chosenLevel]: Math.max(r[chosenLevel] ?? 0, score) }))
         if (chosenLevel < MAX_LEVEL) setUnlocked((u) => Math.max(u, chosenLevel + 1))
         
         // 레벨 패스 보너스 지급 (레벨0: 5점, 레벨1: 30점 ~ 최대 110점)
         const bonus = chosenLevel === 0 ? 5 : Math.min(20 + (chosenLevel * 10), 110);
-        setPoints(prev => prev + bonus);
+        // 🔥 오늘의 도전 레벨을 오늘 처음 통과하면 보너스 2배
+        const isDaily = daily.date === today() && !daily.done && chosenLevel === daily.level;
+        setPoints(prev => prev + (isDaily ? bonus * 2 : bonus));
+        if (isDaily) {
+          const doneDaily = { ...daily, done: true };
+          setDaily(doneDaily);
+          localStorage.setItem("cp_daily", JSON.stringify(doneDaily));
+          setTimeout(() => flashToast(`🔥 오늘의 도전 성공! 통과 보너스 2배 +${bonus * 2}P`), 300);
+        }
       }
     setScreen("RESULT")
-  }, [chosenLevel])
+  }, [chosenLevel, daily])
 
   const advance = useCallback(() => {
     if (screenRef.current !== "GAME") return // 게임 도중 나갔으면 진행 중단
@@ -1713,6 +1915,9 @@ export default function CounterPangPang() {
     (isCorrect: boolean) => {
       if (locked) return
       setLocked(true)
+      // 📊 학습 기록 (예제 3문제는 정답을 보여주므로 제외)
+      const q = questions[qIndexRef.current]
+      if (q && qIndexRef.current >= 3) recordAnswer(q.level, isCorrect)
       if (isCorrect) {
         correctRef.current += 1
         setCorrectCount(correctRef.current)
@@ -1724,7 +1929,7 @@ export default function CounterPangPang() {
       }
       setTimeout(advance, isCorrect ? 950 : 1800) // 틀리면 정답을 볼 수 있게 조금 더 오래 머묾
     },
-    [locked, advance, sfxRight, sfxWrong],
+    [locked, advance, sfxRight, sfxWrong, questions],
   )
  
  
@@ -2194,6 +2399,28 @@ export default function CounterPangPang() {
         </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 cpp-no-scrollbar">
+              {/* 🔥 오늘의 도전 배너 */}
+              {dailyActive && (
+                <div className={cn(
+                  "relative z-10 mb-3 flex items-center gap-3 rounded-2xl px-4 py-3 shadow-sm ring-1", // z-10: 로비 배경 덮개보다 앞에 (안 그러면 버튼이 안 눌림)
+                  daily.done ? "bg-white/70 ring-black/10" : "bg-gradient-to-r from-orange-400 to-rose-400 ring-orange-300",
+                )}>
+                  <span className="text-3xl">{daily.done ? "✅" : "🔥"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("text-xs font-black", daily.done ? "text-black/50" : "text-white/90")}>
+                      오늘의 도전{!daily.done && " · 통과 보너스 2배!"}
+                    </p>
+                    <p className={cn("break-keep text-sm font-black leading-tight", daily.done ? "text-black/70" : "text-white")}>
+                      {daily.done ? "완료! 내일 또 새로운 도전이 열려요" : `Lv.${daily.level} ${(LEVEL_DESC[daily.level] ?? LEVEL_NAMES[daily.level]).replace("\n", " ")}`}
+                    </p>
+                  </div>
+                  {!daily.done && (
+                    <button type="button" onClick={() => startLevel(daily.level)} className="flex-none rounded-full bg-white px-3 py-1.5 text-sm font-black text-rose-500 shadow active:scale-95">
+                      도전 ▶
+                    </button>
+                  )}
+                </div>
+              )}
               <p className="mb-2 mt-1 text-sm font-bold text-black/70">스테이지 선택</p>
               <div className="grid grid-cols-3 gap-3">
                 {Array.from({ length: 12 }, (_, lv) => {
@@ -2214,6 +2441,9 @@ export default function CounterPangPang() {
           >
             {cleared && (
               <span className="absolute right-1.5 top-1.5 z-20 text-sm drop-shadow-md">⭐</span>
+            )}
+            {dailyActive && !daily.done && daily.level === lv && (
+              <span className="absolute left-1.5 top-1.5 z-20 rounded-full bg-gradient-to-r from-orange-400 to-rose-500 px-1.5 py-0.5 text-[10px] font-black text-white shadow">🔥 x2</span>
             )}
 
             {/* 1. 꽉 찬 이미지 */}
@@ -2797,11 +3027,20 @@ export default function CounterPangPang() {
             {/* 2. 스크롤 영역 */}
             <div className="flex-1 overflow-y-auto px-5 py-6 cpp-no-scrollbar">
               {/* 🌟 카테고리 탭 메뉴 */}
-              <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
-                <button onClick={() => setActiveCategory("info")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
-                <button onClick={() => setActiveCategory("car")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🚗 내 차고</button>
-                <button onClick={() => setActiveCategory("bg")} className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 내 테마</button>
+              <div className="flex gap-1.5 mb-6 border-b border-gray-200 pb-4 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
+                <button onClick={() => setActiveCategory("info")} className={`px-2 py-1.5 text-xs min-[380px]:px-2.5 min-[380px]:text-[13px] font-bold rounded-lg transition-colors ${activeCategory === "info" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>👤 내 정보</button>
+                <button onClick={() => setActiveCategory("car")} className={`px-2 py-1.5 text-xs min-[380px]:px-2.5 min-[380px]:text-[13px] font-bold rounded-lg transition-colors ${activeCategory === "car" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🚗 내 차고</button>
+                <button onClick={() => setActiveCategory("bg")} className={`px-2 py-1.5 text-xs min-[380px]:px-2.5 min-[380px]:text-[13px] font-bold rounded-lg transition-colors ${activeCategory === "bg" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>🏞️ 내 테마</button>
+                <button onClick={() => setActiveCategory("report")} className={`px-2 py-1.5 text-xs min-[380px]:px-2.5 min-[380px]:text-[13px] font-bold rounded-lg transition-colors ${activeCategory === "report" ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-500"}`}>📊 리포트</button>
               </div>
+
+              {/* 📊 부모님 리포트 구역 */}
+              {activeCategory === "report" && (
+                <div className="mb-8">
+                  <p className="mb-3 text-xs font-bold text-slate-400">👨‍👩‍👧 {nickname} 님의 학습 기록이에요. (이 기기에만 저장돼요)</p>
+                  <ParentReport stats={learnStats} />
+                </div>
+              )}
 
               {/* 👤 내 정보 구역 */}
               <div className="mb-8 space-y-2" style={{ display: activeCategory === "info" ? "block" : "none" }}>
@@ -2819,6 +3058,13 @@ export default function CounterPangPang() {
                   className="flex w-full items-center justify-between rounded-xl bg-amber-50 px-4 py-3.5 text-sm font-black text-amber-800 ring-1 ring-amber-200 active:scale-[0.99]"
                 >
                   📖 게임 방법 다시 보기 <span>›</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInstall}
+                  className="flex w-full items-center justify-between rounded-xl bg-sky-50 px-4 py-3.5 text-sm font-black text-sky-800 ring-1 ring-sky-200 active:scale-[0.99]"
+                >
+                  📲 홈 화면에 추가 (앱처럼 쓰기) <span>{isStandalone ? "✅" : "›"}</span>
                 </button>
                 <a
                   href="/privacy"
@@ -3247,6 +3493,54 @@ export default function CounterPangPang() {
         </div>
       )}
       {/* ============================ 🥋 승급 축하 연출 (그랄: '축' / 띠: Congratulations) ============================ */}
+      {/* ============================ 📲 홈 화면에 추가 안내 ============================ */}
+      {installGuide && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm" onClick={() => setInstallGuide(null)}>
+          <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+            <img src="/icon-192.png" alt="" className="mx-auto h-16 w-16 rounded-2xl shadow" />
+            {installGuide === "done" && (
+              <>
+                <h2 className="mt-3 text-xl font-black text-zinc-900">이미 앱으로 쓰고 있어요! ✅</h2>
+                <p className="mt-2 text-sm font-bold text-zinc-500">홈 화면의 카운터 팡팡 아이콘으로 실행 중이에요.</p>
+              </>
+            )}
+            {installGuide === "ios" && (
+              <>
+                <h2 className="mt-3 text-xl font-black text-zinc-900">아이폰에서 추가하기</h2>
+                <ol className="mt-3 space-y-2 text-left text-sm font-bold text-zinc-600">
+                  <li>① 사파리 화면 아래 <b className="text-sky-600">공유 버튼 (⬆️)</b>을 눌러요</li>
+                  <li>② 목록에서 <b className="text-sky-600">&lsquo;홈 화면에 추가&rsquo;</b>를 눌러요</li>
+                  <li>③ 오른쪽 위 <b className="text-sky-600">&lsquo;추가&rsquo;</b>를 누르면 끝!</li>
+                </ol>
+                <p className="mt-3 text-xs font-bold text-zinc-400">※ 사파리에서만 할 수 있어요</p>
+              </>
+            )}
+            {installGuide === "kakao" && (
+              <>
+                <h2 className="mt-3 text-xl font-black text-zinc-900">카카오톡 안에서는<br />추가할 수 없어요</h2>
+                <p className="mt-2 text-sm font-bold text-zinc-500">크롬(안드로이드)이나 사파리(아이폰)로 연 다음<br />다시 이 버튼을 눌러 주세요.</p>
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(window.location.href); }}
+                  className="mt-4 w-full rounded-2xl bg-yellow-300 py-3 text-base font-black text-zinc-900 active:scale-95"
+                >
+                  다른 브라우저로 열기
+                </button>
+              </>
+            )}
+            {installGuide === "other" && (
+              <>
+                <h2 className="mt-3 text-xl font-black text-zinc-900">홈 화면에 추가하기</h2>
+                <ol className="mt-3 space-y-2 text-left text-sm font-bold text-zinc-600">
+                  <li>① 브라우저 오른쪽 위(또는 아래)의 <b className="text-sky-600">메뉴 (⋮ 또는 ≡)</b>를 눌러요</li>
+                  <li>② <b className="text-sky-600">&lsquo;홈 화면에 추가&rsquo;</b> 또는 <b className="text-sky-600">&lsquo;앱 설치&rsquo;</b>를 눌러요</li>
+                </ol>
+              </>
+            )}
+            <button type="button" onClick={() => setInstallGuide(null)} className="mt-5 text-sm font-bold text-zinc-500 underline">닫기</button>
+          </div>
+        </div>
+      )}
       {/* ============================ 📱 카카오톡 앱 안 브라우저 안내 ============================ */}
       {kakaoGuide && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm" onClick={() => setKakaoGuide(false)}>
