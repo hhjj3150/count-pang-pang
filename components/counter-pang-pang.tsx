@@ -49,7 +49,7 @@ interface Question {
 const STORAGE_KEY = "counter-pang-pang-v1"
 const TOTAL_Q = 15
 const PASS_LINE = 13
-const MAX_LEVEL = 13
+const MAX_LEVEL = 14
 const HEART_CAP = 10
 
 const HANGUL = ["가", "나", "다", "라", "마", "거", "너", "더", "러", "머", "바", "사", "아", "자", "하", "호"]
@@ -66,9 +66,10 @@ const LEVEL_NAMES: Record<number, string> = {
   8: "숨은 숫자 탐정",
   9: "10 만들기",
   10: "20 만들기",
-  11: "이등분 퍼즐",
-  12: "불빛 곱셈",
-  13: "그랜드 마스터",
+  11: "큰 수 덧셈",
+  12: "이등분 퍼즐",
+  13: "불빛 곱셈",
+  14: "그랜드 마스터",
 }
 
 // 🎮 스테이지 선택 카드 이름 캡슐에 표시되는 레벨별 게임 설명 (없으면 LEVEL_NAMES 사용)
@@ -84,8 +85,9 @@ const LEVEL_DESC: Record<number, string> = {
   8: "?에 들어갈 숫자",
   9: "골라서 10 만들기",
   10: "골라서 20 만들기",
-  11: "전체합의 이등분\n조합선택", // \n = 카드 안에서 줄바꿈
-  12: "붉은 숫자의 곱",
+  11: "뒷자리+앞자리\n큰 수 덧셈", // \n = 카드 안에서 줄바꿈
+  12: "전체합의 이등분\n조합선택",
+  13: "붉은 숫자의 곱",
 }
 
 const LEVEL_TIMER: Record<number, number> = {
@@ -101,38 +103,52 @@ const LEVEL_TIMER: Record<number, number> = {
   9: 20,
   10: 25,
   11: 30,
-  12: 18,
-  13: 20,
+  12: 30,
+  13: 18,
+  14: 20,
 }
 
-// 🖼️ 레벨 카드·결과 그림: Lv.0~10은 숫자가 그려진 전용 그림, Lv.11~13은 왕관 그림(11번 그림)을 임시로 사용
+// 🖼️ 레벨 카드·결과 그림: Lv.0~10은 숫자가 그려진 전용 그림, Lv.11~14는 왕관 그림(11번 그림)을 임시로 사용
 const LEVEL_ART = (lv: number) => (lv <= 10 ? lv : 11)
 // 왕관 그림을 같이 쓰는 레벨끼리 구분되도록 색만 살짝 다르게
-const LEVEL_ART_FILTER: Record<number, string> = { 11: "hue-rotate(-35deg)", 12: "hue-rotate(35deg)" }
+const LEVEL_ART_FILTER: Record<number, string> = { 11: "hue-rotate(-70deg)", 12: "hue-rotate(-35deg)", 13: "hue-rotate(35deg)" }
 
-// 🔁 레벨 번호가 바뀐 업데이트(10·20 만들기 추가)로 기존 저장값의 레벨 번호를 옮기는 함수 (옛 9,10,11 → 11,12,13)
-const shiftOldLevel = (lv: number) => (lv >= 9 ? lv + 2 : lv)
-function migrateSaveV2() {
+// 🔁 레벨 번호가 바뀐 업데이트마다 기존 저장값의 레벨 번호를 옮기는 규칙 (저장 형식 버전별로 한 단계씩 적용)
+//  - ver1 → 2: 10·20 만들기(Lv.9·10) 추가 → 옛 9,10,11 → 11,12,13
+//  - ver2 → 3: 큰 수 덧셈(Lv.11) 추가 → 옛 11,12,13 → 12,13,14
+const SAVE_VERSION = 3
+const LEVEL_SHIFTS: Record<number, (lv: number) => number> = {
+  1: (lv) => (lv >= 9 ? lv + 2 : lv),
+  2: (lv) => (lv >= 11 ? lv + 1 : lv),
+}
+function migrateSave() {
   if (typeof window === "undefined") return
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return
     const d = JSON.parse(raw)
-    if ((d.ver ?? 1) >= 2) return
-    d.records = Object.fromEntries(Object.entries(d.records ?? {}).map(([k, v]) => [shiftOldLevel(Number(k)), v]))
-    d.unlocked = shiftOldLevel(d.unlocked ?? 0)
-    d.ver = 2
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(d))
+    let ver: number = d.ver ?? 1
+    if (ver >= SAVE_VERSION) return
     const lvRaw = localStorage.getItem("pangpang_level")
-    if (lvRaw) localStorage.setItem("pangpang_level", String(shiftOldLevel(Number(lvRaw))))
-    localStorage.removeItem("cp_daily") // 오늘의 도전은 새 번호로 다시 뽑음
+    let lastLv = lvRaw ? Number(lvRaw) : null
     const st = JSON.parse(localStorage.getItem("cp_stats") ?? "null")
-    if (st && st.types && st.games) {
-      // 학습 기록의 문제 유형 번호: 옛 9(이등분)·10(곱셈) → 11·12
-      st.types = Object.fromEntries(Object.entries(st.types).map(([k, v]) => [shiftOldLevel(Number(k)), v]))
-      st.games = st.games.map((g: { level: number }) => ({ ...g, level: shiftOldLevel(g.level) }))
-      localStorage.setItem("cp_stats", JSON.stringify(st))
+    while (ver < SAVE_VERSION) {
+      const sh = LEVEL_SHIFTS[ver]
+      d.records = Object.fromEntries(Object.entries(d.records ?? {}).map(([k, v]) => [sh(Number(k)), v]))
+      d.unlocked = sh(d.unlocked ?? 0)
+      if (lastLv !== null) lastLv = sh(lastLv)
+      if (st && st.types && st.games) {
+        // 학습 기록의 문제 유형 번호·게임 레벨도 같이 옮김
+        st.types = Object.fromEntries(Object.entries(st.types).map(([k, v]) => [sh(Number(k)), v]))
+        st.games = st.games.map((g: { level: number }) => ({ ...g, level: sh(g.level) }))
+      }
+      ver++
     }
+    d.ver = SAVE_VERSION
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(d))
+    if (lastLv !== null) localStorage.setItem("pangpang_level", String(lastLv))
+    if (st && st.types && st.games) localStorage.setItem("cp_stats", JSON.stringify(st))
+    localStorage.removeItem("cp_daily") // 오늘의 도전은 새 번호로 다시 뽑음
   } catch {
     /* ignore */
   }
@@ -181,9 +197,9 @@ function pickDistinct(count: number, poolSize: number) {
 }
 
 // 🧩 한 판(15문제) 만들기
-// 이등분 퍼즐(Lv.11)은 '이등분 불가' 정답을 한 판에 2~3문제만 섞고, 나머지는 숫자 조합을 골라야 하는 문제로 구성
+// 이등분 퍼즐(Lv.12)은 '이등분 불가' 정답을 한 판에 2~3문제만 섞고, 나머지는 숫자 조합을 골라야 하는 문제로 구성
 function buildGame(chosenLevel: number): Question[] {
-  if (chosenLevel === 11) {
+  if (chosenLevel === 12) {
     const impossible = new Set(pickDistinct(2 + ri(2), TOTAL_Q))
     return Array.from({ length: TOTAL_Q }, (_, i) => buildQuestion(chosenLevel, i, !impossible.has(i)))
   }
@@ -191,8 +207,8 @@ function buildGame(chosenLevel: number): Question[] {
 }
 
 function buildQuestion(chosenLevel: number, index: number, wantPartition?: boolean): Question {
-  // 그랜드 마스터(Lv.13)는 매 문제 Lv1~12 무작위, 그 외엔 선택 레벨(0은 1과 동일 로직)
-  const logic = chosenLevel === 13 ? 1 + ri(12) : chosenLevel === 0 ? 1 : chosenLevel
+  // 그랜드 마스터(Lv.14)는 매 문제 Lv1~13 무작위, 그 외엔 선택 레벨(0은 1과 동일 로직)
+  const logic = chosenLevel === 14 ? 1 + ri(13) : chosenLevel === 0 ? 1 : chosenLevel
   const timer = LEVEL_TIMER[logic]
   const hangul = HANGUL[ri(HANGUL.length)]
 
@@ -284,6 +300,23 @@ function buildQuestion(chosenLevel: number, index: number, wantPartition?: boole
       }
     }
     case 11: {
+      // ➕ 큰 수 덧셈: 뒷자리 4자리 수 + 앞자리 2·3자리 수 (예: 37가 4521 → 4521 + 37 = 4558)
+      // 정답은 숫자판으로 입력할 수 있게 4자리 이하(9999 이하), 헷갈리지 않게 앞·뒷자리 첫 숫자는 0이 아니게
+      const toNum = (ds: number[]) => Number(ds.join(""))
+      let front: number[] = []
+      let back: number[] = []
+      for (let tries = 0; tries < 500; tries++) {
+        front = [1 + ri(9), ...mkDigits(1 + ri(2))]
+        back = [1 + ri(9), ...mkDigits(3)]
+        if (toNum(front) + toNum(back) <= 9999) break
+      }
+      return {
+        level: logic, front, back, hangul, type: "numpad", timer,
+        title: "큰 수 덧셈", desc: "뒷자리 네 자리 수 + 앞자리 수를 계산하세요",
+        answer: toNum(back) + toNum(front),
+      }
+    }
+    case 12: {
       // wantPartition: true = 이등분 가능한 번호판, false = 이등분 불가 번호판
       // (지정이 없으면 그랜드 마스터용: 약 20%만 이등분 불가)
       const want = wantPartition ?? Math.random() >= 0.2
@@ -300,7 +333,7 @@ function buildQuestion(chosenLevel: number, index: number, wantPartition?: boole
         answer: null, canPartition: canSplitEven(all),
       }
     }
-    case 12:
+    case 13:
     default: {
       const { front, back } = base(2 + ri(2))
       
@@ -719,7 +752,7 @@ const EMPTY_STATS: LearnStats = { types: {}, days: {}, games: [] }
 const STATS_KEY = "cp_stats"
 
 function ParentReport({ stats }: { stats: LearnStats }) {
-  const typeRows = Array.from({ length: 12 }, (_, i) => i + 1).map((lv) => {
+  const typeRows = Array.from({ length: MAX_LEVEL - 1 }, (_, i) => i + 1).map((lv) => {
     const t = stats.types[lv] ?? { tries: 0, correct: 0 }
     return { lv, name: (LEVEL_DESC[lv] ?? "").replace("\n", " "), ...t, rate: t.tries ? Math.round((t.correct / t.tries) * 100) : null }
   })
@@ -792,7 +825,7 @@ function ParentReport({ stats }: { stats: LearnStats }) {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[10px] font-bold text-slate-400">괄호 안은 푼 문제 수예요. 그랜드 마스터(Lv.13)에서 푼 문제도 유형별로 함께 계산돼요.</p>
+        <p className="mt-3 text-[10px] font-bold text-slate-400">괄호 안은 푼 문제 수예요. 그랜드 마스터(Lv.14)에서 푼 문제도 유형별로 함께 계산돼요.</p>
       </div>
 
       {stats.games.length > 0 && (
@@ -812,7 +845,7 @@ function ParentReport({ stats }: { stats: LearnStats }) {
 }
 
 /* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
-const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "숫자 고르기 (Lv.9~11)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
+const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "숫자 고르기 (Lv.9·10·12)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
 
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -843,7 +876,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
   }
   // ✂️ 이등분 퍼즐 연습 (고정 예시: 7 4 / 2 6 5 0 → 전체 24, 절반 12)
   const halfDemo: Question = {
-    level: 11, front: [7, 4], back: [2, 6, 5, 0], hangul: "나", type: "partition", timer: 30,
+    level: 12, front: [7, 4], back: [2, 6, 5, 0], hangul: "나", type: "partition", timer: 30,
     title: "", desc: "", answer: null, canPartition: true,
   }
   const [halfSel, setHalfSel] = useState<number[]>([])
@@ -887,7 +920,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
               <p>① 화면 위에 나오는 <b className="text-amber-600">문제 설명</b>을 읽어요</p>
               <p className="mt-2">② <b className="text-sky-600">번호판</b>을 보고 설명에 따라 계산해요</p>
               <p className="mt-2">③ 숫자를 누르고 <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">입력</b> 버튼!</p>
-              <p className="mt-3 text-sm text-zinc-500">💡 대부분의 레벨은 이렇게 하면 돼요. 앞뒤 비교(Lv.5)는 버튼을 누르고, 숫자를 골라야 하는 10·20 만들기(Lv.9·10)와 이등분 퍼즐(Lv.11)은 다음 장에서 따로 알려줄게요.</p>
+              <p className="mt-3 text-sm text-zinc-500">💡 대부분의 레벨은 이렇게 하면 돼요. 앞뒤 비교(Lv.5)는 버튼을 누르고, 숫자를 골라야 하는 10·20 만들기(Lv.9·10)와 이등분 퍼즐(Lv.12)은 다음 장에서 따로 알려줄게요.</p>
             </Bubble>
           </>
         )
@@ -919,7 +952,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             )}
           </>
         )
-      case "숫자 고르기 (Lv.9~11)": {
+      case "숫자 고르기 (Lv.9·10·12)": {
         const all = [...halfDemo.front, ...halfDemo.back]
         const total = sum(all)
         const selSum = halfSel.reduce((a, i) => a + all[i], 0)
@@ -930,7 +963,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
               <p className="mt-1 text-sm text-zinc-500">예) 7 4 / 2 6 5 0 → 4 + 6 = 10 ✅, 7 + 2 + 6 + 5 = 20 ✅</p>
             </Bubble>
             <Bubble>
-              <p>✂️ <b>이등분 퍼즐 (Lv.11)</b>: 번호판 숫자를 <b>두 묶음</b>으로 나눠서, 두 묶음의 합이 <b className="text-sky-600">똑같게</b> 만드는 게임이에요.</p>
+              <p>✂️ <b>이등분 퍼즐 (Lv.12)</b>: 번호판 숫자를 <b>두 묶음</b>으로 나눠서, 두 묶음의 합이 <b className="text-sky-600">똑같게</b> 만드는 게임이에요.</p>
               <p className="mt-2">① 전체 합을 구해요 → ② <b>절반</b>이 되도록 숫자를 눌러 <b className="text-sky-600">파란 불</b>을 켜요 → ③ <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">제출</b></p>
             </Bubble>
             <p className="text-center text-sm font-black text-zinc-600">직접 눌러 보세요! 전체 합 {total} → 절반은 <span className="text-sky-600">{total / 2}</span></p>
@@ -1074,7 +1107,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
 
 export default function CounterPangPang() {
   // 🔁 옛 저장 데이터의 레벨 번호 변환 (다른 저장값 불러오기보다 먼저 실행되도록 맨 위에 둠)
-  useEffect(() => { migrateSaveV2() }, [])
+  useEffect(() => { migrateSave() }, [])
   
   
   // (그 아래로는 BGM 코드 등이 이어집니다)
@@ -1290,9 +1323,9 @@ export default function CounterPangPang() {
     { id: 7, name: "아이스크림과캔디", file: "아이스크림과캔디.mp4", price: 10, unlockLevel: 6 },
     { id: 8, name: "지하도시", file: "지하도시.mp4", price: 20, unlockLevel: 7 },
     { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 30, unlockLevel: 8 },
-    { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 40, unlockLevel: 11 },
-    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50, unlockLevel: 12 },
-    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70, unlockLevel: 13 },
+    { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 40, unlockLevel: 12 },
+    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50, unlockLevel: 13 },
+    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70, unlockLevel: 14 },
   ];
     
 // 📸 이모티콘 팩 리스트 (9종 캐릭터 x 5가지 감정)
@@ -1708,7 +1741,7 @@ export default function CounterPangPang() {
   useEffect(() => {
     if (!loaded) return;
     const data: SaveData = {
-      ver: 2,
+      ver: SAVE_VERSION,
       nickname, hearts, heartDate, unlocked, records, muted, points,
       lifetimePoints, monthlyPoints, monthlyDate
     };
