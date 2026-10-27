@@ -1113,9 +1113,9 @@ export default function CounterPangPang() {
   // (그 아래로는 BGM 코드 등이 이어집니다)
 
   
-  // ▼▼▼ 14곡 랜덤 무한 재생 BGM 코드 ▼▼▼
+  // ▼▼▼ 13곡 랜덤 무한 재생 BGM 코드 ▼▼▼
   React.useEffect(() => {
-    // 1. 1부터 14까지의 숫자를 만들고 무작위로 섞어주는 마법의 함수 (피셔-예이츠 셔플)
+    // 1. 곡 번호 목록을 만들고 무작위로 섞어주는 마법의 함수 (피셔-예이츠 셔플)
     const shuffleArray = (array: number[]) => {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -1125,7 +1125,9 @@ export default function CounterPangPang() {
     };
 
     // 2. 플레이리스트 생성 및 초기 세팅
-    let playlist = shuffleArray(Array.from({ length: 14 }, (_, i) => i + 1));
+    // /public/assets/bgm1.mp3 ~ bgm13.mp3 (곡을 추가하면 이 숫자만 늘리면 됨)
+    const BGM_COUNT = 13;
+    let playlist = shuffleArray(Array.from({ length: BGM_COUNT }, (_, i) => i + 1));
     let currentIndex = 0;
     
     // 첫 번째 곡 세팅
@@ -1140,7 +1142,7 @@ export default function CounterPangPang() {
     const playNext = () => {
       currentIndex++;
       
-      // 만약 14곡을 다 들었다면? -> 다시 새롭게 섞어서 처음부터 무한 반복!
+      // 만약 모든 곡을 다 들었다면? -> 다시 새롭게 섞어서 처음부터 무한 반복!
       if (currentIndex >= playlist.length) {
         playlist = shuffleArray([...playlist]);
         currentIndex = 0;
@@ -1153,6 +1155,15 @@ export default function CounterPangPang() {
 
     // 현재 음악이 끝나는 순간(ended)을 감지해서 playNext를 실행하게 만듭니다.
     currentAudio.addEventListener('ended', playNext);
+    // 곡 파일을 못 불러오면(없거나 네트워크 오류) 음악이 멈추지 않도록 다음 곡으로 넘어감
+    let errorSkips = 0;
+    const onError = () => {
+      if (++errorSkips > BGM_COUNT) return; // 모든 곡이 실패하면 무한 반복 방지
+      playNext();
+    };
+    const onPlaying = () => { errorSkips = 0; };
+    currentAudio.addEventListener('error', onError);
+    currentAudio.addEventListener('playing', onPlaying);
 
     // 4. 브라우저 자동재생 차단 방지 (유저가 화면을 처음 '클릭'하면 1번 트랙 시작!)
     const handleFirstClick = () => {
@@ -1180,6 +1191,8 @@ export default function CounterPangPang() {
     return () => {
       currentAudio.pause();
       currentAudio.removeEventListener('ended', playNext);
+      currentAudio.removeEventListener('error', onError);
+      currentAudio.removeEventListener('playing', onPlaying);
       document.removeEventListener('click', handleFirstClick);
       document.removeEventListener("visibilitychange", handleVisibilityChange); // 정리 코드 추가
     };
