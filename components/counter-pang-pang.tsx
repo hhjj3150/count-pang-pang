@@ -11,10 +11,11 @@ import { cn } from "@/lib/utils"
    ========================================================================= */
 
 type Screen = "INTRO" | "LOGIN" | "LOBBY" | "GAME" | "RESULT"
-type QType = "numpad" | "compare" | "partition"
+type QType = "numpad" | "compare" | "partition" | "target"
 type Reaction = "idle" | "correct" | "wrong"
 
 interface SaveData {
+  ver?: number // 저장 형식 버전 (2 = 레벨 13개 체계)
   nickname: string | null
   hearts: number
   heartDate: string
@@ -42,12 +43,13 @@ interface Question {
   totalForHidden?: number
   lit?: number[]
   canPartition?: boolean
+  target?: number // 숫자 골라 만들기(Lv.9·10)의 목표 합 (10 또는 20)
 }
 
 const STORAGE_KEY = "counter-pang-pang-v1"
 const TOTAL_Q = 15
 const PASS_LINE = 13
-const MAX_LEVEL = 11
+const MAX_LEVEL = 13
 const HEART_CAP = 10
 
 const HANGUL = ["가", "나", "다", "라", "마", "거", "너", "더", "러", "머", "바", "사", "아", "자", "하", "호"]
@@ -62,9 +64,11 @@ const LEVEL_NAMES: Record<number, string> = {
   6: "앞뒤 차이왕",
   7: "홀짝 마법사",
   8: "숨은 숫자 탐정",
-  9: "이등분 퍼즐",
-  10: "불빛 곱셈",
-  11: "그랜드 마스터",
+  9: "10 만들기",
+  10: "20 만들기",
+  11: "이등분 퍼즐",
+  12: "불빛 곱셈",
+  13: "그랜드 마스터",
 }
 
 // 🎮 스테이지 선택 카드 이름 캡슐에 표시되는 레벨별 게임 설명 (없으면 LEVEL_NAMES 사용)
@@ -78,8 +82,10 @@ const LEVEL_DESC: Record<number, string> = {
   6: "앞뒤 차이",
   7: "홀수/짝수만 합",
   8: "?에 들어갈 숫자",
-  9: "전체합의 이등분\n조합선택", // \n = 카드 안에서 줄바꿈
-  10: "붉은 숫자의 곱",
+  9: "골라서 10 만들기",
+  10: "골라서 20 만들기",
+  11: "전체합의 이등분\n조합선택", // \n = 카드 안에서 줄바꿈
+  12: "붉은 숫자의 곱",
 }
 
 const LEVEL_TIMER: Record<number, number> = {
@@ -92,9 +98,44 @@ const LEVEL_TIMER: Record<number, number> = {
   6: 20,
   7: 18,
   8: 20,
-  9: 30,
-  10: 18,
-  11: 20,
+  9: 20,
+  10: 25,
+  11: 30,
+  12: 18,
+  13: 20,
+}
+
+// 🖼️ 레벨 카드·결과 그림: Lv.0~10은 숫자가 그려진 전용 그림, Lv.11~13은 왕관 그림(11번 그림)을 임시로 사용
+const LEVEL_ART = (lv: number) => (lv <= 10 ? lv : 11)
+// 왕관 그림을 같이 쓰는 레벨끼리 구분되도록 색만 살짝 다르게
+const LEVEL_ART_FILTER: Record<number, string> = { 11: "hue-rotate(-35deg)", 12: "hue-rotate(35deg)" }
+
+// 🔁 레벨 번호가 바뀐 업데이트(10·20 만들기 추가)로 기존 저장값의 레벨 번호를 옮기는 함수 (옛 9,10,11 → 11,12,13)
+const shiftOldLevel = (lv: number) => (lv >= 9 ? lv + 2 : lv)
+function migrateSaveV2() {
+  if (typeof window === "undefined") return
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    const d = JSON.parse(raw)
+    if ((d.ver ?? 1) >= 2) return
+    d.records = Object.fromEntries(Object.entries(d.records ?? {}).map(([k, v]) => [shiftOldLevel(Number(k)), v]))
+    d.unlocked = shiftOldLevel(d.unlocked ?? 0)
+    d.ver = 2
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(d))
+    const lvRaw = localStorage.getItem("pangpang_level")
+    if (lvRaw) localStorage.setItem("pangpang_level", String(shiftOldLevel(Number(lvRaw))))
+    localStorage.removeItem("cp_daily") // 오늘의 도전은 새 번호로 다시 뽑음
+    const st = JSON.parse(localStorage.getItem("cp_stats") ?? "null")
+    if (st && st.types && st.games) {
+      // 학습 기록의 문제 유형 번호: 옛 9(이등분)·10(곱셈) → 11·12
+      st.types = Object.fromEntries(Object.entries(st.types).map(([k, v]) => [shiftOldLevel(Number(k)), v]))
+      st.games = st.games.map((g: { level: number }) => ({ ...g, level: shiftOldLevel(g.level) }))
+      localStorage.setItem("cp_stats", JSON.stringify(st))
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 const FACE_EMOJI = ["🐣", "🐥", "🐤", "🦆", "🐦", "🦉", "🦜", "🦢", "🕊️", "🦅", "🦩", "👑"]
@@ -122,6 +163,14 @@ function canSplitEven(arr: number[]) {
   return dp[target]
 }
 
+// 숫자 몇 개를 골라 합이 target이 되는 조합이 있는지 (빈 선택 제외)
+function hasSubsetSum(arr: number[], target: number) {
+  const dp = new Array(target + 1).fill(false)
+  dp[0] = true
+  for (const n of arr) for (let j = target; j >= n; j--) if (dp[j - n]) dp[j] = true
+  return dp[target]
+}
+
 function pickDistinct(count: number, poolSize: number) {
   const idx = Array.from({ length: poolSize }, (_, i) => i)
   for (let i = idx.length - 1; i > 0; i--) {
@@ -132,9 +181,9 @@ function pickDistinct(count: number, poolSize: number) {
 }
 
 // 🧩 한 판(15문제) 만들기
-// 이등분 퍼즐(Lv.9)은 '이등분 불가' 정답을 한 판에 2~3문제만 섞고, 나머지는 숫자 조합을 골라야 하는 문제로 구성
+// 이등분 퍼즐(Lv.11)은 '이등분 불가' 정답을 한 판에 2~3문제만 섞고, 나머지는 숫자 조합을 골라야 하는 문제로 구성
 function buildGame(chosenLevel: number): Question[] {
-  if (chosenLevel === 9) {
+  if (chosenLevel === 11) {
     const impossible = new Set(pickDistinct(2 + ri(2), TOTAL_Q))
     return Array.from({ length: TOTAL_Q }, (_, i) => buildQuestion(chosenLevel, i, !impossible.has(i)))
   }
@@ -142,8 +191,8 @@ function buildGame(chosenLevel: number): Question[] {
 }
 
 function buildQuestion(chosenLevel: number, index: number, wantPartition?: boolean): Question {
-  // 그랜드 마스터는 매 문제 Lv1~10 무작위, 그 외엔 선택 레벨(0은 1과 동일 로직)
-  const logic = chosenLevel === 11 ? 1 + ri(10) : chosenLevel === 0 ? 1 : chosenLevel
+  // 그랜드 마스터(Lv.13)는 매 문제 Lv1~12 무작위, 그 외엔 선택 레벨(0은 1과 동일 로직)
+  const logic = chosenLevel === 13 ? 1 + ri(12) : chosenLevel === 0 ? 1 : chosenLevel
   const timer = LEVEL_TIMER[logic]
   const hangul = HANGUL[ri(HANGUL.length)]
 
@@ -222,7 +271,19 @@ function buildQuestion(chosenLevel: number, index: number, wantPartition?: boole
         answer: all[hiddenPos], hiddenPos, totalForHidden: total,
       }
     }
-    case 9: {
+    case 9:
+    case 10: {
+      // 🔟 숫자 골라 만들기: 7자리 번호판에서 숫자를 골라 합이 10(Lv.9) / 20(Lv.10)이 되게 (항상 정답이 있는 번호판만 출제)
+      const target = logic === 9 ? 10 : 20
+      let { front, back } = base(3)
+      for (let tries = 0; tries < 500 && !hasSubsetSum([...front, ...back], target); tries++) ({ front, back } = base(3))
+      return {
+        level: logic, front, back, hangul, type: "target", timer,
+        title: `${target} 만들기`, desc: `번호판 숫자를 골라 합이 ${target}이 되게 하세요`,
+        answer: target, target,
+      }
+    }
+    case 11: {
       // wantPartition: true = 이등분 가능한 번호판, false = 이등분 불가 번호판
       // (지정이 없으면 그랜드 마스터용: 약 20%만 이등분 불가)
       const want = wantPartition ?? Math.random() >= 0.2
@@ -239,7 +300,7 @@ function buildQuestion(chosenLevel: number, index: number, wantPartition?: boole
         answer: null, canPartition: canSplitEven(all),
       }
     }
-    case 10:
+    case 12:
     default: {
       const { front, back } = base(2 + ri(2))
       
@@ -265,6 +326,14 @@ function buildQuestion(chosenLevel: number, index: number, wantPartition?: boole
 
 function exampleText(q: Question) {
   if (q.type === "compare") return q.answer === "front" ? "앞이 큼" : q.answer === "back" ? "뒤가 큼" : "같음"
+  if (q.type === "target" && q.target) {
+    const all = [...q.front, ...q.back]
+    for (let m = 1; m < 1 << all.length; m++) {
+      const picked = all.filter((_, i) => (m >> i) & 1)
+      if (sum(picked) === q.target && !picked.includes(0)) return `${picked.join("+")} = ${q.target}`
+    }
+    return String(q.target)
+  }
   if (q.type === "partition") {
     if (!q.canPartition) return "이등분 불가"
     // 합이 전체의 절반이 되는 숫자 조합 하나 찾아서 보여주기 (예: 7+1 = 8)
@@ -650,7 +719,7 @@ const EMPTY_STATS: LearnStats = { types: {}, days: {}, games: [] }
 const STATS_KEY = "cp_stats"
 
 function ParentReport({ stats }: { stats: LearnStats }) {
-  const typeRows = Array.from({ length: 10 }, (_, i) => i + 1).map((lv) => {
+  const typeRows = Array.from({ length: 12 }, (_, i) => i + 1).map((lv) => {
     const t = stats.types[lv] ?? { tries: 0, correct: 0 }
     return { lv, name: (LEVEL_DESC[lv] ?? "").replace("\n", " "), ...t, rate: t.tries ? Math.round((t.correct / t.tries) * 100) : null }
   })
@@ -723,7 +792,7 @@ function ParentReport({ stats }: { stats: LearnStats }) {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[10px] font-bold text-slate-400">괄호 안은 푼 문제 수예요. 그랜드 마스터(Lv.11)에서 푼 문제도 유형별로 함께 계산돼요.</p>
+        <p className="mt-3 text-[10px] font-bold text-slate-400">괄호 안은 푼 문제 수예요. 그랜드 마스터(Lv.13)에서 푼 문제도 유형별로 함께 계산돼요.</p>
       </div>
 
       {stats.games.length > 0 && (
@@ -743,7 +812,7 @@ function ParentReport({ stats }: { stats: LearnStats }) {
 }
 
 /* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
-const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "이등분 퍼즐 (Lv.9)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
+const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "숫자 고르기 (Lv.9~11)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
 
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -774,7 +843,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
   }
   // ✂️ 이등분 퍼즐 연습 (고정 예시: 7 4 / 2 6 5 0 → 전체 24, 절반 12)
   const halfDemo: Question = {
-    level: 9, front: [7, 4], back: [2, 6, 5, 0], hangul: "나", type: "partition", timer: 30,
+    level: 11, front: [7, 4], back: [2, 6, 5, 0], hangul: "나", type: "partition", timer: 30,
     title: "", desc: "", answer: null, canPartition: true,
   }
   const [halfSel, setHalfSel] = useState<number[]>([])
@@ -818,7 +887,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
               <p>① 화면 위에 나오는 <b className="text-amber-600">문제 설명</b>을 읽어요</p>
               <p className="mt-2">② <b className="text-sky-600">번호판</b>을 보고 설명에 따라 계산해요</p>
               <p className="mt-2">③ 숫자를 누르고 <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">입력</b> 버튼!</p>
-              <p className="mt-3 text-sm text-zinc-500">💡 대부분의 레벨은 이렇게 하면 돼요. 앞뒤 비교(Lv.5)는 버튼을 누르고, 이등분 퍼즐(Lv.9)은 다음 장에서 따로 알려줄게요.</p>
+              <p className="mt-3 text-sm text-zinc-500">💡 대부분의 레벨은 이렇게 하면 돼요. 앞뒤 비교(Lv.5)는 버튼을 누르고, 숫자를 골라야 하는 10·20 만들기(Lv.9·10)와 이등분 퍼즐(Lv.11)은 다음 장에서 따로 알려줄게요.</p>
             </Bubble>
           </>
         )
@@ -850,14 +919,18 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             )}
           </>
         )
-      case "이등분 퍼즐 (Lv.9)": {
+      case "숫자 고르기 (Lv.9~11)": {
         const all = [...halfDemo.front, ...halfDemo.back]
         const total = sum(all)
         const selSum = halfSel.reduce((a, i) => a + all[i], 0)
         return (
           <>
             <Bubble>
-              <p>✂️ 번호판 숫자를 <b>두 묶음</b>으로 나눠서, 두 묶음의 합이 <b className="text-sky-600">똑같게</b> 만드는 게임이에요.</p>
+              <p>🔟 <b>10·20 만들기 (Lv.9·10)</b>: 번호판 숫자를 눌러서 고른 숫자의 합이 <b className="text-sky-600">10</b>(또는 <b className="text-sky-600">20</b>)이 되게 해요.</p>
+              <p className="mt-1 text-sm text-zinc-500">예) 7 4 / 2 6 5 0 → 4 + 6 = 10 ✅, 7 + 2 + 6 + 5 = 20 ✅</p>
+            </Bubble>
+            <Bubble>
+              <p>✂️ <b>이등분 퍼즐 (Lv.11)</b>: 번호판 숫자를 <b>두 묶음</b>으로 나눠서, 두 묶음의 합이 <b className="text-sky-600">똑같게</b> 만드는 게임이에요.</p>
               <p className="mt-2">① 전체 합을 구해요 → ② <b>절반</b>이 되도록 숫자를 눌러 <b className="text-sky-600">파란 불</b>을 켜요 → ③ <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">제출</b></p>
             </Bubble>
             <p className="text-center text-sm font-black text-zinc-600">직접 눌러 보세요! 전체 합 {total} → 절반은 <span className="text-sky-600">{total / 2}</span></p>
@@ -942,7 +1015,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
       default:
         return (
           <div className="grid grid-cols-2 gap-1.5">
-            {Array.from({ length: 11 }, (_, i) => i + 1).map((lv) => (
+            {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((lv) => (
               <div key={lv} className="flex items-center gap-1.5 rounded-xl bg-white/90 px-2.5 py-2 text-left shadow-sm ring-1 ring-black/5">
                 <span className="text-xs font-black text-amber-600">Lv.{lv}</span>
                 <span className="text-[13px] font-bold leading-tight text-zinc-700">{(LEVEL_DESC[lv] ?? "모든 게임 섞어서").replace("\n", " ")}</span>
@@ -1000,6 +1073,8 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
 }
 
 export default function CounterPangPang() {
+  // 🔁 옛 저장 데이터의 레벨 번호 변환 (다른 저장값 불러오기보다 먼저 실행되도록 맨 위에 둠)
+  useEffect(() => { migrateSaveV2() }, [])
   
   
   // (그 아래로는 BGM 코드 등이 이어집니다)
@@ -1215,9 +1290,9 @@ export default function CounterPangPang() {
     { id: 7, name: "아이스크림과캔디", file: "아이스크림과캔디.mp4", price: 10, unlockLevel: 6 },
     { id: 8, name: "지하도시", file: "지하도시.mp4", price: 20, unlockLevel: 7 },
     { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 30, unlockLevel: 8 },
-    { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 40, unlockLevel: 9 },
-    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50, unlockLevel: 10 },
-    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70, unlockLevel: 11 },
+    { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 40, unlockLevel: 11 },
+    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50, unlockLevel: 12 },
+    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70, unlockLevel: 13 },
   ];
     
 // 📸 이모티콘 팩 리스트 (9종 캐릭터 x 5가지 감정)
@@ -1633,6 +1708,7 @@ export default function CounterPangPang() {
   useEffect(() => {
     if (!loaded) return;
     const data: SaveData = {
+      ver: 2,
       nickname, hearts, heartDate, unlocked, records, muted, points,
       lifetimePoints, monthlyPoints, monthlyDate
     };
@@ -2085,6 +2161,15 @@ export default function CounterPangPang() {
     applyScore(valid)
     resolve(valid)
   }
+  // 🔟 숫자 골라 만들기 제출: 고른 숫자의 합이 목표(10/20)와 같으면 정답 (조합은 아무거나 OK)
+  const onTargetSubmit = () => {
+    if (!currentQ || locked || !currentQ.target) return
+    const all = [...currentQ.front, ...currentQ.back]
+    const selSum = selected.reduce((a, i) => a + (all[i] ?? 0), 0)
+    const ok = selected.length > 0 && selSum === currentQ.target
+    applyScore(ok)
+    resolve(ok)
+  }
   const onPartitionImpossible = () => {
     if (!currentQ || locked) return
     sfxClick()
@@ -2423,7 +2508,7 @@ export default function CounterPangPang() {
               )}
               <p className="mb-2 mt-1 text-sm font-bold text-black/70">스테이지 선택</p>
               <div className="grid grid-cols-3 gap-3">
-                {Array.from({ length: 12 }, (_, lv) => {
+                {Array.from({ length: MAX_LEVEL + 1 }, (_, lv) => {
                   const isLocked = lv > unlocked
                   const cleared = (records[lv] ?? 0) >= PASS_LINE
                   return (
@@ -2449,7 +2534,8 @@ export default function CounterPangPang() {
             {/* 1. 꽉 찬 이미지 */}
             <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl">
               <GameImage
-                src={`/assets/cards/${lv}.webp`}
+                src={`/assets/cards/${LEVEL_ART(lv)}.webp`}
+                style={LEVEL_ART_FILTER[lv] ? { filter: LEVEL_ART_FILTER[lv] } : undefined}
                 alt={`Lv.${lv} 팡이`}
                 fallback={
                   <img
@@ -2706,8 +2792,8 @@ export default function CounterPangPang() {
                     >
                       <Plate
                         q={currentQ}
-                        selected={currentQ.type === "partition" ? selected : undefined}
-                        onToggle={currentQ.type === "partition" && !locked ? togglePartition : undefined}
+                        selected={currentQ.type === "partition" || currentQ.type === "target" ? selected : undefined}
+                        onToggle={(currentQ.type === "partition" || currentQ.type === "target") && !locked ? togglePartition : undefined}
                       />
                     </div>
                   </div>
@@ -2748,6 +2834,36 @@ export default function CounterPangPang() {
                   {b.label}
                 </button>
               ))}
+            </div>
+          )}
+
+          {currentQ.type === "target" && (
+            <div className="space-y-2">
+              <p className="text-center text-sm font-bold text-white/70">
+                번호판 숫자를 눌러 골라요 · 선택 합{" "}
+                <span className={cn("text-lg font-black", selected.reduce((a, i) => a + ([...currentQ.front, ...currentQ.back][i] ?? 0), 0) === currentQ.target ? "text-emerald-300" : "text-sky-300")}>
+                  {selected.reduce((a, i) => a + ([...currentQ.front, ...currentQ.back][i] ?? 0), 0)}
+                </span>
+                <span className="text-white/50"> / 목표 {currentQ.target}</span>
+              </p>
+              <div className="grid grid-cols-[1fr_2fr] gap-2">
+                <button
+                  type="button"
+                  disabled={locked || selected.length === 0}
+                  onClick={() => { sfxClick(); setSelected([]) }}
+                  className="rounded-2xl bg-white/15 py-4 text-base font-black text-white ring-1 ring-white/30 active:translate-y-1 disabled:opacity-40"
+                >
+                  다시 고르기
+                </button>
+                <button
+                  type="button"
+                  disabled={locked || selected.length === 0}
+                  onClick={onTargetSubmit}
+                  className="rounded-2xl bg-gradient-to-b from-emerald-400 to-emerald-500 py-4 text-lg font-black text-emerald-950 shadow-[0_5px_0_#047857] active:translate-y-1 active:shadow-[0_1px_0_#047857] disabled:opacity-40"
+                >
+                  제출 ✅
+                </button>
+              </div>
             </div>
           )}
 
@@ -2797,7 +2913,7 @@ export default function CounterPangPang() {
                   <>
                     <GameImage
                       key="boom"
-                      src={`/assets/${chosenLevel}-10.png`}
+                      src={`/assets/${LEVEL_ART(chosenLevel)}-10.png`}
                       alt="팡!!"
                       fallback={<span style={{ fontSize: "7rem" }}>💥</span>}
                       className="h-44 w-44 object-contain cpp-pop"
