@@ -1095,7 +1095,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             <div className="space-y-2">
               {tiers.map((t) => (
                 <div key={t.pct} className="flex items-center gap-2 rounded-2xl bg-white/90 p-2 shadow-sm ring-1 ring-black/5">
-                  <span className="w-16 shrink-0 rounded-xl bg-amber-400 py-1.5 text-center text-base font-black text-amber-950">+{t.pct}%</span>
+                  <span className="w-[72px] shrink-0 rounded-xl bg-amber-400 py-1 text-center font-black leading-tight text-amber-950"><span className="block text-[10px]">클리어 보너스</span><span className="block text-base">+{t.pct}%</span></span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-black text-zinc-700">{t.label}</p>
                     <div className="mt-1 flex gap-1">
@@ -3365,7 +3365,7 @@ export default function CounterPangPang() {
                       const isSelected = equippedCar === item.id;
                       return (
                         <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                          {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">+{item.bonus}%</span>}
+                          {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">클리어 보너스 +{item.bonus}%</span>}
                           <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
                             {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
                           </div>
@@ -3718,7 +3718,7 @@ export default function CounterPangPang() {
                     const isOwned = ownedCars.includes(item.id);
                     return (
                       <div key={item.id} className="relative p-3 rounded-xl border-2 border-slate-200 bg-white">
-                        {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">+{item.bonus}%</span>}
+                        {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">클리어 보너스 +{item.bonus}%</span>}
                         <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
                           {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본</span>}
                         </div>
