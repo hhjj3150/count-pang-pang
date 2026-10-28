@@ -876,7 +876,34 @@ function ParentReport({ stats }: { stats: LearnStats }) {
 }
 
 /* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
-const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "숫자 고르기 (Lv.9·10·12)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "띠 승급", "레벨 소개"]
+// 🚗 카트(세트) 리스트 (실제 폴더의 이미지 파일명과 100% 일치)
+// bonus: 장착한 채로 레벨을 통과하면 통과 보너스 포인트에 추가로 주는 비율(%)
+const KARTS = [
+  { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0, bonus: 0 },
+  // 🚙 일반 자동차: +5%
+  { id: "car_suv", name: "SUV", file: "suv.png", price: 5, bonus: 5 },
+  { id: "car_police", name: "경찰차", file: "경찰차.png", price: 7, bonus: 5 },
+  { id: "car_fire", name: "소방차", file: "소방차.png", price: 6, bonus: 5 },
+  { id: "car_sports", name: "스포츠카", file: "스포츠카.png", price: 8, bonus: 5 },
+  { id: "car_tank", name: "전투 탱크", file: "탱크.png", price: 10, bonus: 5 },
+  { id: "car_forklift", name: "포크레인", file: "포크레인.png", price: 9, bonus: 5 },
+  // 🚒 특수 카트: +10%
+  { id: "kart_fire_truck", name: "소방 카트", file: "kart_fire_truck.png", price: 5, bonus: 10 },
+  { id: "kart_police", name: "경찰 카트", file: "kart_police.png", price: 7, bonus: 10 },
+  { id: "kart_tank", name: "탱크 카트", file: "kart_tank.png", price: 10, bonus: 10 },
+  // 🦁 캐릭터 카트: +15%
+  { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 0, bonus: 15 },
+  { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 5, bonus: 15 },
+  { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 4, bonus: 15 },
+  { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 6, bonus: 15 },
+  { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 8, bonus: 15 },
+  { id: "kart_ostrich", name: "다리가 짧은 타조 카트", file: "kart_ostrich.png", price: 3, bonus: 15 },
+  { id: "kart_owl", name: "눈이 작은부엉이 카트", file: "kart_owl.png", price: 5, bonus: 15 },
+  { id: "kart_rabbit", name: "귀가작은 토끼 카트", file: "kart_rabbit.png", price: 4, bonus: 15 },
+]
+const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
+
+const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "숫자 고르기 (Lv.9·10·12)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "카트 보너스", "띠 승급", "레벨 소개"]
 
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -1054,9 +1081,39 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
           <Bubble>
             <p>💖 <b>하트</b>: 게임 한 판에 1개 사용. 매일 5개까지 다시 채워져요.</p>
             <p className="mt-3">🪙 <b>포인트</b>: 문제를 맞히고, 레벨을 통과하고, 📅 출석체크, 💌 친구 초대로 모아요.</p>
-            <p className="mt-3">🛒 <b>포인트 상점</b>: 모은 포인트로 카트, 배경, 이모티콘, 하트를 살 수 있어요.</p>
+            <p className="mt-3">🛒 <b>포인트 상점</b>: 모은 포인트로 카트, 배경, 이모티콘, 하트를 살 수 있어요. 카트는 포인트를 더 벌게 해 줘요! (다음 장)</p>
           </Bubble>
         )
+      case "카트 보너스": {
+        const tiers = [
+          { pct: 5, label: "일반 자동차", ids: ["car_suv", "car_police", "car_fire", "car_sports"] },
+          { pct: 10, label: "특수 카트", ids: ["kart_fire_truck", "kart_police", "kart_tank"] },
+          { pct: 15, label: "캐릭터 카트", ids: ["kart_crocodile", "kart_lion", "kart_rabbit", "kart_owl"] },
+        ]
+        return (
+          <>
+            <div className="space-y-2">
+              {tiers.map((t) => (
+                <div key={t.pct} className="flex items-center gap-2 rounded-2xl bg-white/90 p-2 shadow-sm ring-1 ring-black/5">
+                  <span className="w-16 shrink-0 rounded-xl bg-amber-400 py-1.5 text-center text-base font-black text-amber-950">+{t.pct}%</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-zinc-700">{t.label}</p>
+                    <div className="mt-1 flex gap-1">
+                      {t.ids.map((id) => (
+                        <img key={id} src={lightImg("karts", KARTS.find((k) => k.id === id)!.file, "sm")} alt="" className="h-9 w-9 rounded-lg bg-slate-100 object-contain p-0.5" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Bubble>
+              <p>🏎️ <b>내 차고</b>에서 카트를 장착하고 레벨을 <b className="text-emerald-600">통과</b>하면, 통과 보너스 포인트를 <b className="text-amber-600">추가로</b> 더 받아요!</p>
+              <p className="mt-2 text-sm text-zinc-500">예) 통과 보너스 100P + 캐릭터 카트 15% = <b>115P</b></p>
+            </Bubble>
+          </>
+        )
+      }
       case "띠 승급":
         return (
           <>
@@ -1393,28 +1450,6 @@ export default function CounterPangPang() {
     { id: "cheer", name: "화이팅" },
   ];
 
-  // 🚗 카트(세트) 리스트 (실제 폴더의 이미지 파일명과 100% 일치)
-  const KARTS = [
-    { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0 },
-    { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 0 },
-    { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 5 },
-    { id: "kart_fire_truck", name: "소방 카트", file: "kart_fire_truck.png", price: 5 },
-    { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 4 },
-    { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 6 },
-    { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 8 },
-    { id: "kart_ostrich", name: "다리가 짧은 타조 카트", file: "kart_ostrich.png", price: 3 },
-    { id: "kart_owl", name: "눈이 작은부엉이 카트", file: "kart_owl.png", price: 5 },
-    { id: "kart_police", name: "경찰 카트", file: "kart_police.png", price: 7 },
-    { id: "kart_rabbit", name: "귀가작은 토끼 카트", file: "kart_rabbit.png", price: 4 },
-    { id: "kart_tank", name: "탱크 카트", file: "kart_tank.png", price: 10 },
-    // 👇 여기서부터 새롭게 추가된 일반 자동차 6종 👇
-    { id: "car_suv", name: "SUV", file: "suv.png", price: 5 },
-    { id: "car_police", name: "경찰차", file: "경찰차.png", price: 7 },
-    { id: "car_fire", name: "소방차", file: "소방차.png", price: 6 },
-    { id: "car_sports", name: "스포츠카", file: "스포츠카.png", price: 8 },
-    { id: "car_tank", name: "전투 탱크", file: "탱크.png", price: 10 },
-    { id: "car_forklift", name: "포크레인", file: "포크레인.png", price: 9 }
-  ];
 
   // 🌟 가로수드라이브를 기본 장착 배경으로 설정! (해변의 드라이브도 기본 보유)
   const [ownedBgs, setOwnedBgs] = useState<string[]>(["가로수드라이브.mp4", "해변의드라이브.mp4"]);
@@ -1504,6 +1539,7 @@ export default function CounterPangPang() {
 
   // 결과
   const [passed, setPassed] = useState(false)
+  const [clearReward, setClearReward] = useState<{ base: number; extra: number; pct: number } | null>(null)
   const [finalScore, setFinalScore] = useState(0)
   const [resultPhase, setResultPhase] = useState<"boom" | "cheer">("boom")
 
@@ -2051,7 +2087,12 @@ export default function CounterPangPang() {
         const bonus = chosenLevel === 0 ? 5 : Math.min(20 + (chosenLevel * 10), 110);
         // 🔥 오늘의 도전 레벨을 오늘 처음 통과하면 보너스 2배
         const isDaily = daily.date === today() && !daily.done && chosenLevel === daily.level;
-        setPoints(prev => prev + (isDaily ? bonus * 2 : bonus));
+        // 🏎️ 장착한 카트 등급만큼 통과 보너스 추가 지급 (5%·10%·15%, 최소 1P)
+        const baseReward = isDaily ? bonus * 2 : bonus;
+        const pct = kartBonus(equippedCar);
+        const extra = pct > 0 ? Math.max(1, Math.round(baseReward * pct / 100)) : 0;
+        setClearReward({ base: baseReward, extra, pct });
+        setPoints(prev => prev + baseReward + extra);
         if (isDaily) {
           const doneDaily = { ...daily, done: true };
           setDaily(doneDaily);
@@ -2059,8 +2100,9 @@ export default function CounterPangPang() {
           setTimeout(() => flashToast(`🔥 오늘의 도전 성공! 통과 보너스 2배 +${bonus * 2}P`), 300);
         }
       }
+    if (!ok) setClearReward(null)
     setScreen("RESULT")
-  }, [chosenLevel, daily])
+  }, [chosenLevel, daily, equippedCar])
 
   const advance = useCallback(() => {
     if (screenRef.current !== "GAME") return // 게임 도중 나갔으면 진행 중단
@@ -3067,6 +3109,13 @@ export default function CounterPangPang() {
                 </p>
               </div>
 
+              {passed && clearReward && (
+                <p className="mt-3 text-sm font-bold text-white/90">
+                  🪙 통과 보너스 <b className="text-yellow-300">+{clearReward.base}P</b>
+                  {clearReward.extra > 0 && <> · 🏎️ 카트 보너스 <b className="text-amber-300">+{clearReward.extra}P</b> ({clearReward.pct}%)</>}
+                </p>
+              )}
+
               {passed && chosenLevel < MAX_LEVEL && (
                 <p className="mt-3 rounded-full bg-yellow-300/90 px-4 py-1.5 text-sm font-black text-amber-950 cpp-pop">
                   🔓 Lv.{chosenLevel + 1} 성공!
@@ -3316,6 +3365,7 @@ export default function CounterPangPang() {
                       const isSelected = equippedCar === item.id;
                       return (
                         <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                          {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">+{item.bonus}%</span>}
                           <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
                             {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
                           </div>
@@ -3668,6 +3718,7 @@ export default function CounterPangPang() {
                     const isOwned = ownedCars.includes(item.id);
                     return (
                       <div key={item.id} className="relative p-3 rounded-xl border-2 border-slate-200 bg-white">
+                        {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">+{item.bonus}%</span>}
                         <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
                           {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본</span>}
                         </div>
