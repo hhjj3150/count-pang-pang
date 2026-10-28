@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "카운터 팡팡",
     short_name: "카운터 팡팡",
-    description: "자동차 번호판으로 계산 실력을 키우는 사칙연산 두뇌 게임",
+    description: "아이부터 어른까지 누구나 즐기는 번호판 두뇌 계산 게임",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",
