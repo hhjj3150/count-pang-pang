@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 /* =========================================================================
-   카운터 팡팡 — 초등학생 대상 캐주얼 사칙연산 퀴즈 모바일 웹 게임
+   카운터 팡팡 — 아이부터 어른까지 즐기는 번호판 두뇌 계산 모바일 웹 게임
    플로우: INTRO -> LOGIN -> LOBBY -> GAME -> RESULT
    ========================================================================= */
 
@@ -26,6 +26,9 @@ interface SaveData {
   lifetimePoints: number // 🌟 누적 획득 포인트 (승급용)
   monthlyPoints: number  // 🌟 월간 획득 포인트 (랭킹용)
   monthlyDate: string    // 🌟 월간 랭킹 초기화 기준 달 (YYYY-MM)
+  birthYear?: number | null // 🎂 태어난 해 (연령 확인용: 어린이 광고 설정·상품권 교환 자격)
+  cash?: number          // 💰 캐시 (광고 시청·초대로 적립, 상품권 교환용. 게임 포인트와 별개)
+  cashExchangeMonth?: string // 상품권을 마지막으로 교환한 달 (YYYY-MM, 월 1회 제한)
 }
 
 
@@ -47,6 +50,34 @@ interface Question {
 }
 
 const STORAGE_KEY = "counter-pang-pang-v1"
+
+// 💹 포인트·캐시·하트 숫자 모음 (⚠️ 테스트 단계 값 — 출시 전 여기서 한 번에 조정)
+//  - 게임 포인트(P): 게임으로 적립 → 띠 승급·월간 랭킹·아이템 구매 (돈으로 바꾸지 않음)
+//  - 캐시(C, 1C ≈ 1원): 광고 시청·친구 초대로 적립 → 모바일 상품권 교환 (월 1회)
+const ECONOMY = {
+  cashPerAd: 2, // 광고 시청(지금은 '무료 하트 충전') 1회당 캐시
+  cashPerInvite: 10, // 친구 초대 1회당 캐시
+  giftCardCash: 5000, // 모바일 상품권 5,000원 교환에 필요한 캐시
+  giftCardWon: 5000, // 상품권 금액
+  giftCardMinAge: 14, // 상품권 교환 가능 나이 (만 14세 미만은 보호자 동의 필요 → 일단 제외)
+}
+
+// 🎂 연령: 만 14세 미만은 '어린이'로 보고 어린이용 광고만 요청 (나이를 모르면 어린이로 취급)
+const CHILD_AGE = 14
+const ageFromBirthYear = (y?: number | null) => (y ? new Date().getFullYear() - y : null)
+const isChildUser = (y?: number | null) => {
+  const age = ageFromBirthYear(y)
+  return age === null || age < CHILD_AGE
+}
+// 📺 나중에 광고(AdMob 등)를 붙일 때 광고 요청에 그대로 넘길 설정
+//   (구글 혼합 연령 앱 정책: 어린이에게는 어린이 대상 표시 + 전체관람가(G) 광고 + 맞춤 광고 끄기)
+const adRequestConfig = (birthYear?: number | null) =>
+  isChildUser(birthYear)
+    ? { tagForChildDirectedTreatment: true, maxAdContentRating: "G", nonPersonalizedAds: true }
+    : { tagForChildDirectedTreatment: false, maxAdContentRating: "T", nonPersonalizedAds: false }
+
+// 태어난 해 선택 목록 (올해 ~ 1930년). 기본값 없이 고르게 함(중립적 나이 확인)
+const BIRTH_YEARS = Array.from({ length: new Date().getFullYear() - 1930 + 1 }, (_, i) => new Date().getFullYear() - i)
 const TOTAL_Q = 15
 const PASS_LINE = 13
 const MAX_LEVEL = 14
@@ -1478,6 +1509,13 @@ export default function CounterPangPang() {
 
   // 기타 UI
   const [nickInput, setNickInput] = useState("")
+  // 🎂 태어난 해 / 💰 캐시
+  const [birthYear, setBirthYear] = useState<number | null>(null)
+  const [birthInput, setBirthInput] = useState("") // 가입 화면·연령 확인 창의 선택값
+  const [cash, setCash] = useState(0)
+  const [cashExchangeMonth, setCashExchangeMonth] = useState("")
+  const isChild = isChildUser(birthYear)
+  const adConfig = adRequestConfig(birthYear) // 📺 광고를 붙일 때 이 설정으로 요청 (어린이면 어린이용 광고만)
   const [showVault, setShowVault] = useState(false)
   const [showAttendance, setShowAttendance] = useState(false);
   const [attData, setAttData] = useState({ date: "", weekCount: 0, lastMonday: "" });
@@ -1692,10 +1730,11 @@ export default function CounterPangPang() {
       const newCount = inviteCount + 1;
       setInviteCount(newCount);
       setPoints(prev => prev + 30);
+      setCash(c => c + ECONOMY.cashPerInvite);
       localStorage.setItem('cp_invite', JSON.stringify({ date: new Date().toLocaleDateString(), count: newCount }));
       
       // 알림이 겹치지 않게 살짝 시간차를 두고 보상 알림 띄우기
-      setTimeout(() => flashToast(`초대 성공! 30P 지급 완료 🎁 (오늘 ${newCount}/5회)`), 1000);
+      setTimeout(() => flashToast(`초대 성공! 30P + 캐시 ${ECONOMY.cashPerInvite}C 지급 🎁 (오늘 ${newCount}/5회)`), 1000);
     } catch (error) {
       // 사용자가 공유 창을 닫은 경우는 조용히 넘어가고, 공유·복사가 막힌 환경이면 안내
       if ((error as Error)?.name === "AbortError") return;
@@ -1724,6 +1763,9 @@ export default function CounterPangPang() {
           hd = today()
         }
         setNickname(d.nickname ?? null)
+        setBirthYear(typeof d.birthYear === "number" ? d.birthYear : null)
+        setCash(typeof d.cash === "number" ? d.cash : 0)
+        setCashExchangeMonth(d.cashExchangeMonth ?? "")
         setHearts(h)
         setHeartDate(hd)
         setUnlocked(d.unlocked ?? 0)
@@ -1755,11 +1797,11 @@ export default function CounterPangPang() {
     if (!loaded) return;
     const data: SaveData = {
       ver: SAVE_VERSION,
-      nickname, hearts, heartDate, unlocked, records, muted, points,
+      nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cash, cashExchangeMonth,
       lifetimePoints, monthlyPoints, monthlyDate
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate]);
+  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth]);
 
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const [quitConfirm, setQuitConfirm] = useState(false); // 게임 중 뒤로가기 → "그만둘까요?" 확인창
@@ -2251,7 +2293,9 @@ export default function CounterPangPang() {
     setFreeHeart(next)
     localStorage.setItem("cp_free_heart", JSON.stringify(next))
     setHearts((h) => Math.min(HEART_CAP, h + 1))
-    flashToast(`무료 하트 +1 💖 (오늘 남은 횟수 ${FREE_HEART_PER_DAY - next.count}회)`)
+    // 💰 나중에 실제 광고를 붙이면: 광고(adConfig 설정으로 요청)를 끝까지 본 뒤에 하트·캐시 지급
+    setCash((c) => c + ECONOMY.cashPerAd)
+    flashToast(`무료 하트 +1 💖 · 캐시 +${ECONOMY.cashPerAd}C (오늘 남은 횟수 ${FREE_HEART_PER_DAY - next.count}회)`)
   }
 
   const reactionState = reaction === "correct" ? 1 : reaction === "wrong" ? 6 : 3
@@ -2380,6 +2424,11 @@ export default function CounterPangPang() {
               flashToast("닉네임을 입력해 주세요!")
               return
             }
+            if (!birthInput) {
+              flashToast("태어난 해를 선택해 주세요!")
+              return
+            }
+            setBirthYear(Number(birthInput))
             sfxClick()
             setNickname(name)
             setScreen("LOBBY")
@@ -2411,8 +2460,23 @@ export default function CounterPangPang() {
             maxLength={12}
             placeholder="예: 계산왕팡이"
             /* 입력창 자체는 글씨가 잘 보이도록 하얀 배경에 검은 글씨로 변경 */
-            className="mb-5 w-full rounded-xl border-2 border-black/20 bg-white px-4 py-3 text-lg font-bold text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-yellow-400/50"
+            className="mb-4 w-full rounded-xl border-2 border-black/20 bg-white px-4 py-3 text-lg font-bold text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-yellow-400/50"
           />
+          {/* 🎂 태어난 해 (중립적 나이 확인: 기본값 없이 직접 고름) */}
+          <label htmlFor="birth" className="mb-1 block text-sm font-bold text-black drop-shadow-md">
+            태어난 해
+          </label>
+          <select
+            id="birth"
+            value={birthInput}
+            onChange={(e) => setBirthInput(e.target.value)}
+            className="mb-5 w-full rounded-xl border-2 border-black/20 bg-white px-4 py-3 text-lg font-bold text-black focus:outline-none focus:ring-4 focus:ring-yellow-400/50"
+          >
+            <option value="">선택해 주세요</option>
+            {BIRTH_YEARS.map((y) => (
+              <option key={y} value={y}>{y}년</option>
+            ))}
+          </select>
               <button
                 type="submit"
                 className="w-full rounded-2xl bg-gradient-to-b from-pink-400 to-pink-500 py-3.5 text-lg font-black text-white shadow-[0_5px_0_#be185d] active:translate-y-1 active:shadow-[0_1px_0_#be185d]"
@@ -2503,6 +2567,7 @@ export default function CounterPangPang() {
             <div className="flex flex-col w-[110px] items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 text-xs font-bold text-black/80">
               <span className="text-blue-700">현재: {points}P</span>
               <span className="text-[10px] text-amber-700">월간 누적: {monthlyPoints}P</span>
+              <span className="text-[10px] text-emerald-700">캐시: {cash.toLocaleString()}C</span>
             </div>
 
             <button
@@ -3209,6 +3274,10 @@ export default function CounterPangPang() {
                 <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
                   <p className="text-xs font-bold text-slate-400">닉네임</p>
                   <p className="mt-0.5 text-base font-black text-slate-800">{nickname} 님</p>
+                  <p className="mt-2 text-xs font-bold text-slate-400">연령 구분</p>
+                  <p className="mt-0.5 text-sm font-black text-slate-700">
+                    {birthYear ? `${birthYear}년생 · ${isChild ? "어린이 회원 (만 14세 미만)" : "일반 회원"}` : "미입력"}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -3378,10 +3447,11 @@ export default function CounterPangPang() {
               </div>
 
               {/* 🌟 상점 카테고리 탭 */}
-              <div className="flex gap-2 mb-6 pb-2 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
-                <button onClick={() => { sfxClick(); setShopCategory("emoticon"); }} className={`px-4 py-2 text-sm font-black rounded-xl transition-all shadow-sm ${shopCategory === "emoticon" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>📸 이모티콘</button>
-                <button onClick={() => { sfxClick(); setShopCategory("car"); }} className={`px-4 py-2 text-sm font-black rounded-xl transition-all shadow-sm ${shopCategory === "car" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏎️ 카트</button>
-                <button onClick={() => { sfxClick(); setShopCategory("bg"); }} className={`px-4 py-2 text-sm font-black rounded-xl transition-all shadow-sm ${shopCategory === "bg" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏞️ 배경</button>
+              <div className="flex gap-1.5 mb-6 pb-2 shrink-0 overflow-x-auto whitespace-nowrap cpp-no-scrollbar">
+                <button onClick={() => { sfxClick(); setShopCategory("emoticon"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "emoticon" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>📸 이모티콘</button>
+                <button onClick={() => { sfxClick(); setShopCategory("car"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "car" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏎️ 카트</button>
+                <button onClick={() => { sfxClick(); setShopCategory("bg"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "bg" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏞️ 배경</button>
+                <button onClick={() => { sfxClick(); setShopCategory("gift"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "gift" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🎁 상품권</button>
               </div>
 
               {/* 📸 이모티콘 구매 탭 */}
@@ -3619,6 +3689,47 @@ export default function CounterPangPang() {
               </div>
 
               {/* 🏞️ 배경 구매 탭 */}
+              {/* 🎁 캐시 → 모바일 상품권 (서버 연결 전이라 교환 버튼은 '준비 중') */}
+              {shopCategory === "gift" && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-emerald-50 p-4 text-center ring-1 ring-emerald-200">
+                    <p className="text-xs font-bold text-emerald-600">내 캐시</p>
+                    <p className="text-3xl font-black text-emerald-700">{cash.toLocaleString()} C</p>
+                    <div className="mx-auto mt-2 h-2.5 w-full max-w-[260px] overflow-hidden rounded-full bg-white ring-1 ring-emerald-200">
+                      <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.min(100, (cash / ECONOMY.giftCardCash) * 100)}%` }} />
+                    </div>
+                    <p className="mt-1 text-[11px] font-bold text-emerald-600">
+                      {cash >= ECONOMY.giftCardCash ? "교환할 수 있는 캐시가 모였어요! 🎉" : `상품권까지 ${(ECONOMY.giftCardCash - cash).toLocaleString()}C 남음`}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-4 ring-1 ring-zinc-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-base font-black text-zinc-800">📱 모바일 상품권 {ECONOMY.giftCardWon.toLocaleString()}원</p>
+                        <p className="text-xs font-bold text-zinc-500">{ECONOMY.giftCardCash.toLocaleString()}C · 한 달에 1번</p>
+                      </div>
+                      <button type="button" disabled className="rounded-xl bg-zinc-200 px-3 py-2 text-xs font-black text-zinc-500">
+                        준비 중
+                      </button>
+                    </div>
+                    {isChild && (
+                      <p className="mt-3 rounded-lg bg-rose-50 p-2 text-[11px] font-bold text-rose-600">
+                        만 {ECONOMY.giftCardMinAge}세 미만은 상품권 교환에 보호자 동의가 필요해서, 지금은 캐시 모으기만 할 수 있어요.
+                      </p>
+                    )}
+                    {cashExchangeMonth === today().slice(0, 7) && (
+                      <p className="mt-2 text-[11px] font-bold text-zinc-500">이번 달 교환을 이미 했어요. 다음 달에 다시 교환할 수 있어요.</p>
+                    )}
+                  </div>
+                  <div className="rounded-2xl bg-zinc-50 p-4 text-xs font-bold leading-relaxed text-zinc-600 ring-1 ring-zinc-200">
+                    <p className="mb-1 text-sm font-black text-zinc-700">💡 캐시는 이렇게 모아요</p>
+                    <p>🎁 무료 하트 충전(광고) 1회 +{ECONOMY.cashPerAd}C</p>
+                    <p>💌 친구 초대 1회 +{ECONOMY.cashPerInvite}C</p>
+                    <p className="mt-2 text-zinc-400">게임 포인트(P)는 띠 승급·랭킹·아이템용이고, 캐시(C)와는 따로 모여요.</p>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: shopCategory === "bg" ? "block" : "none" }}>
                 <div className="grid grid-cols-2 gap-4">
                   {BACKGROUNDS.map(item => {
@@ -3655,6 +3766,35 @@ export default function CounterPangPang() {
         </div>
       )}
       {/* ============================ 🥋 승급 축하 연출 (그랄: '축' / 띠: Congratulations) ============================ */}
+      {/* ============================ 🎂 기존 회원 연령 확인 (태어난 해가 없을 때 한 번만) ============================ */}
+      {loaded && nickname && birthYear === null && screen === "LOBBY" && !showTutorial && (
+        <div className="fixed inset-0 z-[96] flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm">
+          <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop">
+            <p className="text-4xl">🎂</p>
+            <h2 className="mt-2 text-xl font-black text-zinc-900">태어난 해를 알려 주세요</h2>
+            <p className="mt-2 text-sm font-bold text-zinc-500">나이에 맞는 화면과 광고를 보여 드리기 위해 한 번만 물어봐요.</p>
+            <select
+              aria-label="태어난 해"
+              value={birthInput}
+              onChange={(e) => setBirthInput(e.target.value)}
+              className="mt-4 w-full rounded-xl border-2 border-zinc-200 bg-white px-4 py-3 text-lg font-bold text-zinc-800 focus:outline-none focus:ring-4 focus:ring-yellow-400/50"
+            >
+              <option value="">선택해 주세요</option>
+              {BIRTH_YEARS.map((y) => (
+                <option key={y} value={y}>{y}년</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!birthInput}
+              onClick={() => { sfxClick(); setBirthYear(Number(birthInput)); }}
+              className="mt-4 w-full rounded-2xl bg-gradient-to-b from-yellow-300 to-amber-400 py-3.5 text-base font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-0.5 disabled:opacity-40"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
       {/* ============================ 📲 홈 화면에 추가 안내 ============================ */}
       {installGuide && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm" onClick={() => setInstallGuide(null)}>

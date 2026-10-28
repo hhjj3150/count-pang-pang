@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: '카운터 팡팡 - 사칙연산 퀴즈 게임',
-  description: '초등학생을 위한 캐주얼 사칙연산 퀴즈 모바일 웹 게임. 자동차 번호판으로 계산 실력을 키워요!',
+  title: '카운터 팡팡 - 번호판 두뇌 계산 게임',
+  description: '아이부터 어른까지 누구나 즐기는 두뇌 계산 게임. 자동차 번호판 숫자로 더하고 비교하고 골라 보세요!',
   // 🚗 카운터 팡팡 아이콘 (브라우저 탭 / 아이폰 홈 화면)
   icons: {
     icon: [{ url: '/icon-32.png', sizes: '32x32', type: 'image/png' }, { url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
