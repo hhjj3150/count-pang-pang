@@ -903,7 +903,7 @@ const KARTS = [
 ]
 const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
 
-const TUTORIAL_PAGES = ["번호판 읽는 법", "게임 방법", "직접 해 보기", "숫자 고르기 (Lv.9·10·12)", "통과 규칙", "피버 타임", "하트 · 포인트 · 상점", "카트 보너스", "띠 승급", "레벨 소개"]
+const TUTORIAL_PAGES = ["이등분 퍼즐", "하트", "포인트 · 캐시", "오늘의 도전", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급"]
 
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -924,14 +924,6 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
     if (dx > 60 && page > 0) go(page - 1)
   }
 
-  // ✏️ 3장 '직접 해 보기' 연습 문제 (시간 제한 없음)
-  const [practice, setPractice] = useState(() => buildQuestion(1, 5))
-  const [pInput, setPInput] = useState("")
-  const [pResult, setPResult] = useState<"idle" | "correct" | "wrong">("idle")
-  const submitPractice = () => {
-    if (pInput === "") return
-    setPResult(Number(pInput) === practice.answer ? "correct" : "wrong")
-  }
   // ✂️ 이등분 퍼즐 연습 (고정 예시: 7 4 / 2 6 5 0 → 전체 24, 절반 12)
   const halfDemo: Question = {
     level: 12, front: [7, 4], back: [2, 6, 5, 0], hangul: "나", type: "partition", timer: 30,
@@ -941,85 +933,18 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
   const [halfOk, setHalfOk] = useState(false)
   const [halfTry, setHalfTry] = useState(0)
 
-  const newPractice = () => {
-    playClick()
-    setPractice(buildQuestion(1, 5))
-    setPInput("")
-    setPResult("idle")
-  }
-
-  const samplePlate: Question = {
-    level: 1, front: [3, 7], back: [1, 2, 5, 8], hangul: "가", type: "numpad", timer: 15,
-    title: "", desc: "", answer: 10,
-  }
   const Bubble = ({ children }: { children: React.ReactNode }) => (
     <div className="rounded-2xl bg-white/90 p-4 text-left text-[15px] font-bold leading-relaxed text-zinc-700 shadow-sm ring-1 ring-black/5">{children}</div>
   )
 
   const body = (() => {
     switch (TUTORIAL_PAGES[page]) {
-      case "번호판 읽는 법":
-        return (
-          <>
-            <div className="flex justify-center"><div className="scale-110"><Plate q={samplePlate} /></div></div>
-            <div className="mt-5 grid grid-cols-3 gap-2 text-center text-sm font-black">
-              <div className="rounded-xl bg-sky-100 py-2 text-sky-700">앞자리<br /><span className="text-xs font-bold">2~3자리 숫자</span></div>
-              <div className="rounded-xl bg-amber-100 py-2 text-amber-700">글자<br /><span className="text-xs font-bold">계산 안 해요</span></div>
-              <div className="rounded-xl bg-rose-100 py-2 text-rose-700">뒷자리<br /><span className="text-xs font-bold">4자리 숫자</span></div>
-            </div>
-            <Bubble>🚗 자동차 번호판의 숫자로 계산하는 게임이에요.<br />예) 앞자리 합 = <b className="text-sky-600">3 + 7 = 10</b></Bubble>
-          </>
-        )
-      case "게임 방법":
-        return (
-          <>
-            <div className="flex justify-center"><GameImage src="/assets/0-2-2.png" alt="팡이" className="h-28 w-28 object-contain" fallback={<span className="text-6xl">🐣</span>} /></div>
-            <Bubble>
-              <p>① 화면 위에 나오는 <b className="text-amber-600">문제 설명</b>을 읽어요</p>
-              <p className="mt-2">② <b className="text-sky-600">번호판</b>을 보고 설명에 따라 계산해요</p>
-              <p className="mt-2">③ 숫자를 누르고 <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">입력</b> 버튼!</p>
-              <p className="mt-3 text-sm text-zinc-500">💡 대부분의 레벨은 이렇게 하면 돼요. 앞뒤 비교(Lv.5)는 버튼을 누르고, 숫자를 골라야 하는 10·20 만들기(Lv.9·10)와 이등분 퍼즐(Lv.12)은 다음 장에서 따로 알려줄게요.</p>
-            </Bubble>
-          </>
-        )
-      case "직접 해 보기":
-        return (
-          <>
-            <p className="text-center text-base font-black text-zinc-700">앞자리 숫자를 모두 더해 보세요!</p>
-            <div className="flex justify-center"><Plate q={practice} /></div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="min-w-[80px] rounded-2xl bg-zinc-900 px-4 py-2 text-center text-3xl font-black tabular-nums text-white">{pInput || "?"}</div>
-              {pResult === "correct" && <span className="rounded-full bg-emerald-500 px-3 py-1.5 text-sm font-black text-white cpp-pop">정답! 🎉</span>}
-              {pResult === "wrong" && <span className="rounded-full bg-rose-500 px-3 py-1.5 text-sm font-black text-white cpp-shake">다시 해 볼까요? 🤔</span>}
-            </div>
-            {pResult === "correct" ? (
-              <div className="text-center">
-                <p className="text-sm font-bold text-zinc-600">잘했어요! 실제 게임도 이렇게 하면 돼요 👍</p>
-                <button type="button" onClick={newPractice} className="mt-2 rounded-full bg-white px-4 py-2 text-sm font-black text-zinc-700 shadow ring-1 ring-black/10 active:scale-95">🔄 한 문제 더</button>
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-zinc-900/90 p-2">
-                <Numpad
-                  value={pInput}
-                  onKey={(k) => { playClick(); setPResult("idle"); setPInput((v) => (v.length >= 4 ? v : v + k)) }}
-                  onBackspace={() => { playClick(); setPResult("idle"); setPInput((v) => v.slice(0, -1)) }}
-                  onSubmit={submitPractice}
-                  disabled={false}
-                />
-              </div>
-            )}
-          </>
-        )
-      case "숫자 고르기 (Lv.9·10·12)": {
+      case "이등분 퍼즐": {
         const all = [...halfDemo.front, ...halfDemo.back]
         const total = sum(all)
         const selSum = halfSel.reduce((a, i) => a + all[i], 0)
         return (
           <>
-            <Bubble>
-              <p>🔟 <b>10·20 만들기 (Lv.9·10)</b>: 번호판 숫자를 눌러서 고른 숫자의 합이 <b className="text-sky-600">10</b>(또는 <b className="text-sky-600">20</b>)이 되게 해요.</p>
-              <p className="mt-1 text-sm text-zinc-500">예) 7 4 / 2 6 5 0 → 4 + 6 = 10 ✅, 7 + 2 + 6 + 5 = 20 ✅</p>
-            </Bubble>
             <Bubble>
               <p>✂️ <b>이등분 퍼즐 (Lv.12)</b>: 번호판 숫자를 <b>두 묶음</b>으로 나눠서, 두 묶음의 합이 <b className="text-sky-600">똑같게</b> 만드는 게임이에요.</p>
               <p className="mt-2">① 전체 합을 구해요 → ② <b>절반</b>이 되도록 숫자를 눌러 <b className="text-sky-600">파란 불</b>을 켜요 → ③ <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">제출</b></p>
@@ -1052,37 +977,96 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
           </>
         )
       }
-      case "통과 규칙":
+      case "하트":
         return (
           <>
-            <div className="flex items-center justify-center gap-2 text-5xl"><span>📝</span><span className="text-3xl font-black text-zinc-700">15문제</span></div>
+            <p className="text-center text-6xl">💖</p>
             <Bubble>
-              <p>✅ 15문제 중 <b className="text-emerald-600">13개 이상</b> 맞히면 통과! 다음 레벨이 열려요.</p>
-              <p className="mt-2">🟢 처음 <b>3문제</b>는 연습이라 정답을 알려줘요.</p>
-              <p className="mt-2">⏰ 시간이 다 되면 틀린 걸로 처리돼요.</p>
-              <p className="mt-2">❌ 틀리면 <b className="text-rose-500">빨간색으로 정답</b>을 보여줘요.</p>
+              <p>🎮 게임 한 판에 <b className="text-rose-500">하트 1개</b>를 써요.</p>
+              <p className="mt-2">🌅 매일 <b>5개</b>까지 다시 채워져요. (5개보다 많이 모아 두었으면 그대로!)</p>
+              <p className="mt-2">🎁 로비의 <b>무료 하트 충전</b>: 하루 3번, 한 번에 하트 +1</p>
+              <p className="mt-2">🛒 <b>포인트 상점</b>: 50P로 하트 1개, 하루 3번</p>
+              <p className="mt-2 text-sm text-zinc-500">하트는 최대 {HEART_CAP}개까지 모을 수 있어요.</p>
             </Bubble>
           </>
         )
-      case "피버 타임":
+      case "포인트 · 캐시":
         return (
           <>
-            <p className="text-center text-5xl font-black italic text-orange-500" style={{ textShadow: "0 0 12px #FFD700, 0 0 24px #FF8C00" }}>FEVER TIME</p>
+            <div className="space-y-2">
+              {[
+                { icon: "🪙", name: "보유 포인트", use: "상점에서 아이템을 살 때 써요", tone: "bg-blue-50 text-blue-700 ring-blue-100" },
+                { icon: "📅", name: "이번 달 포인트", use: "이번 달에 모은 포인트 · 월간 순위 (준비 중)", tone: "bg-amber-50 text-amber-700 ring-amber-100" },
+                { icon: "🥋", name: "누적 포인트", use: "지금까지 모은 전체 포인트 · 띠 승급", tone: "bg-slate-50 text-slate-700 ring-slate-200" },
+                { icon: "💵", name: "캐시", use: "무료 하트 충전·친구 초대로 모아요 · 기프티콘 교환 (준비 중)", tone: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
+              ].map((r) => (
+                <div key={r.name} className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 ring-1", r.tone)}>
+                  <span className="text-2xl">{r.icon}</span>
+                  <div className="min-w-0 text-left">
+                    <p className="text-sm font-black">{r.name}</p>
+                    <p className="text-[13px] font-bold leading-snug text-zinc-600">{r.use}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
             <Bubble>
-              <p>⚡ 시간이 넉넉할 때(⅔ 이상 남았을 때) 맞히면 <b>빠른 정답</b>!</p>
-              <p className="mt-2">🔥 빠른 정답 <b>3번 연속</b>이면 피버 타임 시작!</p>
-              <p className="mt-2">💰 문제당 포인트 <b>10P → 15P</b></p>
-              <p className="mt-2 text-sm text-zinc-500">늦게 맞히거나 틀리면 피버가 꺼져요.</p>
+              <p>포인트는 게임을 통과하거나 출석·초대를 하면 쌓여요. 상점에서 포인트를 써도 <b>누적 포인트는 줄지 않아요!</b></p>
+              <p className="mt-2 text-sm text-zinc-500">💡 로비의 포인트 칸을 누르면 한눈에 볼 수 있어요.</p>
             </Bubble>
           </>
         )
-      case "하트 · 포인트 · 상점":
+      case "오늘의 도전":
         return (
-          <Bubble>
-            <p>💖 <b>하트</b>: 게임 한 판에 1개 사용. 매일 5개까지 다시 채워져요.</p>
-            <p className="mt-3">🪙 <b>포인트</b>: 문제를 맞히고, 레벨을 통과하고, 📅 출석체크, 💌 친구 초대로 모아요.</p>
-            <p className="mt-3">🛒 <b>포인트 상점</b>: 모은 포인트로 카트, 배경, 이모티콘, 하트를 살 수 있어요. 카트는 포인트를 더 벌게 해 줘요! (다음 장)</p>
-          </Bubble>
+          <>
+            <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-400 to-rose-400 p-3 shadow ring-1 ring-orange-300">
+              <span className="text-3xl">🔥</span>
+              <div className="text-left">
+                <p className="text-xs font-black text-white/90">오늘의 도전 · 통과 보너스 2배!</p>
+                <p className="text-sm font-black text-white">매일 레벨 하나가 정해져요</p>
+              </div>
+            </div>
+            <Bubble>
+              <p>📆 매일 열린 레벨 중 <b>하나</b>가 오늘의 도전으로 정해져요.</p>
+              <p className="mt-2">🏆 그 레벨을 오늘 <b>처음 통과</b>하면 통과 보너스가 <b className="text-rose-500">2배</b>!</p>
+              <p className="mt-2">🔁 실패해도 하트만 있으면 <b>몇 번이든</b> 다시 도전할 수 있어요.</p>
+              <p className="mt-2 text-sm text-zinc-500">2배 보너스는 하루에 한 번이에요. 내일은 새로운 도전이 열려요.</p>
+            </Bubble>
+          </>
+        )
+      case "출석 · 친구 초대":
+        return (
+          <>
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                <div key={d} className={cn("rounded-lg py-2 text-xs font-black shadow-sm ring-1 ring-black/5", d === 3 || d === 5 || d === 7 ? "bg-amber-300 text-amber-950" : "bg-white/90 text-zinc-600")}>
+                  {d}일
+                  <span className="block text-[10px]">{d === 3 ? "+5" : d === 5 ? "+10" : d === 7 ? "+20" : "✔"}</span>
+                </div>
+              ))}
+            </div>
+            <Bubble>
+              <p>📅 <b>출석체크</b>: 하루 한 번 누르면 <b>+5P</b></p>
+              <p className="mt-1">한 주에 <b>3일·5일·7일</b> 출석하면 보너스 <b>+5P · +10P · +20P</b>를 더 받아요. (매주 월요일에 새로 시작)</p>
+            </Bubble>
+            <Bubble>
+              <p>💌 <b>친구 초대</b>: 친구에게 게임을 알려 주면 <b>+30P</b>와 <b>캐시 +{ECONOMY.cashPerInvite}C</b> (하루 5번까지)</p>
+            </Bubble>
+          </>
+        )
+      case "포인트 상점":
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-2 text-center text-sm font-black">
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏎️ 카트<span className="block text-xs font-bold text-zinc-500">게임 화면의 내 차 · 클리어 보너스</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏞️ 배경<span className="block text-xs font-bold text-zinc-500">게임 화면 뒤 풍경</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">📸 이모티콘<span className="block text-xs font-bold text-zinc-500">저장해서 친구에게 보내기</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">💖 하트<span className="block text-xs font-bold text-zinc-500">50P로 1개 (하루 3번)</span></div>
+            </div>
+            <Bubble>
+              <p>🛒 로비의 <b>포인트 상점</b>에서 보유 포인트로 아이템을 사요.</p>
+              <p className="mt-2">⚙️ 산 카트와 배경은 <b>관리 → 내 차고 · 내 테마</b>에서 장착해요.</p>
+            </Bubble>
+          </>
         )
       case "카트 보너스": {
         const tiers = [
@@ -1134,16 +1118,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
           </>
         )
       default:
-        return (
-          <div className="grid grid-cols-2 gap-1.5">
-            {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((lv) => (
-              <div key={lv} className="flex items-center gap-1.5 rounded-xl bg-white/90 px-2.5 py-2 text-left shadow-sm ring-1 ring-black/5">
-                <span className="text-xs font-black text-amber-600">Lv.{lv}</span>
-                <span className="text-[13px] font-bold leading-tight text-zinc-700">{(LEVEL_DESC[lv] ?? "모든 게임 섞어서").replace("\n", " ")}</span>
-              </div>
-            ))}
-          </div>
-        )
+        return null
     }
   })()
 
@@ -1164,7 +1139,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
 
         <h2 key={`t${page}`} className="mt-4 text-center text-3xl font-black text-zinc-800 cpp-pop">{TUTORIAL_PAGES[page]}</h2>
 
-        <div key={`b${page}`} className="cpp-rise-in mt-4 flex min-h-0 flex-1 flex-col justify-center gap-4 overflow-y-auto cpp-no-scrollbar">
+        <div key={`b${page}`} className="cpp-rise-in mt-4 flex min-h-0 flex-1 flex-col justify-center-safe gap-4 overflow-y-auto cpp-no-scrollbar">
           {body}
         </div>
 
