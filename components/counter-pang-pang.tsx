@@ -212,6 +212,26 @@ const loadMonthBest = (): MonthBest => {
 }
 const monthBestTotal = (b: MonthBest) =>
   RECORD_LEVELS.every((lv) => typeof b[lv] === "number") ? RECORD_LEVELS.reduce((a, lv) => a + (b[lv] as number), 0) : null
+type RankTab = "points" | 11 | 12 | 13 | "total"
+const RANK_TABS: { id: RankTab; label: string; desc: string }[] = [
+  { id: "points", label: "월간\n포인트", desc: "이번 달에 모은 포인트가 많은 순서" },
+  { id: 11, label: "Lv.11", desc: "Lv.11 만점 기록이 빠른 순서" },
+  { id: 12, label: "Lv.12", desc: "Lv.12 만점 기록이 빠른 순서" },
+  { id: 13, label: "Lv.13", desc: "Lv.13 만점 기록이 빠른 순서" },
+  { id: "total", label: "합산", desc: "Lv.11+12+13 만점 기록 합계가 빠른 순서" },
+]
+const RANK_SIZE = 10
+type RankEntry = { name: string; value: number; me?: boolean }
+// 📡 지금은 서버가 없어서 이 기기(내) 기록만 들어감. 서버가 생기면 탭별 상위 10명을 받아와 이 목록을 채우면 됨
+const buildRanking = (tab: RankTab, me: { name: string; monthlyPoints: number; best: MonthBest }): RankEntry[] => {
+  const mine =
+    tab === "points" ? (me.monthlyPoints > 0 ? me.monthlyPoints : null)
+    : tab === "total" ? monthBestTotal(me.best)
+    : me.best[tab] ?? null
+  const list: RankEntry[] = mine === null ? [] : [{ name: me.name, value: mine, me: true }]
+  // 포인트는 많은 순, 기록(시간)은 짧은 순
+  return list.sort((a, b) => (tab === "points" ? b.value - a.value : a.value - b.value)).slice(0, RANK_SIZE)
+}
 const fmtRecord = (ms: number) => {
   const sec = ms / 1000
   const m = Math.floor(sec / 60)
@@ -925,7 +945,7 @@ const KARTS = [
 ]
 const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
 
-const TUTORIAL_PAGES = ["이등분 퍼즐", "하트", "포인트 · 캐시", "오늘의 도전", "이번 달 신기록", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급"]
+const TUTORIAL_PAGES = ["이등분 퍼즐", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급"]
 
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -1055,26 +1075,20 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             </Bubble>
           </>
         )
-      case "이번 달 신기록":
+      case "랭킹":
         return (
           <>
-            <div className="flex items-center justify-center gap-2 text-center">
-              {RECORD_LEVELS.map((lv, i) => (
-                <div key={lv} className="flex items-center gap-2">
-                  {i > 0 && <span className="text-xl font-black text-zinc-400">+</span>}
-                  <div className="rounded-xl bg-white/90 px-3 py-2 shadow-sm ring-1 ring-black/5">
-                    <p className="text-sm font-black text-amber-600">Lv.{lv}</p>
-                    <p className="text-[11px] font-bold text-zinc-500">만점 기록</p>
-                  </div>
-                </div>
+            <div className="grid grid-cols-5 gap-1 text-center">
+              {RANK_TABS.map((t) => (
+                <span key={t.id} className="flex min-h-[40px] items-center justify-center whitespace-pre-line rounded-xl bg-indigo-500 px-0.5 py-1 text-[11px] font-black leading-tight text-white shadow-sm">{t.label}</span>
               ))}
             </div>
-            <p className="text-center text-lg font-black text-zinc-700">= ⏱ 합계 시간이 가장 짧은 사람이 1등!</p>
             <Bubble>
-              <p>🏆 Lv.11·12·13을 <b className="text-emerald-600">15문제 모두 맞히면(만점)</b> 기록이 남아요.</p>
-              <p className="mt-2">⏱ 기록은 문제를 <b>푸는 데 걸린 시간</b>만 재요. 정답·오답 화면이 지나가는 시간은 빼요.</p>
-              <p className="mt-2">🔁 레벨마다 이번 달 <b>가장 빠른 기록</b>만 남고, 세 레벨 기록을 <b>더한 시간</b>으로 겨뤄요.</p>
-              <p className="mt-2 text-sm text-zinc-500">매달 1일에 새로 시작해요. 전체 순위는 준비 중이에요.</p>
+              <p>🏆 로비의 <b>랭킹</b> 버튼을 누르면 5가지 순위를 <b>10위까지</b> 볼 수 있어요.</p>
+              <p className="mt-2">🪙 <b>월간 포인트</b>: 이번 달에 모은 포인트가 많은 순서</p>
+              <p className="mt-2">⏱ <b>Lv.11 · 12 · 13</b>: 15문제를 <b className="text-emerald-600">모두 맞힌(만점)</b> 기록이 빠른 순서</p>
+              <p className="mt-2">➕ <b>합산</b>: 세 레벨 만점 기록을 <b>더한 시간</b>이 짧은 순서</p>
+              <p className="mt-2 text-sm text-zinc-500">기록은 문제를 푸는 시간만 재요(정답·오답 화면 시간 제외). 매달 1일에 새로 시작해요.</p>
             </Bubble>
           </>
         )
@@ -1563,7 +1577,8 @@ export default function CounterPangPang() {
   // 🏆 이번 달 신기록 (Lv.11·12·13 만점 최단 시간)
   const [monthBest, setMonthBest] = useState<MonthBest>({})
   const [recordResult, setRecordResult] = useState<{ ms: number | null; isNew: boolean; prev: number | null } | null>(null)
-  const [showRecords, setShowRecords] = useState(false)
+  const [showRecords, setShowRecords] = useState(false) // 🏆 랭킹 창
+  const [rankTab, setRankTab] = useState<RankTab>("points")
   const playMsRef = useRef(0) // 이번 판에서 문제를 푸는 데 쓴 시간 (일시정지·정답 연출 시간 제외)
   const [finalScore, setFinalScore] = useState(0)
   const [resultPhase, setResultPhase] = useState<"boom" | "cheer">("boom")
@@ -2702,27 +2717,19 @@ export default function CounterPangPang() {
                   )}
                 </div>
               )}
-              {/* 🏆 이번 달 신기록 챌린지 배너 */}
-              {(() => {
-                const total = monthBestTotal(monthBest)
-                const doneCount = RECORD_LEVELS.filter((lv) => typeof monthBest[lv] === "number").length
-                return (
-                  <button
-                    type="button"
-                    onClick={() => { sfxClick(); setShowRecords(true) }}
-                    className="relative z-10 mb-3 flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 p-3 text-left shadow-md ring-1 ring-violet-300 active:scale-[0.98]"
-                  >
-                    <span className="text-3xl">🏆</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black text-white/85">이번 달 신기록 · Lv.11~13 합계</p>
-                      <p className="text-sm font-black text-white">
-                        {total !== null ? `⏱ 내 기록 ${fmtRecord(total)}` : unlocked < 11 ? "Lv.11부터 도전할 수 있어요" : `만점 기록 ${doneCount}/3 레벨`}
-                      </p>
-                    </div>
-                    <span className="flex-none rounded-full bg-white px-3 py-1.5 text-sm font-black text-indigo-600 shadow">보기</span>
-                  </button>
-                )
-              })()}
+              {/* 🏆 랭킹 버튼 (월간 포인트 · Lv.11 · 12 · 13 · 합산) */}
+              <button
+                type="button"
+                onClick={() => { sfxClick(); setRankTab("points"); setShowRecords(true) }}
+                className="relative z-10 mb-3 flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 p-3 text-left shadow-md ring-1 ring-violet-300 active:scale-[0.98]"
+              >
+                <span className="text-3xl">🏆</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-black text-white">랭킹</p>
+                  <p className="text-xs font-bold text-white/85">월간 포인트 · 신기록 TOP 10</p>
+                </div>
+                <span className="flex-none rounded-full bg-white px-3 py-1.5 text-sm font-black text-indigo-600 shadow">보기</span>
+              </button>
               <p className="mb-2 mt-1 text-sm font-bold text-black/70">스테이지 선택</p>
               <div className="grid grid-cols-3 gap-3">
                 {Array.from({ length: MAX_LEVEL + 1 }, (_, lv) => {
@@ -3269,43 +3276,67 @@ export default function CounterPangPang() {
             </div>
           </section>
         )}
-{/* ============================ 🏆 이번 달 신기록 창 ============================ */}
-          {showRecords && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm" onClick={() => setShowRecords(false)}>
-              <div className="w-full max-w-[360px] rounded-3xl bg-white p-5 shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+{/* ============================ 🏆 랭킹 창 ============================ */}
+          {showRecords && (() => {
+            const tabInfo = RANK_TABS.find((t) => t.id === rankTab) ?? RANK_TABS[0]
+            const list = buildRanking(rankTab, { name: nickname ?? "나", monthlyPoints, best: monthBest })
+            const fmt = (v: number) => (rankTab === "points" ? `${v.toLocaleString()}P` : fmtRecord(v))
+            const myIdx = list.findIndex((e) => e.me)
+            const isLevelTab = typeof rankTab === "number"
+            return (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => setShowRecords(false)}>
+              <div className="flex max-h-[92vh] w-full max-w-[380px] flex-col rounded-3xl bg-white p-4 shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-black text-zinc-900">🏆 이번 달 신기록</h2>
+                  <h2 className="text-xl font-black text-zinc-900">🏆 랭킹 <span className="text-sm font-bold text-zinc-400">{today().slice(0, 4)}년 {Number(today().slice(5, 7))}월</span></h2>
                   <button type="button" onClick={() => { sfxClick(); setShowRecords(false) }} className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-lg text-zinc-900 active:scale-90">✕</button>
                 </div>
-                <p className="mt-1 text-xs font-bold text-zinc-500">Lv.11·12·13 만점 최고 기록을 더한 시간이 가장 짧은 사람이 1등이에요. 매달 1일 새로 시작해요.</p>
-                <div className="mt-4 space-y-2">
-                  {RECORD_LEVELS.map((lv) => (
-                    <div key={lv} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200">
-                      <div>
-                        <p className="text-sm font-black text-slate-800">Lv.{lv}</p>
-                        <p className="text-[11px] font-bold text-slate-500">{(LEVEL_DESC[lv] ?? "").replace("\n", " ")}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <p className={cn("text-sm font-black tabular-nums", typeof monthBest[lv] === "number" ? "text-indigo-600" : "text-slate-400")}>
-                          {typeof monthBest[lv] === "number" ? fmtRecord(monthBest[lv] as number) : "기록 없음"}
-                        </p>
-                        {lv <= unlocked && (
-                          <button type="button" onClick={() => { setShowRecords(false); startLevel(lv) }} className="rounded-full bg-indigo-500 px-2.5 py-1 text-xs font-black text-white active:scale-95">도전</button>
-                        )}
-                      </div>
-                    </div>
+
+                {/* 탭 버튼 */}
+                <div className="mt-3 grid grid-cols-5 gap-1">
+                  {RANK_TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => { sfxClick(); setRankTab(t.id) }}
+                      className={cn(
+                        "flex min-h-[40px] items-center justify-center whitespace-pre-line rounded-xl px-0.5 py-1 text-[11px] font-black leading-tight min-[380px]:text-xs",
+                        rankTab === t.id ? "bg-indigo-500 text-white shadow" : "bg-slate-100 text-slate-500",
+                      )}
+                    >
+                      {t.label}
+                    </button>
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-3 py-3 text-white">
-                  <p className="text-sm font-black">⏱ 3레벨 합계</p>
-                  <p className="text-lg font-black tabular-nums">{monthBestTotal(monthBest) !== null ? fmtRecord(monthBestTotal(monthBest) as number) : "—"}</p>
+                <p className="mt-2 text-center text-xs font-bold text-zinc-500">{tabInfo.desc} · 매달 1일 새로 시작</p>
+
+                {/* 1~10위 */}
+                <ol className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto cpp-no-scrollbar">
+                  {Array.from({ length: RANK_SIZE }, (_, i) => {
+                    const e = list[i]
+                    return (
+                      <li key={i} className={cn("flex items-center gap-2 rounded-xl px-3 py-1 min-[400px]:py-1.5", e?.me ? "bg-indigo-50 ring-1 ring-indigo-200" : "bg-slate-50")}>
+                        <span className="w-7 flex-none text-center text-sm font-black text-slate-500">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                        <span className={cn("min-w-0 flex-1 truncate text-sm font-black", e ? "text-slate-800" : "text-slate-300")}>{e ? `${e.name}${e.me ? " (나)" : ""}` : "—"}</span>
+                        <span className={cn("flex-none text-sm font-black tabular-nums", e ? "text-indigo-600" : "text-slate-300")}>{e ? fmt(e.value) : ""}</span>
+                      </li>
+                    )
+                  })}
+                </ol>
+
+                {/* 내 순위 */}
+                <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-3 py-2.5 text-white">
+                  <p className="min-w-0 text-sm font-black">
+                    {myIdx >= 0 ? `내 순위 ${myIdx + 1}위 · ${fmt(list[myIdx].value)}` : rankTab === "points" ? "이번 달 포인트를 모아 보세요!" : rankTab === "total" ? "Lv.11·12·13 모두 만점 기록이 필요해요" : `Lv.${rankTab} 만점이면 순위에 올라가요`}
+                  </p>
+                  {isLevelTab && (rankTab as number) <= unlocked && (
+                    <button type="button" onClick={() => { setShowRecords(false); startLevel(rankTab as number) }} className="flex-none rounded-full bg-white px-3 py-1 text-xs font-black text-indigo-600 active:scale-95">도전 ▶</button>
+                  )}
                 </div>
-                <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-center text-xs font-bold text-amber-700 ring-1 ring-amber-200">
-                  👥 전체 순위는 준비 중이에요. 지금은 내 기록만 볼 수 있어요.
-                </div>
+                <p className="mt-2 text-center text-[11px] font-bold text-amber-600">👥 다른 사람과 함께 보는 전체 순위는 서버 연결 후 표시돼요. 지금은 내 기록만 보여요.</p>
               </div>
             </div>
-          )}
+            )
+          })()}
 
 {/* ============================ 📅 출석체크 모달 ============================ */}
         {showAttendance && (
