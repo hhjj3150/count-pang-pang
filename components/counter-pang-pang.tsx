@@ -2605,12 +2605,19 @@ export default function CounterPangPang() {
           {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
           <div className="mt-2 flex w-full items-center gap-2">
             
-            {/* 💰 보유 포인트 + 이번 달 누적 포인트 */}
-            <div className="flex flex-col w-[110px] items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 text-xs font-bold text-black/80">
-              <span className="text-blue-700">현재: {points}P</span>
-              <span className="text-[10px] text-amber-700">월간 누적: {monthlyPoints}P</span>
-              <span className="text-[10px] text-emerald-700">캐시: {cash.toLocaleString()}C</span>
-            </div>
+            {/* 💰 내 지갑: 쓸 수 있는 포인트 + 캐시 (누르면 관리 → 내 정보에서 누적·이번 달 포인트까지 확인) */}
+            <button
+              type="button"
+              onClick={() => {
+                sfxClick();
+                setActiveCategory("info");
+                setShowMyPage(true);
+              }}
+              className="flex w-[110px] flex-none flex-col items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 font-bold text-black/80 active:scale-95"
+            >
+              <span className="text-sm font-black text-blue-700">🪙 {points.toLocaleString()}P</span>
+              <span className="text-[11px] text-emerald-700">💵 {cash.toLocaleString()}C</span>
+            </button>
 
             <button
               type="button"
@@ -3278,7 +3285,7 @@ export default function CounterPangPang() {
                   </span>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-bold text-gray-400 mb-1">누적 경험치</p>
+                  <p className="text-xs font-bold text-gray-400 mb-1">누적 포인트</p>
                   <p className="text-sm font-black text-slate-800">{lifetimePoints.toLocaleString()} P</p>
                 </div>
               </div>
@@ -3298,6 +3305,25 @@ export default function CounterPangPang() {
               ) : (
                 <p className="text-xs font-bold text-emerald-500 text-right mt-3">🎉 최고 등급(블랙 벨트)에 도달했습니다!</p>
               )}
+
+              {/* 💰 포인트 3종 + 캐시 한눈에 보기 */}
+              <div className="relative mt-4 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-blue-50 py-2 ring-1 ring-blue-100">
+                  <p className="text-[10px] font-bold text-blue-400">보유 포인트</p>
+                  <p className="text-sm font-black text-blue-700">{points.toLocaleString()}P</p>
+                  <p className="text-[10px] font-bold text-slate-400">상점에서 사용</p>
+                </div>
+                <div className="rounded-xl bg-amber-50 py-2 ring-1 ring-amber-100">
+                  <p className="text-[10px] font-bold text-amber-500">이번 달 포인트</p>
+                  <p className="text-sm font-black text-amber-700">{monthlyPoints.toLocaleString()}P</p>
+                  <p className="text-[10px] font-bold text-slate-400">월간 순위</p>
+                </div>
+                <div className="rounded-xl bg-emerald-50 py-2 ring-1 ring-emerald-100">
+                  <p className="text-[10px] font-bold text-emerald-500">캐시</p>
+                  <p className="text-sm font-black text-emerald-700">{cash.toLocaleString()}C</p>
+                  <p className="text-[10px] font-bold text-slate-400">기프티콘 교환</p>
+                </div>
+              </div>
             </div>
 
             {/* 2. 스크롤 영역 */}
