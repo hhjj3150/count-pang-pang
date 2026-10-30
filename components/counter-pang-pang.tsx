@@ -197,6 +197,28 @@ const localDate = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 const today = () => localDate()
 
+// 🏆 이번 달 신기록 챌린지: Lv.11·12·13 만점 최단 기록(문제 푸는 시간만)의 합계로 겨룸. 매달 1일 새로 시작
+const RECORD_LEVELS = [11, 12, 13]
+type MonthBest = Partial<Record<number, number>> // 레벨 → 최고 기록(ms)
+const loadMonthBest = (): MonthBest => {
+  if (typeof window === "undefined") return {}
+  try {
+    const d = JSON.parse(localStorage.getItem("cp_month_best") ?? "null")
+    if (d && d.month === today().slice(0, 7)) return d.best ?? {}
+  } catch {
+    /* ignore */
+  }
+  return {}
+}
+const monthBestTotal = (b: MonthBest) =>
+  RECORD_LEVELS.every((lv) => typeof b[lv] === "number") ? RECORD_LEVELS.reduce((a, lv) => a + (b[lv] as number), 0) : null
+const fmtRecord = (ms: number) => {
+  const sec = ms / 1000
+  const m = Math.floor(sec / 60)
+  const rest = (sec - m * 60).toFixed(2)
+  return m > 0 ? `${m}분 ${rest.padStart(5, "0")}초` : `${rest}초`
+}
+
 function canSplitEven(arr: number[]) {
   const total = sum(arr)
   if (total === 0) return arr.length >= 2
@@ -903,7 +925,7 @@ const KARTS = [
 ]
 const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
 
-const TUTORIAL_PAGES = ["이등분 퍼즐", "하트", "포인트 · 캐시", "오늘의 도전", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급"]
+const TUTORIAL_PAGES = ["이등분 퍼즐", "하트", "포인트 · 캐시", "오늘의 도전", "이번 달 신기록", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급"]
 
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -1030,6 +1052,29 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
               <p className="mt-2">🏆 그 레벨을 오늘 <b>처음 통과</b>하면 통과 보너스가 <b className="text-rose-500">2배</b>!</p>
               <p className="mt-2">🔁 실패해도 하트만 있으면 <b>몇 번이든</b> 다시 도전할 수 있어요.</p>
               <p className="mt-2 text-sm text-zinc-500">2배 보너스는 하루에 한 번이에요. 내일은 새로운 도전이 열려요.</p>
+            </Bubble>
+          </>
+        )
+      case "이번 달 신기록":
+        return (
+          <>
+            <div className="flex items-center justify-center gap-2 text-center">
+              {RECORD_LEVELS.map((lv, i) => (
+                <div key={lv} className="flex items-center gap-2">
+                  {i > 0 && <span className="text-xl font-black text-zinc-400">+</span>}
+                  <div className="rounded-xl bg-white/90 px-3 py-2 shadow-sm ring-1 ring-black/5">
+                    <p className="text-sm font-black text-amber-600">Lv.{lv}</p>
+                    <p className="text-[11px] font-bold text-zinc-500">만점 기록</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-center text-lg font-black text-zinc-700">= ⏱ 합계 시간이 가장 짧은 사람이 1등!</p>
+            <Bubble>
+              <p>🏆 Lv.11·12·13을 <b className="text-emerald-600">15문제 모두 맞히면(만점)</b> 기록이 남아요.</p>
+              <p className="mt-2">⏱ 기록은 문제를 <b>푸는 데 걸린 시간</b>만 재요. 정답·오답 화면이 지나가는 시간은 빼요.</p>
+              <p className="mt-2">🔁 레벨마다 이번 달 <b>가장 빠른 기록</b>만 남고, 세 레벨 기록을 <b>더한 시간</b>으로 겨뤄요.</p>
+              <p className="mt-2 text-sm text-zinc-500">매달 1일에 새로 시작해요. 전체 순위는 준비 중이에요.</p>
             </Bubble>
           </>
         )
@@ -1515,6 +1560,11 @@ export default function CounterPangPang() {
   // 결과
   const [passed, setPassed] = useState(false)
   const [clearReward, setClearReward] = useState<{ base: number; extra: number; pct: number } | null>(null)
+  // 🏆 이번 달 신기록 (Lv.11·12·13 만점 최단 시간)
+  const [monthBest, setMonthBest] = useState<MonthBest>({})
+  const [recordResult, setRecordResult] = useState<{ ms: number | null; isNew: boolean; prev: number | null } | null>(null)
+  const [showRecords, setShowRecords] = useState(false)
+  const playMsRef = useRef(0) // 이번 판에서 문제를 푸는 데 쓴 시간 (일시정지·정답 연출 시간 제외)
   const [finalScore, setFinalScore] = useState(0)
   const [resultPhase, setResultPhase] = useState<"boom" | "cheer">("boom")
 
@@ -1908,12 +1958,12 @@ export default function CounterPangPang() {
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) return setInstallGuide("ios");
     setInstallGuide("other");
   };
-  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial });
+  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
   useEffect(() => {
-    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial };
-  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial]);
+    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords };
+  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords]);
 
   // 1. 초기 진입 시 기본 방어막 1개 생성
   useEffect(() => {
@@ -1931,10 +1981,10 @@ export default function CounterPangPang() {
   // 3. 팝업이 뜰 때 히스토리 쌓기 (🌟 팝업에서 튕기는 현상 완벽 해결!)
   useEffect(() => {
     if (isPopRef.current) return;
-    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial) {
+    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial || showRecords) {
       window.history.pushState(null, "", window.location.href);
     }
-  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial]);
+  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial, showRecords]);
 
   // 4. 진짜 뒤로가기를 눌렀을 때의 동작 흐름
   useEffect(() => {
@@ -1956,6 +2006,8 @@ export default function CounterPangPang() {
         setExitPhase(null);
       } else if (current.previewItem) {
         setPreviewItem(null);
+      } else if (current.showRecords) {
+        setShowRecords(false);
       } else if (current.showVault) {
         setShowVault(false);
       } else if (current.showAttendance) {
@@ -2047,6 +2099,14 @@ export default function CounterPangPang() {
     setTimeLeft(q.timer)
   }, [screen, qIndex, questions])
 
+  useEffect(() => { setMonthBest(loadMonthBest()) }, [])
+  // ⏱ 문제를 풀 수 있는 동안(잠금·일시정지 아닐 때)만 시간을 더함
+  useEffect(() => {
+    if (screen !== "GAME" || locked || isPaused) return
+    const start = performance.now()
+    return () => { playMsRef.current += performance.now() - start }
+  }, [screen, locked, isPaused, qIndex])
+
   const finishGame = useCallback(() => {
     const score = correctRef.current
     const ok = score >= PASS_LINE
@@ -2076,6 +2136,25 @@ export default function CounterPangPang() {
         }
       }
     if (!ok) setClearReward(null)
+    // 🏆 Lv.11·12·13 만점이면 이번 달 신기록 확인
+    if (RECORD_LEVELS.includes(chosenLevel)) {
+      const ms = Math.round(playMsRef.current)
+      const best = loadMonthBest()
+      const prev = best[chosenLevel] ?? null
+      if (score === TOTAL_Q) {
+        const isNew = prev === null || ms < prev
+        if (isNew) {
+          const nextBest = { ...best, [chosenLevel]: ms }
+          localStorage.setItem("cp_month_best", JSON.stringify({ month: today().slice(0, 7), best: nextBest }))
+          setMonthBest(nextBest)
+        }
+        setRecordResult({ ms, isNew, prev })
+      } else {
+        setRecordResult({ ms: null, isNew: false, prev })
+      }
+    } else {
+      setRecordResult(null)
+    }
     setScreen("RESULT")
   }, [chosenLevel, daily, equippedCar])
 
@@ -2162,6 +2241,7 @@ export default function CounterPangPang() {
       const qs = buildGame(level)
       correctRef.current = 0
       qIndexRef.current = 0
+      playMsRef.current = 0
       setChosenLevel(level)
       setQuestions(qs)
       setQIndex(0)
@@ -2622,6 +2702,27 @@ export default function CounterPangPang() {
                   )}
                 </div>
               )}
+              {/* 🏆 이번 달 신기록 챌린지 배너 */}
+              {(() => {
+                const total = monthBestTotal(monthBest)
+                const doneCount = RECORD_LEVELS.filter((lv) => typeof monthBest[lv] === "number").length
+                return (
+                  <button
+                    type="button"
+                    onClick={() => { sfxClick(); setShowRecords(true) }}
+                    className="relative z-10 mb-3 flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 p-3 text-left shadow-md ring-1 ring-violet-300 active:scale-[0.98]"
+                  >
+                    <span className="text-3xl">🏆</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-black text-white/85">이번 달 신기록 · Lv.11~13 합계</p>
+                      <p className="text-sm font-black text-white">
+                        {total !== null ? `⏱ 내 기록 ${fmtRecord(total)}` : unlocked < 11 ? "Lv.11부터 도전할 수 있어요" : `만점 기록 ${doneCount}/3 레벨`}
+                      </p>
+                    </div>
+                    <span className="flex-none rounded-full bg-white px-3 py-1.5 text-sm font-black text-indigo-600 shadow">보기</span>
+                  </button>
+                )
+              })()}
               <p className="mb-2 mt-1 text-sm font-bold text-black/70">스테이지 선택</p>
               <div className="grid grid-cols-3 gap-3">
                 {Array.from({ length: MAX_LEVEL + 1 }, (_, lv) => {
@@ -3072,6 +3173,24 @@ export default function CounterPangPang() {
                 </p>
               </div>
 
+              {recordResult && (
+                <div className="mt-3 rounded-2xl bg-violet-500/25 px-4 py-2 text-sm font-bold text-white ring-1 ring-violet-300/40">
+                  {recordResult.ms !== null ? (
+                    <>
+                      <p>⏱ 이번 기록 <b className="text-lg text-yellow-300">{fmtRecord(recordResult.ms)}</b></p>
+                      {recordResult.isNew ? (
+                        <p className="cpp-pop font-black text-yellow-300">🏆 이번 달 Lv.{chosenLevel} 신기록!{recordResult.prev !== null && ` (이전 ${fmtRecord(recordResult.prev)})`}</p>
+                      ) : (
+                        <p className="text-white/80">이번 달 최고 기록 {fmtRecord(recordResult.prev as number)}</p>
+                      )}
+                      {monthBestTotal(monthBest) !== null && <p className="text-white/80">3레벨 합계 {fmtRecord(monthBestTotal(monthBest) as number)}</p>}
+                    </>
+                  ) : (
+                    <p>🏆 15문제 모두 맞히면 이번 달 신기록에 도전할 수 있어요!</p>
+                  )}
+                </div>
+              )}
+
               {passed && clearReward && (
                 <p className="mt-3 text-sm font-bold text-white/90">
                   🪙 통과 보너스 <b className="text-yellow-300">+{clearReward.base}P</b>
@@ -3150,6 +3269,44 @@ export default function CounterPangPang() {
             </div>
           </section>
         )}
+{/* ============================ 🏆 이번 달 신기록 창 ============================ */}
+          {showRecords && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm" onClick={() => setShowRecords(false)}>
+              <div className="w-full max-w-[360px] rounded-3xl bg-white p-5 shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black text-zinc-900">🏆 이번 달 신기록</h2>
+                  <button type="button" onClick={() => { sfxClick(); setShowRecords(false) }} className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-lg text-zinc-900 active:scale-90">✕</button>
+                </div>
+                <p className="mt-1 text-xs font-bold text-zinc-500">Lv.11·12·13 만점 최고 기록을 더한 시간이 가장 짧은 사람이 1등이에요. 매달 1일 새로 시작해요.</p>
+                <div className="mt-4 space-y-2">
+                  {RECORD_LEVELS.map((lv) => (
+                    <div key={lv} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200">
+                      <div>
+                        <p className="text-sm font-black text-slate-800">Lv.{lv}</p>
+                        <p className="text-[11px] font-bold text-slate-500">{(LEVEL_DESC[lv] ?? "").replace("\n", " ")}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className={cn("text-sm font-black tabular-nums", typeof monthBest[lv] === "number" ? "text-indigo-600" : "text-slate-400")}>
+                          {typeof monthBest[lv] === "number" ? fmtRecord(monthBest[lv] as number) : "기록 없음"}
+                        </p>
+                        {lv <= unlocked && (
+                          <button type="button" onClick={() => { setShowRecords(false); startLevel(lv) }} className="rounded-full bg-indigo-500 px-2.5 py-1 text-xs font-black text-white active:scale-95">도전</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-3 py-3 text-white">
+                  <p className="text-sm font-black">⏱ 3레벨 합계</p>
+                  <p className="text-lg font-black tabular-nums">{monthBestTotal(monthBest) !== null ? fmtRecord(monthBestTotal(monthBest) as number) : "—"}</p>
+                </div>
+                <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-center text-xs font-bold text-amber-700 ring-1 ring-amber-200">
+                  👥 전체 순위는 준비 중이에요. 지금은 내 기록만 볼 수 있어요.
+                </div>
+              </div>
+            </div>
+          )}
+
 {/* ============================ 📅 출석체크 모달 ============================ */}
         {showAttendance && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
