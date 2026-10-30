@@ -55,7 +55,7 @@ const STORAGE_KEY = "counter-pang-pang-v1"
 //  - 게임 포인트(P): 게임으로 적립 → 띠 승급·월간 랭킹·아이템 구매 (돈으로 바꾸지 않음)
 //  - 캐시(C, 1C ≈ 1원): 광고 시청·친구 초대로 적립 → 모바일 상품권 교환 (월 1회)
 const ECONOMY = {
-  cashPerAd: 2, // 광고 시청(지금은 '무료 하트 충전') 1회당 캐시
+  cashPerAd: 2, // '광고 보고 하트 충전' 1회당 캐시
   cashPerInvite: 10, // 친구 초대 1회당 캐시
   giftCardCash: 5000, // 모바일 상품권 5,000원 교환에 필요한 캐시
   giftCardWon: 5000, // 상품권 금액
@@ -984,7 +984,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             <Bubble>
               <p>🎮 게임 한 판에 <b className="text-rose-500">하트 1개</b>를 써요.</p>
               <p className="mt-2">🌅 매일 <b>5개</b>까지 다시 채워져요. (5개보다 많이 모아 두었으면 그대로!)</p>
-              <p className="mt-2">🎁 로비의 <b>무료 하트 충전</b>: 하루 3번, 한 번에 하트 +1</p>
+              <p className="mt-2">📺 로비의 <b>광고 보고 하트 충전</b>: 광고 한 번에 하트 +1 (횟수 제한 없음)</p>
               <p className="mt-2">🛒 <b>포인트 상점</b>: 50P로 하트 1개, 하루 3번</p>
               <p className="mt-2 text-sm text-zinc-500">하트는 최대 {HEART_CAP}개까지 모을 수 있어요.</p>
             </Bubble>
@@ -998,7 +998,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
                 { icon: "🪙", name: "보유 포인트", use: "상점에서 아이템을 살 때 써요", tone: "bg-blue-50 text-blue-700 ring-blue-100" },
                 { icon: "📅", name: "이번 달 포인트", use: "이번 달에 모은 포인트 · 월간 순위 (준비 중)", tone: "bg-amber-50 text-amber-700 ring-amber-100" },
                 { icon: "🥋", name: "누적 포인트", use: "지금까지 모은 전체 포인트 · 띠 승급", tone: "bg-slate-50 text-slate-700 ring-slate-200" },
-                { icon: "💵", name: "캐시", use: "무료 하트 충전·친구 초대로 모아요 · 기프티콘 교환 (준비 중)", tone: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
+                { icon: "💵", name: "캐시", use: "광고 보기·친구 초대로 모아요 · 기프티콘 교환 (준비 중)", tone: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
               ].map((r) => (
                 <div key={r.name} className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 ring-1", r.tone)}>
                   <span className="text-2xl">{r.icon}</span>
@@ -2283,36 +2283,17 @@ export default function CounterPangPang() {
     resolve(isCorrect)
   }
 
-  // 🎁 무료 하트 충전: 하루 3회 (날짜가 바뀌면 다시 3회). 나중에 광고를 붙이면 이 함수에서 광고 시청 후 지급하면 됨
-  const FREE_HEART_PER_DAY = 3
-  const [freeHeart, setFreeHeart] = useState({ date: "", count: 0 })
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    try {
-      const saved = JSON.parse(localStorage.getItem("cp_free_heart") ?? "null")
-      if (saved && saved.date === today()) setFreeHeart(saved)
-    } catch {
-      /* ignore */
-    }
-  }, [])
-  const freeHeartLeft = FREE_HEART_PER_DAY - (freeHeart.date === today() ? freeHeart.count : 0)
+  // 📺 광고 보고 하트 충전: 횟수 제한 없음 (하트가 가득 차 있으면 충전 안 함)
   const rechargeAd = () => {
     sfxClick()
-    if (freeHeartLeft <= 0) {
-      flashToast("오늘 무료 충전을 모두 사용했어요! 내일 다시 받을 수 있어요 ⏰")
-      return
-    }
     if (hearts >= HEART_CAP) {
-      flashToast("하트가 가득 찼어요!")
+      flashToast(`하트가 가득 찼어요! (최대 ${HEART_CAP}개) 💖`)
       return
     }
-    const next = { date: today(), count: FREE_HEART_PER_DAY - freeHeartLeft + 1 }
-    setFreeHeart(next)
-    localStorage.setItem("cp_free_heart", JSON.stringify(next))
+    // 💰 나중에 실제 광고를 붙이면: 광고(adRequestConfig 설정으로 요청)를 끝까지 본 뒤에 아래 하트·캐시를 지급
     setHearts((h) => Math.min(HEART_CAP, h + 1))
-    // 💰 나중에 실제 광고를 붙이면: 광고(adConfig 설정으로 요청)를 끝까지 본 뒤에 하트·캐시 지급
     setCash((c) => c + ECONOMY.cashPerAd)
-    flashToast(`무료 하트 +1 💖 · 캐시 +${ECONOMY.cashPerAd}C (오늘 남은 횟수 ${FREE_HEART_PER_DAY - next.count}회)`)
+    flashToast(`광고 시청 완료! 하트 +1 💖 · 캐시 +${ECONOMY.cashPerAd}C`)
   }
 
   const reactionState = reaction === "correct" ? 1 : reaction === "wrong" ? 6 : 3
@@ -2564,16 +2545,16 @@ export default function CounterPangPang() {
               💌 초대
             </button>
             
-            {/* 오른쪽: 무료 하트 충전 (하루 3회, 남은 폭 전부 사용, 작은 폰에서도 한 줄 유지) */}
+            {/* 오른쪽: 광고 보고 하트 충전 (횟수 제한 없음, 남은 폭 전부 사용, 작은 폰에서도 한 줄 유지) */}
             <button
               type="button"
               onClick={rechargeAd}
               className={cn(
                 "flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-1.5 py-3 text-[clamp(10px,3.3vw,14px)] font-black text-black/80 active:scale-95",
-                freeHeartLeft <= 0 && "opacity-50",
+                hearts >= HEART_CAP && "opacity-50",
               )}
             >
-              🎁 무료 하트 충전 <span className="rounded-full bg-white/60 px-1.5 py-0.5 text-[0.8em]">+1 💖 {freeHeartLeft}/{FREE_HEART_PER_DAY}</span>
+              📺 광고 보고 하트 충전 <span className="rounded-full bg-white/60 px-1.5 py-0.5 text-[0.8em]">+1 💖</span>
             </button>
           </div>
 
@@ -3775,7 +3756,7 @@ export default function CounterPangPang() {
                   </div>
                   <div className="rounded-2xl bg-zinc-50 p-4 text-xs font-bold leading-relaxed text-zinc-600 ring-1 ring-zinc-200">
                     <p className="mb-1 text-sm font-black text-zinc-700">💡 캐시는 이렇게 모아요</p>
-                    <p>🎁 무료 하트 충전(광고) 1회 +{ECONOMY.cashPerAd}C</p>
+                    <p>📺 광고 보고 하트 충전 1회 +{ECONOMY.cashPerAd}C</p>
                     <p>💌 친구 초대 1회 +{ECONOMY.cashPerInvite}C</p>
                     <p className="mt-2 text-zinc-400">게임 포인트(P)는 띠 승급·랭킹·아이템용이고, 캐시(C)와는 따로 모여요.</p>
                   </div>
