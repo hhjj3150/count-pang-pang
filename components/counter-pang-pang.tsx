@@ -896,7 +896,7 @@ const KARTS = [
   { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 5, bonus: 15 },
   { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 4, bonus: 15 },
   { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 6, bonus: 15 },
-  { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 8, bonus: 500 }, // ⚠️ 테스트용 임시 500% (원래 15%, 출시 전 되돌리기)
+  { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 8, bonus: 2000 }, // ⚠️ 테스트용 임시 2000% (원래 15%, 출시 전 되돌리기)
   { id: "kart_ostrich", name: "다리가 짧은 타조 카트", file: "kart_ostrich.png", price: 3, bonus: 15 },
   { id: "kart_owl", name: "눈이 작은부엉이 카트", file: "kart_owl.png", price: 5, bonus: 15 },
   { id: "kart_rabbit", name: "귀가작은 토끼 카트", file: "kart_rabbit.png", price: 4, bonus: 15 },
