@@ -892,7 +892,7 @@ const KARTS = [
   { id: "kart_police", name: "경찰 카트", file: "kart_police.png", price: 7, bonus: 10 },
   { id: "kart_tank", name: "탱크 카트", file: "kart_tank.png", price: 10, bonus: 10 },
   // 🦁 캐릭터 카트: +15%
-  { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 0, bonus: 15 },
+  { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 5, bonus: 15 },
   { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 5, bonus: 15 },
   { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 4, bonus: 15 },
   { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 6, bonus: 15 },
