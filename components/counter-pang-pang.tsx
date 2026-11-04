@@ -947,6 +947,71 @@ const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
 
 const TUTORIAL_PAGES = ["이등분 퍼즐", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급"]
 
+/* ------------------------- 📖 레벨별 게임 설명 팝업 (게임 시작 전) ------------------------- */
+const GUIDE_HOW: Record<number, string[]> = {
+  1: ["번호판 <b>앞자리 숫자</b>를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
+  2: ["번호판 <b>뒷자리 4개</b> 숫자를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
+  3: ["앞자리 2개 + 뒷자리 4개, <b>6개 숫자</b>를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
+  4: ["앞자리 3개 + 뒷자리 4개, <b>7개 숫자</b>를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
+  5: ["앞자리 합과 뒷자리 합을 <b>비교</b>해요.", "<b>앞이 큼 · 같음 · 뒤가 큼</b> 중 하나를 눌러요."],
+  6: ["앞자리 합과 뒷자리 합을 각각 구해요.", "<b>큰 쪽에서 작은 쪽을 빼서</b> 입력해요."],
+  7: ["문제 위에 나오는 대로 <b>홀수만</b> 또는 <b>짝수만</b> 더해요.", "0은 짝수예요."],
+  8: ["번호판의 <b>전체 합</b>이 주어져요.", "<b>?</b> 자리에 들어갈 숫자를 찾아 입력해요."],
+  9: ["번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>10</b>이 되면 <b>제출</b>!"],
+  10: ["번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>20</b>이 되면 <b>제출</b>!"],
+  11: ["뒷자리 4개를 <b>네 자리 수</b> 하나로 읽어요. (예: 1234)", "거기에 <b>앞자리 수</b>를 더해요. (예: 1234 + 56)"],
+  12: ["숫자를 <b>두 묶음</b>으로 나눠 두 묶음의 합이 <b>똑같게</b> 만들어요.", "전체 합의 <b>절반</b>이 되도록 숫자를 골라 <b>제출</b>!", "어떻게 해도 못 나누면 <b>이등분 불가</b> 버튼 (전체 합이 홀수면 무조건 불가)"],
+  13: ["<b>붉게 빛나는 숫자</b>만 모두 <b>곱해요</b>.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
+  14: ["Lv.1~13 문제가 <b>섞여서</b> 나와요!", "문제마다 화면 위의 설명을 잘 읽고 풀어요."],
+}
+
+function GameGuide({ level, onClose }: { level: number; onClose: () => void }) {
+  // 설명용 예시 문제 (팝업을 열 때마다 새로 뽑음, 이등분은 나눌 수 있는 문제로)
+  const sample = useMemo(() => (level === 14 ? null : buildQuestion(level, 5, level === 12 ? true : undefined)), [level])
+  return (
+    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] w-full max-w-[380px] flex-col rounded-3xl bg-gradient-to-b from-amber-50 to-white p-4 shadow-2xl cpp-pop">
+        <div className="text-center">
+          <h2 className="text-xl font-black text-zinc-900"><span className="mr-1.5 rounded-full bg-amber-400 px-2.5 py-0.5 align-middle text-xs font-black text-amber-950">Lv.{level}</span>{LEVEL_NAMES[level]}</h2>
+        </div>
+        <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto cpp-no-scrollbar">
+          {sample && (
+            <div className="rounded-2xl bg-zinc-900 px-2 py-2.5 text-center">
+              <p className="text-sm font-black text-yellow-300">{sample.desc}</p>
+              <div className="mt-2 flex justify-center"><Plate q={sample} /></div>
+              {typeof sample.totalForHidden === "number" && (
+                <p className="mt-2 text-sm font-black text-white">전체 합 = <span className="text-yellow-300">{sample.totalForHidden}</span></p>
+              )}
+              <p className="mt-2 text-sm font-black text-emerald-300">예) 정답: {exampleText(sample)}</p>
+            </div>
+          )}
+          <div className="rounded-2xl bg-white px-3 py-2.5 text-left text-sm font-bold leading-snug text-zinc-700 shadow-sm ring-1 ring-black/5">
+            {GUIDE_HOW[level]?.map((line, i) => (
+              <p key={i} className={i > 0 ? "mt-1" : ""}>
+                {i + 1}. <span dangerouslySetInnerHTML={{ __html: line }} />
+              </p>
+            ))}
+          </div>
+          <div className="space-y-0.5 rounded-2xl bg-sky-50 px-3 py-2 text-left text-xs font-bold leading-snug text-sky-800 ring-1 ring-sky-100">
+            <p>⏰ {level === 14 ? "문제마다 제한 시간이 달라요" : `문제당 ${LEVEL_TIMER[level]}초`}</p>
+            <p>✅ 15문제 중 <b>13개 이상</b> 맞히면 통과 · 처음 3문제는 정답을 알려줘요</p>
+            <p>⚡ 빨리 3번 연속 맞히면 <b>피버 타임</b> (문제당 15P)</p>
+            {RECORD_LEVELS.includes(level) && <p>🏆 만점이면 <b>랭킹 기록</b>에 올라가요</p>}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-2 w-full rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 py-3 text-lg font-black text-emerald-950 shadow-[0_4px_0_#047857] active:translate-y-0.5"
+        >
+          닫기 · 게임 시작 ▶
+        </button>
+        <p className="mt-1.5 text-center text-[11px] font-bold text-zinc-400">⚙️ 관리 → 내 정보에서 게임 설명을 끌 수 있어요</p>
+      </div>
+    </div>
+  )
+}
+
 function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
   const last = TUTORIAL_PAGES.length - 1
@@ -1578,6 +1643,17 @@ export default function CounterPangPang() {
   const [monthBest, setMonthBest] = useState<MonthBest>({})
   const [recordResult, setRecordResult] = useState<{ ms: number | null; isNew: boolean; prev: number | null } | null>(null)
   const [showRecords, setShowRecords] = useState(false) // 🏆 랭킹 창
+  // 📖 게임 시작 전 설명 팝업 (관리 → 내 정보에서 보기/끄기, 기본은 보기)
+  const [guideLevel, setGuideLevel] = useState<number | null>(null)
+  const [showGuide, setShowGuide] = useState(true)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (localStorage.getItem("cp_show_guide") === "off") setShowGuide(false)
+  }, [])
+  const changeShowGuide = (on: boolean) => {
+    setShowGuide(on)
+    try { localStorage.setItem("cp_show_guide", on ? "on" : "off") } catch { /* ignore */ }
+  }
   const [rankTab, setRankTab] = useState<RankTab>("points")
   const playMsRef = useRef(0) // 이번 판에서 문제를 푸는 데 쓴 시간 (일시정지·정답 연출 시간 제외)
   const [finalScore, setFinalScore] = useState(0)
@@ -1973,12 +2049,12 @@ export default function CounterPangPang() {
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) return setInstallGuide("ios");
     setInstallGuide("other");
   };
-  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords });
+  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
   useEffect(() => {
-    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords };
-  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords]);
+    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel };
+  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel]);
 
   // 1. 초기 진입 시 기본 방어막 1개 생성
   useEffect(() => {
@@ -1996,10 +2072,10 @@ export default function CounterPangPang() {
   // 3. 팝업이 뜰 때 히스토리 쌓기 (🌟 팝업에서 튕기는 현상 완벽 해결!)
   useEffect(() => {
     if (isPopRef.current) return;
-    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial || showRecords) {
+    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial || showRecords || guideLevel !== null) {
       window.history.pushState(null, "", window.location.href);
     }
-  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial, showRecords]);
+  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial, showRecords, guideLevel]);
 
   // 4. 진짜 뒤로가기를 눌렀을 때의 동작 흐름
   useEffect(() => {
@@ -2021,6 +2097,8 @@ export default function CounterPangPang() {
         setExitPhase(null);
       } else if (current.previewItem) {
         setPreviewItem(null);
+      } else if (current.guideLevel !== null) {
+        setGuideLevel(null);
       } else if (current.showRecords) {
         setShowRecords(false);
       } else if (current.showVault) {
@@ -2235,7 +2313,8 @@ export default function CounterPangPang() {
       setFastCombo(0);
     }
   }, [timeLeft, isFever, currentQ, qIndex]);
-  const startLevel = useCallback(
+  // 실제 게임 시작 (설명 팝업을 닫은 뒤, 또는 설명 끄기 상태일 때 바로)
+  const beginLevel = useCallback(
     (level: number) => {
       // 🎓 Lv.0은 게임이 아니라 튜토리얼 (하트 사용 안 함)
       if (level === 0) {
@@ -2268,6 +2347,23 @@ export default function CounterPangPang() {
     setScreen("GAME")
     },
     [unlocked, hearts, sfxClick, flashToast],
+  )
+  // 📖 레벨을 누르면: 게임 설명 팝업 먼저 (관리에서 끌 수 있음). 잠김·하트 부족은 팝업 전에 안내
+  const startLevel = useCallback(
+    (level: number) => {
+      if (level === 0 || !showGuide) return beginLevel(level)
+      if (level > unlocked) {
+        flashToast("아직 잠긴 레벨이에요! 🔒")
+        return
+      }
+      if (hearts <= 0) {
+        flashToast("하트가 없어요. 광고로 충전해요! 💖")
+        return
+      }
+      sfxClick()
+      setGuideLevel(level)
+    },
+    [beginLevel, showGuide, unlocked, hearts, sfxClick, flashToast],
   )
 
   // 🥋 대기 중인 승급 축하 화면 표시: 결과 화면 연출(팡!) 이 끝난 뒤, 또는 결과 화면을 벗어나면 바로
@@ -3276,6 +3372,17 @@ export default function CounterPangPang() {
             </div>
           </section>
         )}
+{/* ============================ 📖 게임 설명 팝업 ============================ */}
+          {guideLevel !== null && (
+            <GameGuide
+              level={guideLevel}
+              onClose={() => {
+                const lv = guideLevel
+                setGuideLevel(null)
+                beginLevel(lv)
+              }}
+            />
+          )}
 {/* ============================ 🏆 랭킹 창 ============================ */}
           {showRecords && (() => {
             const tabInfo = RANK_TABS.find((t) => t.id === rankTab) ?? RANK_TABS[0]
@@ -3509,6 +3616,24 @@ export default function CounterPangPang() {
                 >
                   📖 게임 방법 다시 보기 <span>›</span>
                 </button>
+                <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 ring-1 ring-emerald-200">
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-emerald-800">📋 게임 설명</p>
+                    <p className="text-[11px] font-bold text-emerald-600">레벨을 시작할 때 설명 팝업 보여 주기</p>
+                  </div>
+                  <div className="flex flex-none overflow-hidden rounded-full ring-1 ring-emerald-300">
+                    {[true, false].map((on) => (
+                      <button
+                        key={String(on)}
+                        type="button"
+                        onClick={() => { sfxClick(); changeShowGuide(on); flashToast(on ? "레벨 시작 전에 게임 설명을 보여 줄게요 📋" : "게임 설명을 껐어요. 바로 게임이 시작돼요") }}
+                        className={cn("px-3 py-1.5 text-xs font-black", showGuide === on ? "bg-emerald-500 text-white" : "bg-white text-emerald-700")}
+                      >
+                        {on ? "보기" : "끄기"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={handleInstall}
