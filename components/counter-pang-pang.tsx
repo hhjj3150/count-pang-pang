@@ -945,7 +945,7 @@ const KARTS = [
 ]
 const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
 
-const TUTORIAL_PAGES = ["이등분 퍼즐", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급"]
+const TUTORIAL_PAGES = ["게임 시작", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급", "관리 메뉴"]
 
 /* ------------------------- 📖 레벨별 게임 설명 팝업 (게임 시작 전) ------------------------- */
 const GUIDE_HOW: Record<number, string[]> = {
@@ -1031,59 +1031,32 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
     if (dx > 60 && page > 0) go(page - 1)
   }
 
-  // ✂️ 이등분 퍼즐 연습 (고정 예시: 7 4 / 2 6 5 0 → 전체 24, 절반 12)
-  const halfDemo: Question = {
-    level: 12, front: [7, 4], back: [2, 6, 5, 0], hangul: "나", type: "partition", timer: 30,
-    title: "", desc: "", answer: null, canPartition: true,
-  }
-  const [halfSel, setHalfSel] = useState<number[]>([])
-  const [halfOk, setHalfOk] = useState(false)
-  const [halfTry, setHalfTry] = useState(0)
-
   const Bubble = ({ children }: { children: React.ReactNode }) => (
     <div className="rounded-2xl bg-white/90 p-4 text-left text-[15px] font-bold leading-relaxed text-zinc-700 shadow-sm ring-1 ring-black/5">{children}</div>
   )
 
   const body = (() => {
     switch (TUTORIAL_PAGES[page]) {
-      case "이등분 퍼즐": {
-        const all = [...halfDemo.front, ...halfDemo.back]
-        const total = sum(all)
-        const selSum = halfSel.reduce((a, i) => a + all[i], 0)
+      case "게임 시작":
         return (
           <>
+            <div className="flex justify-center"><GameImage src="/assets/0-2-2.png" alt="팡이" className="h-16 w-16 object-contain" fallback={<span className="text-5xl">🐣</span>} /></div>
             <Bubble>
-              <p>✂️ <b>이등분 퍼즐 (Lv.12)</b>: 번호판 숫자를 <b>두 묶음</b>으로 나눠서, 두 묶음의 합이 <b className="text-sky-600">똑같게</b> 만드는 게임이에요.</p>
-              <p className="mt-2">① 전체 합을 구해요 → ② <b>절반</b>이 되도록 숫자를 눌러 <b className="text-sky-600">파란 불</b>을 켜요 → ③ <b className="rounded bg-emerald-200 px-1.5 text-emerald-800">제출</b></p>
+              <div className="text-sm">
+                <p>🚗 자동차 <b>번호판 숫자</b>로 계산하는 두뇌 게임이에요. 레벨이 <b>14개</b> 있어요.</p>
+                <p className="mt-1.5">① 로비의 <b>레벨 카드</b>를 눌러요</p>
+                <p className="mt-1">② <b>게임 설명</b>을 읽고 <b className="whitespace-nowrap rounded bg-emerald-200 px-1.5 text-emerald-800">닫기 · 게임 시작</b></p>
+                <p className="mt-1">③ 15문제 중 <b className="text-emerald-600">13개 이상</b> 맞히면 통과! <b>다음 레벨</b>이 열려요</p>
+              </div>
             </Bubble>
-            <p className="text-center text-sm font-black text-zinc-600">직접 눌러 보세요! 전체 합 {total} → 절반은 <span className="text-sky-600">{total / 2}</span></p>
-            <div className="flex justify-center">
-              <Plate
-                q={halfDemo}
-                selected={halfSel}
-                onToggle={halfOk ? undefined : (i) => { playClick(); setHalfOk(false); setHalfSel((sel) => (sel.includes(i) ? sel.filter((x) => x !== i) : [...sel, i])) }}
-              />
+            <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] font-bold text-zinc-600">
+              <div className="rounded-xl bg-white/90 px-1 py-2 shadow-sm ring-1 ring-black/5"><p className="text-base font-black text-yellow-500">+30P</p>카드 아래 숫자는<br />통과 보너스</div>
+              <div className="rounded-xl bg-white/90 px-1 py-2 shadow-sm ring-1 ring-black/5"><p className="text-base">⭐</p>통과한 레벨</div>
+              <div className="rounded-xl bg-white/90 px-1 py-2 shadow-sm ring-1 ring-black/5"><p className="text-base">🔒</p>아직 잠긴 레벨</div>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <span className="rounded-full bg-white px-3 py-1.5 text-sm font-black text-zinc-700 shadow-sm ring-1 ring-black/10">선택한 합 <span className="text-sky-600">{selSum}</span></span>
-              {halfOk ? (
-                <span className="rounded-full bg-emerald-500 px-3 py-1.5 text-sm font-black text-white cpp-pop">정답! {selSum} = {total - selSum} 🎉</span>
-              ) : (
-                <button
-                  type="button"
-                  disabled={halfSel.length === 0}
-                  onClick={() => { playClick(); setHalfOk(selSum * 2 === total && halfSel.length < all.length) ; if (selSum * 2 !== total) setHalfTry((t) => t + 1) }}
-                  className="rounded-full bg-gradient-to-b from-emerald-400 to-emerald-500 px-4 py-1.5 text-sm font-black text-emerald-950 shadow disabled:opacity-40"
-                >
-                  제출 ✅
-                </button>
-              )}
-            </div>
-            {!halfOk && halfTry > 0 && <p className="text-center text-sm font-bold text-rose-500">합이 {total / 2}이 되도록 다시 골라 보세요! (예: 4 + 2 + 6)</p>}
-            <p className="text-center text-[13px] font-bold leading-relaxed text-zinc-500">💡 정답 조합은 여러 개일 수 있어요. 어떤 조합이든 합만 같으면 정답!<br />🚫 어떻게 해도 반으로 못 나누면 <b className="text-rose-500">이등분 불가</b> 버튼 (전체 합이 홀수면 무조건 불가)</p>
+            <p className="text-center text-xs font-bold text-zinc-500">💡 게임 설명은 ⚙️ 관리 → 내 정보에서 켜고 끌 수 있어요</p>
           </>
         )
-      }
       case "하트":
         return (
           <>
@@ -1107,7 +1080,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
                 { icon: "🥋", name: "누적 포인트", use: "지금까지 모은 전체 포인트 · 띠 승급", tone: "bg-slate-50 text-slate-700 ring-slate-200" },
                 { icon: "💵", name: "캐시", use: "광고 보기·친구 초대로 모아요 · 기프티콘 교환 (준비 중)", tone: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
               ].map((r) => (
-                <div key={r.name} className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 ring-1", r.tone)}>
+                <div key={r.name} className={cn("flex items-center gap-3 rounded-2xl px-3 py-1.5 ring-1", r.tone)}>
                   <span className="text-2xl">{r.icon}</span>
                   <div className="min-w-0 text-left">
                     <p className="text-sm font-black">{r.name}</p>
@@ -1117,8 +1090,11 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
               ))}
             </div>
             <Bubble>
-              <p>포인트는 게임을 통과하거나 출석·초대를 하면 쌓여요. 상점에서 포인트를 써도 <b>누적 포인트는 줄지 않아요!</b></p>
-              <p className="mt-2 text-sm text-zinc-500">💡 로비의 포인트 칸을 누르면 한눈에 볼 수 있어요.</p>
+              <div className="text-sm">
+                <p>🪙 <b>포인트</b>: 문제 맞히기(10P, 피버 15P) · 레벨 통과 · 출석 · 친구 초대</p>
+                <p className="mt-1">💵 <b>캐시</b>: 광고 보고 하트 충전 · 친구 초대</p>
+                <p className="mt-1 text-xs text-zinc-500">포인트를 써도 누적 포인트는 줄지 않아요. 만 14세 미만은 보호자 동의 후 기프티콘 교환 (준비 중) · 로비의 포인트 칸을 누르면 한눈에 보여요</p>
+              </div>
             </Bubble>
           </>
         )
@@ -1180,15 +1156,16 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
       case "포인트 상점":
         return (
           <>
-            <div className="grid grid-cols-2 gap-2 text-center text-sm font-black">
+            <div className="grid grid-cols-2 gap-2 text-center text-sm font-black text-zinc-700">
               <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏎️ 카트<span className="block text-xs font-bold text-zinc-500">게임 화면의 내 차 · 클리어 보너스</span></div>
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏞️ 배경<span className="block text-xs font-bold text-zinc-500">게임 화면 뒤 풍경</span></div>
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">📸 이모티콘<span className="block text-xs font-bold text-zinc-500">저장해서 친구에게 보내기</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏞️ 배경<span className="block text-xs font-bold text-zinc-500">게임 화면 뒤 풍경 · 레벨을 올리면 더 열려요</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">📸 이모티콘<span className="block text-xs font-bold text-zinc-500">사진첩에 저장해서 친구에게 보내기</span></div>
               <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">💖 하트<span className="block text-xs font-bold text-zinc-500">50P로 1개 (하루 3번)</span></div>
             </div>
             <Bubble>
               <p>🛒 로비의 <b>포인트 상점</b>에서 보유 포인트로 아이템을 사요.</p>
               <p className="mt-2">⚙️ 산 카트와 배경은 <b>관리 → 내 차고 · 내 테마</b>에서 장착해요.</p>
+              <p className="mt-2">🎁 <b>상품권</b> 탭: 모은 캐시로 기프티콘을 바꾸는 곳이에요 (준비 중).</p>
             </Bubble>
           </>
         )
@@ -1226,18 +1203,46 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
         return (
           <>
             <div className="flex flex-col items-center gap-2">
-              {(["화이트", "블루", "퍼플", "브라운", "블랙"] as const).map((n) => (
-                <div key={n} className="flex w-full max-w-[260px] items-center gap-2">
+              {([["화이트", "0P"], ["블루", "1만P"], ["퍼플", "3만P"], ["브라운", "6만P"], ["블랙", "10만P"]] as const).map(([n, req]) => (
+                <div key={n} className="flex w-full max-w-[290px] items-center gap-2">
                   <span className="w-14 text-right text-sm font-black text-zinc-600">{n}</span>
                   <div className="h-5 flex-1 rounded" style={{ background: BELT_COLORS[n].base, boxShadow: `inset 0 0 0 2px ${BELT_COLORS[n].edge}` }}>
                     <div className="ml-auto mr-[10%] h-full w-[28%]" style={{ background: BELT_COLORS[n].bar }} />
                   </div>
+                  <span className="w-12 text-xs font-black text-zinc-500">{req}</span>
                 </div>
               ))}
             </div>
             <Bubble>
               <p>🥋 지금까지 모은 <b>누적 포인트</b>로 띠가 올라가요. 상점에서 포인트를 써도 줄지 않아요!</p>
-              <p className="mt-2">🎀 띠마다 <b>그랄(줄무늬) 4개</b>를 모으면 다음 띠로 승급해요.</p>
+              <p className="mt-2">🎀 띠마다 <b>그랄(줄무늬) 4개</b>를 모으면 다음 띠로 승급해요. 그랄을 받거나 승급하면 <b>축하 화면</b>이 나와요!</p>
+              <p className="mt-2 text-sm text-zinc-500">내 띠와 다음 승급까지 남은 포인트는 ⚙️ 관리 맨 위에서 볼 수 있어요.</p>
+            </Bubble>
+          </>
+        )
+      case "관리 메뉴":
+        return (
+          <>
+            <div className="space-y-1">
+              {[
+                ["👤", "내 정보", "닉네임 · 연령 구분 · 게임 설명 켜기/끄기"],
+                ["🚗", "내 차고 · 🏞️ 내 테마", "산 카트와 배경 장착"],
+                ["📊", "리포트", "레벨별 정답률 · 학습 기록 (부모님과 함께 보기)"],
+                ["🔊", "소리 끄기/켜기", "로비 오른쪽 위 버튼"],
+                ["📲", "홈 화면에 추가", "앱처럼 바로 실행하기"],
+              ].map(([icon, name, desc]) => (
+                <div key={name} className="flex items-center gap-2.5 rounded-2xl bg-white/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-black/5">
+                  <span className="text-2xl">{icon}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-zinc-700">{name}</p>
+                    <p className="text-xs font-bold text-zinc-500">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Bubble>
+              <p className="text-sm">💾 기록은 <b>지금 쓰는 휴대폰(앱·브라우저)</b>에 저장돼요. 다른 앱이나 브라우저로 열면 기록이 따로예요.</p>
+              <p className="mt-1.5 text-sm">📖 이 게임 방법은 레벨 목록의 <b>Lv.0</b>에서 언제든 다시 볼 수 있어요.</p>
             </Bubble>
           </>
         )
@@ -3605,31 +3610,20 @@ export default function CounterPangPang() {
                     {birthYear ? `${birthYear}년생 · ${isChild ? "어린이 회원 (만 14세 미만)" : "일반 회원"}` : "미입력"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfxClick();
-                    setShowMyPage(false);
-                    setShowTutorial(true);
-                  }}
-                  className="flex w-full items-center justify-between rounded-xl bg-amber-50 px-4 py-3.5 text-sm font-black text-amber-800 ring-1 ring-amber-200 active:scale-[0.99]"
-                >
-                  📖 게임 방법 다시 보기 <span>›</span>
-                </button>
                 <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 ring-1 ring-emerald-200">
                   <div className="min-w-0">
                     <p className="text-sm font-black text-emerald-800">📋 게임 설명</p>
-                    <p className="text-[11px] font-bold text-emerald-600">레벨을 시작할 때 설명 팝업 보여 주기</p>
+                    <p className="text-[11px] font-bold text-emerald-600">레벨을 시작할 때 게임 설명 팝업 보여 주기</p>
                   </div>
                   <div className="flex flex-none overflow-hidden rounded-full ring-1 ring-emerald-300">
                     {[true, false].map((on) => (
                       <button
                         key={String(on)}
                         type="button"
-                        onClick={() => { sfxClick(); changeShowGuide(on); flashToast(on ? "레벨 시작 전에 게임 설명을 보여 줄게요 📋" : "게임 설명을 껐어요. 바로 게임이 시작돼요") }}
+                        onClick={() => { sfxClick(); changeShowGuide(on); flashToast(on ? "게임 설명을 켰어요. 레벨 시작 전에 보여 줄게요 📋" : "게임 설명을 껐어요. 바로 게임이 시작돼요") }}
                         className={cn("px-3 py-1.5 text-xs font-black", showGuide === on ? "bg-emerald-500 text-white" : "bg-white text-emerald-700")}
                       >
-                        {on ? "보기" : "끄기"}
+                        {on ? "켜기" : "끄기"}
                       </button>
                     ))}
                   </div>
