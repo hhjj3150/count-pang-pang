@@ -2626,8 +2626,8 @@ export default function CounterPangPang() {
             sfxClick()
             setNickname(name)
             setScreen("LOBBY")
-            // 🎓 처음 가입했고 아직 Lv.1이 안 열렸다면 게임 방법을 자동으로 한 번 보여줌
-            if (unlocked < 1) setShowTutorial(true)
+            // 🔓 처음 가입하면 게임 방법을 띄우지 않고 Lv.1을 바로 열어 줌 (게임 방법은 Lv.0 카드에서 볼 수 있음)
+            setUnlocked((u) => Math.max(u, 1))
 
             if ((window as any).globalBgm) {
               (window as any).globalBgm.play().catch(() => console.log("BGM 재생 대기"));
