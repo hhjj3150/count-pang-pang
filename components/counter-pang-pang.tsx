@@ -197,6 +197,17 @@ const localDate = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 const today = () => localDate()
 
+// 🔠 로비 위쪽(닉네임·버튼·배너) 글씨 크기: 원래 글씨 비율은 그대로 두고 화면 폭에 맞춰 최대한 크게
+//  - 폭 385px 화면에서 원래의 1.2배 → 360px 폰 약 1.12배, 412px 폰 약 1.28배, 최대 폭(440px) 약 1.37배
+//  - 하트 10개·포인트 여섯 자리일 때도 한 줄에 들어가는 최대 크기로 맞춤
+const LOBBY_TEXT_SCALE = 1.2
+const LOBBY_REF_WIDTH = 385
+const lfs = (px: number): React.CSSProperties => {
+  const size = px * LOBBY_TEXT_SCALE
+  const cap = (size * 440) / LOBBY_REF_WIDTH // 게임 화면 최대 폭(440px)에서 멈춤
+  return { fontSize: `min(${+cap.toFixed(2)}px, ${+((size * 100) / LOBBY_REF_WIDTH).toFixed(3)}vw)` }
+}
+
 // 🏆 이번 달 신기록 챌린지: Lv.11·12·13 만점 최단 기록(문제 푸는 시간만)의 합계로 겨룸. 매달 1일 새로 시작
 const RECORD_LEVELS = [11, 12, 13]
 type MonthBest = Partial<Record<number, number>> // 레벨 → 최고 기록(ms)
@@ -2510,7 +2521,8 @@ export default function CounterPangPang() {
         });
       }}
       // 동그라미를 빼고, 글씨가 여유 있게 들어가도록 가로 폭(px-4)을 늘린 예쁜 알약 모양
-      className="absolute right-3 top-3 z-40 flex h-10 px-4 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white backdrop-blur-md shadow-lg"
+      className="absolute right-3 top-3 z-40 flex h-12 px-4 items-center justify-center rounded-full bg-white/20 font-bold text-white backdrop-blur-md shadow-lg"
+      style={lfs(14)}
     >
       {muted ? "🔇 소리 켜기" : "🔊 소리 끄기"}
     </button>
@@ -2700,22 +2712,23 @@ export default function CounterPangPang() {
           <div className="relative flex items-center justify-between pr-12">
             {/* 왼쪽 닉네임 */}
             <div>
-              <p className="text-xs text-black/60">반가워요</p>
+              <p className="text-black/60" style={lfs(12)}>반가워요</p>
              {/* 실제 유저 레벨 연동 칭호 뱃지 (닉네임은 아랫줄 '관리' 버튼 앞에만 표시) */}
               <div className="flex items-center gap-2">
-                <span className={`rounded-md px-2 py-1 text-[11px] font-black ${myTitle.style}`}>
+                <span className={`rounded-md px-2 py-1 font-black ${myTitle.style}`} style={lfs(11)}>
                   {myTitle.badge}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <p className="text-lg font-black text-black">{nickname} 님</p>
+                <p className="font-black text-black" style={lfs(18)}>{nickname} 님</p>
                 <button
                 type="button"
                 onClick={() => {
                   sfxClick();
                   setShowMyPage(true);
                 }}
-                className="flex items-center gap-1 rounded-full bg-black/10 px-2.5 py-1 text-xs font-bold text-black/70 active:scale-95"
+                className="flex items-center gap-1 rounded-full bg-black/10 px-2.5 py-1 font-bold text-black/70 active:scale-95"
+                style={lfs(12)}
               >
                 ⚙️ 관리
               </button>
@@ -2727,16 +2740,17 @@ export default function CounterPangPang() {
           </div>
 
           {/* 🌟 1줄: 초대하기(1/4) + 하트 충전(3/4) 가로 배치 */}
-          <div className="mt-3 flex w-full items-center gap-2">
+          <div className="mt-3 flex w-full items-center gap-1.5">
             {/* 1. 현재 하트 개수 (포인트 박스처럼 왼쪽에 고정) */}
-              <div className="flex flex-none items-center justify-center gap-1 rounded-2xl bg-white/40 px-3 py-2 text-sm font-black text-black/80 shadow-sm backdrop-blur-sm">
+              <div className="flex flex-none items-center justify-center gap-1 rounded-2xl bg-white/40 px-2 py-2 font-black text-black/80 shadow-sm backdrop-blur-sm" style={lfs(14)}>
                 💖 <span>{hearts}</span>
               </div>
             {/* 왼쪽: 초대하기 (flex-1) */}
             <button
               type="button"
               onClick={handleShare}
-              className="flex flex-none items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-2.5 py-3 text-sm font-bold text-black/80 shadow-sm active:scale-95"
+              className="flex flex-none items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-2 py-3 font-bold text-black/80 shadow-sm active:scale-95"
+              style={lfs(14)}
             >
               💌 초대
             </button>
@@ -2746,16 +2760,17 @@ export default function CounterPangPang() {
               type="button"
               onClick={rechargeAd}
               className={cn(
-                "flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-1.5 py-3 text-[clamp(10px,3.3vw,14px)] font-black text-black/80 active:scale-95",
+                "flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-2xl bg-sky-200/60 px-1 py-3 font-black text-black/80 active:scale-95",
                 hearts >= HEART_CAP && "opacity-50",
               )}
+              style={lfs(11.9)}
             >
-              📺 광고 보고 하트 충전 <span className="rounded-full bg-white/60 px-1.5 py-0.5 text-[0.8em]">+1 💖</span>
+              📺 광고 보고 하트 충전 <span className="rounded-full bg-white/60 px-1 py-0.5 text-[0.8em]">+1 💖</span>
             </button>
           </div>
 
           {/* 🌟 2줄: 포인트 창 + 출석체크 + 포인트 상점 */}
-          <div className="mt-2 flex w-full items-center gap-2">
+          <div className="mt-2 flex w-full items-center gap-1.5">
             
             {/* 💰 내 지갑: 쓸 수 있는 포인트 + 캐시 (누르면 관리 → 내 정보에서 누적·이번 달 포인트까지 확인) */}
             <button
@@ -2765,10 +2780,10 @@ export default function CounterPangPang() {
                 setActiveCategory("info");
                 setShowMyPage(true);
               }}
-              className="flex w-[110px] flex-none flex-col items-center justify-center rounded-2xl bg-sky-200/60 py-1.5 font-bold text-black/80 active:scale-95"
+              className="flex flex-none flex-col items-center justify-center whitespace-nowrap rounded-2xl bg-sky-200/60 px-2 py-1.5 font-bold text-black/80 active:scale-95"
             >
-              <span className="text-sm font-black text-blue-700">🪙 {points.toLocaleString()}P</span>
-              <span className="text-[11px] text-emerald-700">💵 {cash.toLocaleString()}C</span>
+              <span className="font-black text-blue-700" style={lfs(14)}>🪙 {points.toLocaleString()}P</span>
+              <span className="text-emerald-700" style={lfs(11)}>💵 {cash.toLocaleString()}C</span>
             </button>
 
             <button
@@ -2777,7 +2792,8 @@ export default function CounterPangPang() {
                 sfxClick();
                 setShowAttendance(true);
               }}
-              className="flex flex-[2] items-center justify-center gap-1 rounded-2xl bg-sky-200/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
+              className="flex min-w-0 flex-auto items-center justify-center gap-0.5 whitespace-nowrap rounded-2xl bg-sky-200/60 py-2.5 font-bold text-black/80 active:scale-95"
+              style={lfs(14)}
             >
               📅 출석체크
             </button>
@@ -2788,7 +2804,8 @@ export default function CounterPangPang() {
                 sfxClick();
                 setShowVault(true);
               }}
-              className="flex flex-[3] items-center justify-center gap-2 rounded-2xl bg-sky-200/60 py-2.5 text-sm font-bold text-black/80 active:scale-95"
+              className="flex min-w-0 flex-auto items-center justify-center gap-0.5 whitespace-nowrap rounded-2xl bg-sky-200/60 py-2.5 font-bold text-black/80 active:scale-95"
+              style={lfs(14)}
             >
               🛒 포인트 상점
             </button>
@@ -2799,20 +2816,20 @@ export default function CounterPangPang() {
               {/* 🔥 오늘의 도전 배너 */}
               {dailyActive && (
                 <div className={cn(
-                  "relative z-10 mb-3 flex items-center gap-3 rounded-2xl px-4 py-3 shadow-sm ring-1", // z-10: 로비 배경 덮개보다 앞에 (안 그러면 버튼이 안 눌림)
+                  "relative z-10 mb-3 flex items-center gap-1 rounded-2xl px-2.5 py-3 shadow-sm ring-1", // z-10: 로비 배경 덮개보다 앞에 (안 그러면 버튼이 안 눌림)
                   daily.done ? "bg-white/70 ring-black/10" : "bg-gradient-to-r from-orange-400 to-rose-400 ring-orange-300",
                 )}>
-                  <span className="text-3xl">{daily.done ? "✅" : "🔥"}</span>
+                  <span style={lfs(30)}>{daily.done ? "✅" : "🔥"}</span>
                   <div className="min-w-0 flex-1">
-                    <p className={cn("text-xs font-black", daily.done ? "text-black/50" : "text-white/90")}>
+                    <p className={cn("font-black", daily.done ? "text-black/50" : "text-white/90")} style={lfs(12)}>
                       오늘의 도전{!daily.done && " · 통과 보너스 2배!"}
                     </p>
-                    <p className={cn("break-keep text-sm font-black leading-tight", daily.done ? "text-black/70" : "text-white")}>
+                    <p className={cn("break-keep font-black leading-tight", daily.done ? "text-black/70" : "text-white")} style={lfs(14)}>
                       {daily.done ? "완료! 내일 또 새로운 도전이 열려요" : `Lv.${daily.level} ${(LEVEL_DESC[daily.level] ?? LEVEL_NAMES[daily.level]).replace("\n", " ")}`}
                     </p>
                   </div>
                   {!daily.done && (
-                    <button type="button" onClick={() => startLevel(daily.level)} className="flex-none rounded-full bg-white px-3 py-1.5 text-sm font-black text-rose-500 shadow active:scale-95">
+                    <button type="button" onClick={() => startLevel(daily.level)} className="flex-none rounded-full bg-white px-2 py-1.5 font-black text-rose-500 shadow active:scale-95" style={lfs(14)}>
                       도전 ▶
                     </button>
                   )}
@@ -2822,14 +2839,14 @@ export default function CounterPangPang() {
               <button
                 type="button"
                 onClick={() => { sfxClick(); setRankTab("points"); setShowRecords(true) }}
-                className="relative z-10 mb-3 flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 p-3 text-left shadow-md ring-1 ring-violet-300 active:scale-[0.98]"
+                className="relative z-10 mb-3 flex w-full items-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 p-3 text-left shadow-md ring-1 ring-violet-300 active:scale-[0.98]"
               >
-                <span className="text-3xl">🏆</span>
+                <span style={lfs(30)}>🏆</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-base font-black text-white">랭킹</p>
-                  <p className="text-xs font-bold text-white/85">월간 포인트 · 신기록 TOP 10</p>
+                  <p className="font-black text-white" style={lfs(16)}>랭킹</p>
+                  <p className="font-bold text-white/85" style={lfs(12)}>월간 포인트 · 신기록 TOP 10</p>
                 </div>
-                <span className="flex-none rounded-full bg-white px-3 py-1.5 text-sm font-black text-indigo-600 shadow">보기</span>
+                <span className="flex-none rounded-full bg-white px-2.5 py-1.5 font-black text-indigo-600 shadow" style={lfs(14)}>보기</span>
               </button>
               <p className="mb-2 mt-1 text-sm font-bold text-black/70">스테이지 선택</p>
               <div className="grid grid-cols-3 gap-3">
