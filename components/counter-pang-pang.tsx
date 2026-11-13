@@ -46,7 +46,7 @@ interface Question {
   totalForHidden?: number
   lit?: number[]
   canPartition?: boolean
-  target?: number // 숫자 골라 만들기(Lv.9·10)의 목표 합 (10 또는 20)
+  target?: number // 숫자 골라 만들기의 목표 합 (Lv.9는 20, Lv.10은 문제마다 11~30)
 }
 
 const STORAGE_KEY = "counter-pang-pang-v1"
@@ -95,8 +95,8 @@ const LEVEL_NAMES: Record<number, string> = {
   6: "앞뒤 차이왕",
   7: "홀짝 마법사",
   8: "숨은 숫자 탐정",
-  9: "10 만들기",
-  10: "20 만들기",
+  9: "20 만들기",
+  10: "숫자 만들기",
   11: "큰 수 덧셈",
   12: "이등분 퍼즐",
   13: "불빛 곱셈",
@@ -114,8 +114,8 @@ const LEVEL_DESC: Record<number, string> = {
   6: "앞뒤 차이",
   7: "홀수/짝수만 합",
   8: "?에 들어갈 숫자",
-  9: "골라서 10 만들기",
-  10: "골라서 20 만들기",
+  9: "골라서 20 만들기",
+  10: "골라서 제시된\n숫자 만들기",
   11: "뒷자리+앞자리\n큰 수 덧셈", // \n = 카드 안에서 줄바꿈
   12: "전체합의 이등분\n조합선택",
   13: "붉은 숫자의 곱",
@@ -131,8 +131,8 @@ const LEVEL_TIMER: Record<number, number> = {
   6: 20,
   7: 18,
   8: 20,
-  9: 20,
-  10: 25,
+  9: 25,
+  10: 30,
   11: 30,
   12: 30,
   13: 18,
@@ -147,11 +147,15 @@ const LEVEL_ART_FILTER: Record<number, string> = { 11: "hue-rotate(-70deg)", 12:
 // 🔁 레벨 번호가 바뀐 업데이트마다 기존 저장값의 레벨 번호를 옮기는 규칙 (저장 형식 버전별로 한 단계씩 적용)
 //  - ver1 → 2: 10·20 만들기(Lv.9·10) 추가 → 옛 9,10,11 → 11,12,13
 //  - ver2 → 3: 큰 수 덧셈(Lv.11) 추가 → 옛 11,12,13 → 12,13,14
-const SAVE_VERSION = 3
+//  - ver3 → 4: 10 만들기(옛 Lv.9)를 '제시된 숫자 만들기'로 바꿔 Lv.10으로, 20 만들기(옛 Lv.10)는 Lv.9로 → 9 ↔ 10 기록 교환
+const SAVE_VERSION = 4
 const LEVEL_SHIFTS: Record<number, (lv: number) => number> = {
   1: (lv) => (lv >= 9 ? lv + 2 : lv),
   2: (lv) => (lv >= 11 ? lv + 1 : lv),
+  3: (lv) => (lv === 9 ? 10 : lv === 10 ? 9 : lv),
 }
+// 순서만 바꾼 업데이트는 열린 레벨 수를 그대로 둠 (Lv.9가 열린 사람이 Lv.10까지 열리는 일이 없게)
+const KEEP_UNLOCKED_VERSIONS = new Set([3])
 function migrateSave() {
   if (typeof window === "undefined") return
   try {
@@ -166,7 +170,7 @@ function migrateSave() {
     while (ver < SAVE_VERSION) {
       const sh = LEVEL_SHIFTS[ver]
       d.records = Object.fromEntries(Object.entries(d.records ?? {}).map(([k, v]) => [sh(Number(k)), v]))
-      d.unlocked = sh(d.unlocked ?? 0)
+      if (!KEEP_UNLOCKED_VERSIONS.has(ver)) d.unlocked = sh(d.unlocked ?? 0)
       if (lastLv !== null) lastLv = sh(lastLv)
       if (st && st.types && st.games) {
         // 학습 기록의 문제 유형 번호·게임 레벨도 같이 옮김
@@ -373,13 +377,13 @@ function buildQuestion(chosenLevel: number, index: number, wantPartition?: boole
     }
     case 9:
     case 10: {
-      // 🔟 숫자 골라 만들기: 7자리 번호판에서 숫자를 골라 합이 10(Lv.9) / 20(Lv.10)이 되게 (항상 정답이 있는 번호판만 출제)
-      const target = logic === 9 ? 10 : 20
+      // 🔢 숫자 골라 만들기: 7자리 번호판에서 숫자를 골라 합이 20(Lv.9) / 문제마다 제시되는 11~30(Lv.10)이 되게 (항상 정답이 있는 번호판만 출제)
+      const target = logic === 9 ? 20 : 11 + ri(20)
       let { front, back } = base(3)
       for (let tries = 0; tries < 500 && !hasSubsetSum([...front, ...back], target); tries++) ({ front, back } = base(3))
       return {
         level: logic, front, back, hangul, type: "target", timer,
-        title: `${target} 만들기`, desc: `번호판 숫자를 골라 합이 ${target}이 되게 하세요`,
+        title: `${target} 만들기`, desc: `번호판 숫자를 골라 합이 ${target}${[2, 4, 5, 9].includes(target % 10) ? "가" : "이"} 되게 하세요`,
         answer: target, target,
       }
     }
@@ -968,8 +972,8 @@ const GUIDE_HOW: Record<number, string[]> = {
   6: ["앞자리 합과 뒷자리 합을 각각 구해요.", "<b>큰 쪽에서 작은 쪽을 빼서</b> 입력해요."],
   7: ["문제 위에 나오는 대로 <b>홀수만</b> 또는 <b>짝수만</b> 더해요.", "0은 짝수예요."],
   8: ["번호판의 <b>전체 합</b>이 주어져요.", "<b>?</b> 자리에 들어갈 숫자를 찾아 입력해요."],
-  9: ["번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>10</b>이 되면 <b>제출</b>!"],
-  10: ["번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>20</b>이 되면 <b>제출</b>!"],
+  9: ["번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>20</b>이 되면 <b>제출</b>!"],
+  10: ["문제마다 <b>만들 숫자가 달라요</b>. (11~30, 예: 17 만들기)", "번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>제시된 숫자</b>가 되면 <b>제출</b>!"],
   11: ["뒷자리 4개를 <b>네 자리 수</b> 하나로 읽어요. (예: 1234)", "거기에 <b>앞자리 수</b>를 더해요. (예: 1234 + 56)"],
   12: ["숫자를 <b>두 묶음</b>으로 나눠 두 묶음의 합이 <b>똑같게</b> 만들어요.", "전체 합의 <b>절반</b>이 되도록 숫자를 골라 <b>제출</b>!", "어떻게 해도 못 나누면 <b>이등분 불가</b> 버튼 (전체 합이 홀수면 무조건 불가)"],
   13: ["<b>붉게 빛나는 숫자</b>만 모두 <b>곱해요</b>.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
