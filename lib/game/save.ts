@@ -33,6 +33,9 @@ export interface SaveData {
   stats?: LearnStats     // 📊 학습 기록 (부모님 리포트)
   showGuide?: boolean    // 📋 레벨 시작 전 게임 설명 팝업 보기
   lastLevel?: number     // 마지막으로 고른 레벨
+  // ── 계정 연결 (☁️ lib/game/cloud.ts)
+  cloudUserId?: string   // 이 기록이 연결된 서버 계정 (다른 계정으로 로그인하면 기록 고르기)
+  savedAt?: number       // 마지막으로 저장한 시각 (ms) — 기기 여러 대에서 더 최신 기록 찾기
 }
 
 export const STORAGE_KEY = "counter-pang-pang-v1"

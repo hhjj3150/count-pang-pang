@@ -17,6 +17,7 @@ import { ParentReport } from "@/components/game/ParentReport"
 import { Plate } from "@/components/game/Plate"
 import { PromotionCelebration } from "@/components/game/Promotion"
 import { Tutorial } from "@/components/game/Tutorial"
+import { useCloudAccount } from "@/components/game/useCloudAccount"
 
 /* =========================================================================
    카운터 팡팡 — 아이부터 어른까지 즐기는 번호판 두뇌 계산 모바일 웹 게임
@@ -298,6 +299,11 @@ export default function CounterPangPang() {
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
   const [confirmDelete, setConfirmDelete] = useState(false); // 🗑️ 내 정보 모두 삭제 확인창
   const deletingRef = useRef(false); // 삭제 중에는 저장하지 않음
+  // ☁️ 계정 연결 (components/game/useCloudAccount.ts)
+  const [cloudUserId, setCloudUserId] = useState<string | undefined>(undefined); // 이 기록이 연결된 서버 계정
+  const savedAtRef = useRef(0); // 마지막으로 내용이 바뀌어 저장한 시각
+  const lastBodyRef = useRef<string | null>(null); // 마지막으로 저장한 내용 (바뀌었는지 비교용)
+  const cloudNotifyRef = useRef<() => void>(() => {}); // 저장할 때마다 서버 올리기 예약
   const [activeCategory, setActiveCategory] = useState("info");
   const [shopCategory, setShopCategory] = useState("emoticon"); // 🌟 포인트 상점 탭 상태
 
@@ -513,6 +519,8 @@ export default function CounterPangPang() {
         if (d.stats && d.stats.types && d.stats.days && d.stats.games) setLearnStats(d.stats)
         if (typeof d.showGuide === "boolean") setShowGuide(d.showGuide)
         if (typeof d.lastLevel === "number") setChosenLevel(d.lastLevel)
+        if (d.cloudUserId) setCloudUserId(d.cloudUserId)
+        if (typeof d.savedAt === "number") savedAtRef.current = d.savedAt
 
         if (d.nickname) setScreen("INTRO")
       }
@@ -553,10 +561,16 @@ export default function CounterPangPang() {
       lifetimePoints, monthlyPoints, monthlyDate,
       ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons,
       heartBuy: heartBuyData, attendance: attData, invite, daily, monthBest: monthBestData,
-      stats: learnStats, showGuide, lastLevel: chosenLevel,
+      stats: learnStats, showGuide, lastLevel: chosenLevel, cloudUserId,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth, premium,
+    // 내용이 실제로 바뀌었을 때만 저장 시각을 새로 (앱을 켜기만 해도 '최신 기록'이 되지 않게)
+    const body = JSON.stringify(data);
+    if (lastBodyRef.current !== null && lastBodyRef.current !== body) savedAtRef.current = Date.now();
+    const changed = lastBodyRef.current !== body;
+    lastBodyRef.current = body;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, savedAt: savedAtRef.current || undefined }));
+    if (changed) cloudNotifyRef.current();
+  }, [loaded, cloudUserId, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth, premium,
       ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons, heartBuyData, attData, invite, daily, monthBestData, learnStats, showGuide, chosenLevel]);
   const recordAnswer = (logicLevel: number, isCorrect: boolean) => {
     const day = today();
@@ -609,7 +623,12 @@ export default function CounterPangPang() {
     setInstallGuide("other");
   };
   // 🗑️ 내 정보 모두 삭제 (탈퇴): 기기에 저장된 내 정보 묶음을 지우고 처음 화면으로
-  const deleteMyData = () => {
+  const deleteMyData = async () => {
+    if (cloud.user) {
+      // 계정을 연결했으면 서버 기록·계정부터 지움
+      const ok = await cloud.deleteServerAccount();
+      if (!ok) return flashToast("서버 기록을 지우지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요 📶");
+    }
     deletingRef.current = true;
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -743,6 +762,12 @@ export default function CounterPangPang() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     toastTimerRef.current = setTimeout(() => setToast(null), Math.min(4000, Math.max(1600, msg.length * 70)))
   }, [])
+
+  // ☁️ 계정 연결 (만 14세 이상만. 어린이는 보호자 연동이 생기면 열어요)
+  const suspendLocalSave = useCallback(() => { deletingRef.current = true }, [])
+  const cloud = useCloudAccount({ loaded, setCloudUserId, suspendLocalSave, toast: flashToast })
+  cloudNotifyRef.current = cloud.notifySaved
+  const canLinkAccount = birthYear !== null && !isChild
 
   /* --------------------- 게임 진행 --------------------- */
   const currentQ = questions[qIndex]
@@ -2194,6 +2219,47 @@ export default function CounterPangPang() {
                     {birthYear ? `${birthYear}년생 · ${isChild ? "어린이 회원 (만 14세 미만)" : "일반 회원"}` : "미입력"}
                   </p>
                 </div>
+                {/* ☁️ 계정 연결 */}
+                <div data-testid="cloud-card" className="rounded-xl bg-yellow-50 p-4 ring-1 ring-yellow-200">
+                  <p className="text-sm font-black text-yellow-900">☁️ 계정 연결</p>
+                  {cloud.linked ? (
+                    <>
+                      <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
+                        카카오 계정에 연결됐어요. 기록이 서버에도 자동으로 저장돼서 휴대폰을 바꿔도 이어서 할 수 있어요.
+                      </p>
+                      <p className="mt-1 text-[11px] font-bold text-yellow-700">
+                        {cloud.lastSyncedAt ? `마지막 서버 저장: ${new Date(cloud.lastSyncedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}` : "서버 저장 준비 완료"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => { sfxClick(); void cloud.logout(); }}
+                        className="mt-3 w-full rounded-lg bg-white py-2 text-xs font-black text-yellow-800 ring-1 ring-yellow-300 active:scale-[0.99]"
+                      >
+                        로그아웃
+                      </button>
+                    </>
+                  ) : canLinkAccount ? (
+                    <>
+                      <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
+                        카카오 계정을 연결하면 기록을 서버에 보관해요. 휴대폰을 바꾸거나 앱을 지워도 기록을 되찾을 수 있어요.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={cloud.busy}
+                        onClick={() => { sfxClick(); void cloud.linkKakao(); }}
+                        className="mt-3 w-full rounded-lg bg-[#FEE500] py-2.5 text-sm font-black text-[#191919] shadow-sm active:scale-[0.99] disabled:opacity-60"
+                      >
+                        {cloud.busy ? "카카오로 이동 중…" : "💬 카카오로 연결하기"}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
+                      {birthYear === null
+                        ? "태어난 해를 먼저 입력해 주세요."
+                        : "만 14세 미만 어린이는 보호자 연결 기능이 생기면 계정을 연결할 수 있어요. 그동안 기록은 이 휴대폰에 그대로 저장돼요 😊"}
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 ring-1 ring-emerald-200">
                   <div className="min-w-0">
                     <p className="text-sm font-black text-emerald-800">📋 게임 설명</p>
@@ -2724,6 +2790,48 @@ export default function CounterPangPang() {
       )}
       {/* ============================ 🥋 승급 축하 연출 (그랄: '축' / 띠: Congratulations) ============================ */}
       {/* ============================ 🎂 기존 회원 연령 확인 (태어난 해가 없을 때 한 번만) ============================ */}
+      {/* ☁️ 기록 고르기: 처음 연결할 때 서버에도 기록이 있으면 */}
+      {cloud.conflict && (
+        <div data-testid="cloud-conflict" className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm">
+          <div className="w-full max-w-[360px] rounded-3xl bg-white p-5 shadow-2xl cpp-pop">
+            <p className="text-center text-3xl">☁️</p>
+            <h2 className="mt-1 text-center text-lg font-black text-zinc-900">어떤 기록으로 할까요?</h2>
+            <p className="mt-1 text-center text-xs font-bold leading-relaxed text-zinc-500">
+              이 카카오 계정에는 이미 서버 기록이 있어요. 하나를 고르면 <b className="text-rose-500">다른 하나는 사라져요.</b>
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {([["local", "📱 이 휴대폰 기록", cloud.conflict.local], ["server", "☁️ 서버 기록", cloud.conflict.server]] as const).map(([key, label, sm]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { sfxClick(); void cloud.resolveConflict(key); }}
+                  className="rounded-2xl bg-slate-50 p-3 text-left ring-2 ring-slate-200 active:scale-[0.98] active:ring-emerald-400"
+                >
+                  <p className="text-xs font-black text-slate-500">{label}</p>
+                  <p className="mt-1 truncate text-sm font-black text-slate-800">{sm.nickname}</p>
+                  <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-600">
+                    {sm.belt}<br />
+                    누적 {sm.lifetimePoints.toLocaleString()}P<br />
+                    보유 {sm.points.toLocaleString()}P · {sm.cash.toLocaleString()}C<br />
+                    Lv.{sm.levels}까지 열림
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold text-slate-400">
+                    {sm.when ? new Date(sm.when).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "저장 시각 모름"}
+                  </p>
+                  <p className="mt-2 rounded-lg bg-emerald-500 py-1.5 text-center text-xs font-black text-white">이걸로 할래요</p>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => { sfxClick(); void cloud.resolveConflict("cancel"); }}
+              className="mt-3 w-full rounded-2xl bg-slate-100 py-2.5 text-sm font-black text-slate-600"
+            >
+              연결하지 않기
+            </button>
+          </div>
+        </div>
+      )}
       {loaded && nickname && birthYear === null && screen === "LOBBY" && !showTutorial && (
         <div className="fixed inset-0 z-[96] flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm">
           <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop">
