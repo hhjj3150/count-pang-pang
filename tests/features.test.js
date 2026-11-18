@@ -242,6 +242,31 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
       await p.getByRole('button', { name: '확인', exact: true }).click(); await sleep(900); await H.closePromo(p)
     }
   })
+  // ── R. 약관·개인정보처리방침, 내 정보 모두 삭제
+  await step('R', async () => {
+    const t = await p.request.get(H.URL + '/terms'); const tx = await t.text()
+    ck(t.status() === 200 && tx.includes('이용약관') && tx.includes('linkmenkr@gmail.com'), 'R1 이용약관 페이지')
+    const pv = await (await p.request.get(H.URL + '/privacy')).text()
+    ck(pv.includes('김현진') && pv.includes('linkmenkr@gmail.com') && pv.includes('2026년 11월 18일') && !pv.includes('[운영자'), 'R2 개인정보처리방침 빈칸 채움')
+    await H.seed(p, null); await p.getByText('시작하기').click(); await sleep(500)
+    ck(await p.getByRole('link', { name: '이용약관' }).isVisible() && await p.getByRole('link', { name: '개인정보처리방침' }).isVisible(), 'R3 가입 화면에 약관 동의 안내와 링크')
+    await H.seed(p, H.baseSave({ points: 777 }), H.doneDaily()); await H.enterLobby(p)
+    await p.getByRole('button', { name: '⚙️ 관리' }).click(); await sleep(400)
+    ck(await p.getByRole('link', { name: /이용약관/ }).isVisible(), 'R4 관리에 이용약관 링크')
+    await p.getByRole('button', { name: /내 정보 모두 삭제/ }).click(); await sleep(400)
+    ck(await p.getByText('정말 모두 삭제할까요?').isVisible(), 'R5 삭제 확인창')
+    await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/delete_confirm.png' })
+    await p.goBack(); await sleep(400)
+    ck(!(await p.getByText('정말 모두 삭제할까요?').isVisible()) && (await H.getSave(p)).points === 777, 'R6 뒤로가기 → 확인창만 닫힘, 정보 그대로')
+    await p.getByRole('button', { name: /내 정보 모두 삭제/ }).click(); await sleep(300)
+    await p.getByRole('button', { name: '취소' }).click(); await sleep(300)
+    ck((await H.getSave(p)).points === 777, 'R7 취소 → 정보 그대로')
+    await p.getByRole('button', { name: /내 정보 모두 삭제/ }).click(); await sleep(300)
+    await p.getByRole('button', { name: '삭제하기' }).click(); await sleep(2000)
+    const after = await H.getSave(p) // 새로 연 화면이 '처음 사용자' 기본값으로 다시 저장함
+    await p.getByText('시작하기').click(); await sleep(600)
+    ck((!after || (after.nickname === null && after.points === 0 && after.ownedCars.join() === 'kart_basic')) && await p.locator('#birth').isVisible(), 'R8 삭제하기 → 모든 정보가 처음 상태로, 가입 화면으로')
+  })
   await p.close()
 
   console.log(res.join('\n'))

@@ -296,6 +296,8 @@ export default function CounterPangPang() {
   const [ownedCars, setOwnedCars] = useState<string[]>(["kart_basic"]); 
   const [equippedCar, setEquippedCar] = useState("kart_basic");
   const [showMyPage, setShowMyPage] = useState(false); // 내 보관함 팝업 상태
+  const [confirmDelete, setConfirmDelete] = useState(false); // 🗑️ 내 정보 모두 삭제 확인창
+  const deletingRef = useRef(false); // 삭제 중에는 저장하지 않음
   const [activeCategory, setActiveCategory] = useState("info");
   const [shopCategory, setShopCategory] = useState("emoticon"); // 🌟 포인트 상점 탭 상태
 
@@ -544,7 +546,7 @@ export default function CounterPangPang() {
   // 💾 내 정보 한 묶음 저장: 불러오기가 끝난 뒤, 무엇이든 바뀌면 묶음 전체를 저장 (서버를 붙이면 이 묶음을 올리면 됨)
   // (모든 상태를 선언한 뒤에 두어야 함)
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || deletingRef.current) return;
     const data: SaveData = {
       ver: SAVE_VERSION,
       nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cash, cashExchangeMonth, premium,
@@ -606,12 +608,22 @@ export default function CounterPangPang() {
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) return setInstallGuide("ios");
     setInstallGuide("other");
   };
-  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel });
+  // 🗑️ 내 정보 모두 삭제 (탈퇴): 기기에 저장된 내 정보 묶음을 지우고 처음 화면으로
+  const deleteMyData = () => {
+    deletingRef.current = true;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    window.location.replace("/");
+  };
+  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
   useEffect(() => {
-    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel };
-  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel]);
+    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete };
+  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete]);
 
   // 1. 초기 진입 시 기본 방어막 1개 생성
   useEffect(() => {
@@ -629,10 +641,10 @@ export default function CounterPangPang() {
   // 3. 팝업이 뜰 때 히스토리 쌓기 (🌟 팝업에서 튕기는 현상 완벽 해결!)
   useEffect(() => {
     if (isPopRef.current) return;
-    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial || showRecords || guideLevel !== null) {
+    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial || showRecords || guideLevel !== null || confirmDelete) {
       window.history.pushState(null, "", window.location.href);
     }
-  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial, showRecords, guideLevel]);
+  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial, showRecords, guideLevel, confirmDelete]);
 
   // 4. 진짜 뒤로가기를 눌렀을 때의 동작 흐름
   useEffect(() => {
@@ -654,6 +666,8 @@ export default function CounterPangPang() {
         setExitPhase(null);
       } else if (current.previewItem) {
         setPreviewItem(null);
+      } else if (current.confirmDelete) {
+        setConfirmDelete(false);
       } else if (current.guideLevel !== null) {
         setGuideLevel(null);
       } else if (current.showRecords) {
@@ -1239,6 +1253,9 @@ export default function CounterPangPang() {
               
                 입장하기
               </button>
+              <p className="mt-3 text-center text-xs font-bold text-black/60 drop-shadow-sm">
+                입장하면 <a href="/terms" className="underline">이용약관</a>과 <a href="/privacy" className="underline">개인정보처리방침</a>에 동의하는 것으로 봐요.
+              </p>
             </form>
           </section>
         )}
@@ -2208,6 +2225,38 @@ export default function CounterPangPang() {
                 >
                   🔒 개인정보처리방침 <span>›</span>
                 </a>
+                <a
+                  href="/terms"
+                  className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-4 py-3.5 text-sm font-bold text-slate-600 ring-1 ring-slate-200"
+                >
+                  📄 이용약관 <span>›</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => { sfxClick(); setConfirmDelete(true); }}
+                  className="mt-4 w-full rounded-xl px-4 py-3 text-sm font-bold text-rose-500 ring-1 ring-rose-200 active:scale-[0.99]"
+                >
+                  🗑️ 내 정보 모두 삭제 (탈퇴)
+                </button>
+                {confirmDelete && (
+                  <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm" onClick={() => setConfirmDelete(false)}>
+                    <div className="w-full max-w-[320px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+                      <p className="text-4xl">🗑️</p>
+                      <h2 className="mt-2 text-xl font-black text-zinc-900">정말 모두 삭제할까요?</h2>
+                      <p className="mt-2 text-sm font-bold leading-relaxed text-zinc-500">
+                        포인트·캐시·하트·띠, 산 아이템, 기록이 모두 사라지고 <b className="text-rose-500">되돌릴 수 없어요.</b>
+                      </p>
+                      <div className="mt-6 grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => { sfxClick(); setConfirmDelete(false); }} className="rounded-2xl bg-slate-100 py-3 text-base font-black text-slate-700">
+                          취소
+                        </button>
+                        <button type="button" onClick={deleteMyData} className="rounded-2xl bg-rose-500 py-3 text-base font-black text-white">
+                          삭제하기
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 🚗 내 차고 구역 (보유 차량만 표시) */}
