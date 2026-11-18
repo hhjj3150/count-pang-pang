@@ -15,6 +15,7 @@
 - 파일 구조
   - `components/counter-pang-pang.tsx`: 메인 화면(로비·게임·결과·상점·관리)과 게임 진행 상태
   - `lib/game/`: 화면 없는 게임 데이터·규칙 — `constants`(레벨 이름·시간·경제 수치), `questions`(문제 만들기), `items`(카트·배경·이모티콘 가격과 보너스), `belts`(띠 기준), `records`(신기록·랭킹), `save`(저장 형식·예전 저장값 변환), `stats`, `utils`, `types`
+  - `supabase/`: 서버 장부(데이터베이스) SQL. 번호 순서대로 Supabase SQL Editor에서 실행 (`01_profiles.sql`: 계정별 내 정보 묶음 + 탈퇴 함수). Supabase 프로젝트 주소 `https://zzekinnnhizuwaczyrqp.supabase.co`(서울)
   - `components/game/`: 작은 화면 조각 — `Plate`(번호판), `Numpad`, `GameImage`, `GameGuide`(레벨별 설명 팝업), `Tutorial`(게임 방법), `ParentReport`, `Promotion`(승급 축하)
 - 저장: 내 정보는 모두 localStorage `counter-pang-pang-v1` **한 묶음**(`SaveData`, 현재 ver5)에 저장. 새 저장 항목은 `SaveData`에 추가하고 메인 화면의 불러오기·저장 한 곳에서 처리. 레벨 번호처럼 저장 의미가 바뀌면 `SAVE_VERSION`을 올리고 `migrateSave`에 변환 규칙 추가.
 - 모바일 세로 화면 최적화(`max-w-[440px]`).
