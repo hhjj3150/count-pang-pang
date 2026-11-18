@@ -3,10 +3,16 @@
 // - 손님은 서버에 아무것도 올리지 않음. 연결한 사람만 기록을 서버(profiles)에 올림
 // - 처음 연결할 때 서버에 다른 기록이 있으면: 이 휴대폰 기록 / 서버 기록 중에서 고르게 함
 // - 이미 연결된 기기: 다른 기기에서 더 최근에 저장한 기록이 있으면 그 기록을 불러옴
+// - 만 14세 미만: 보호자가 동의·본인인증(🧪 지금은 테스트용 가짜 인증)을 하고 보호자 카카오 계정으로 연결
+//   동의 기록이 없거나 취소됐으면 서버에 올리지 않음
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { getSupabase } from "@/lib/supabase"
-import { deleteCloudAccount, fetchCloudSave, pushCloudSave, summarizeSave, type SaveSummary } from "@/lib/game/cloud"
+import {
+  deleteCloudAccount, fetchActiveConsent, fetchCloudSave, insertTestConsent, pushCloudSave, revokeConsent, summarizeSave,
+  type GuardianConsent, type GuardianConsentItems, type GuardianInfo, type SaveSummary,
+} from "@/lib/game/cloud"
+import { isChildUser } from "@/lib/game/constants"
 import { STORAGE_KEY, type SaveData } from "@/lib/game/save"
 
 export interface CloudConflict {
@@ -17,6 +23,23 @@ export interface CloudConflict {
 
 const PUSH_DELAY_MS = 3000 // 저장이 연달아 일어나면 3초 뒤 한 번만 올림
 const NOTICE_KEY = "cp_cloud_notice" // 새로고침 뒤 보여 줄 안내 (sessionStorage)
+const PENDING_KEY = "cp_guardian_pending" // 보호자 동의를 마치고 카카오로 다녀오는 동안 잠시 보관 (localStorage)
+const PENDING_TTL_MS = 30 * 60 * 1000 // 30분 안에 카카오 연결을 끝내야 함
+
+interface GuardianPending {
+  guardian: GuardianInfo
+  items: GuardianConsentItems
+  at: number
+}
+const takePending = (): GuardianPending | null => {
+  try {
+    const p = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null") as GuardianPending | null
+    localStorage.removeItem(PENDING_KEY)
+    return p && Date.now() - p.at < PENDING_TTL_MS ? p : null
+  } catch {
+    return null
+  }
+}
 
 const readLocalSave = (): SaveData | null => {
   try {
@@ -37,6 +60,8 @@ export function useCloudAccount(opts: {
   const [conflict, setConflict] = useState<CloudConflict | null>(null)
   const [busy, setBusy] = useState(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
+  const [guardian, setGuardian] = useState<GuardianConsent | null>(null) // 만 14세 미만: 지금 유효한 보호자 동의
+  const justConsentedRef = useRef(false) // 이번에 막 동의 기록을 넣었음 (기록 고르기에서 취소하면 동의도 취소)
   const linkedRef = useRef<string | null>(null) // 기록을 올려도 되는 계정 (기록 고르기 전에는 null)
   const handledRef = useRef<string | null>(null) // 로그인 처리를 이미 한 계정
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -84,6 +109,25 @@ export function useCloudAccount(opts: {
       const local = readLocalSave()
       let row
       try {
+        // 만 14세 미만은 보호자 동의가 있어야 연결
+        if (isChildUser(local?.birthYear)) {
+          const pending = takePending()
+          if (pending) {
+            await insertTestConsent(client, u.id, { nickname: local?.nickname ?? null, birthYear: local?.birthYear }, pending.guardian, pending.items)
+            justConsentedRef.current = true
+          }
+          const consent = await fetchActiveConsent(client, u.id)
+          if (!consent) {
+            await client.auth.signOut({ scope: "local" })
+            handledRef.current = null
+            setUser(null)
+            toast("보호자 동의가 필요해요. 관리 → 내 정보에서 보호자와 연결해 주세요 👨‍👩‍👧")
+            return
+          }
+          setGuardian(consent)
+        } else {
+          setGuardian(null)
+        }
         row = await fetchCloudSave(client, u.id)
       } catch {
         toast("서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요 📶")
@@ -131,6 +175,7 @@ export function useCloudAccount(opts: {
     // 카카오에서 돌아온 주소 정리 (?code=..., 취소했으면 ?error=...)
     const url = new URL(window.location.href)
     if (url.searchParams.get("error")) {
+      localStorage.removeItem(PENDING_KEY)
       toast("카카오 연결을 취소했어요")
       url.searchParams.delete("error")
       url.searchParams.delete("error_code")
@@ -151,6 +196,7 @@ export function useCloudAccount(opts: {
         } else {
           linkedRef.current = null
           handledRef.current = null
+          setGuardian(null)
         }
       }, 0)
     })
@@ -181,6 +227,38 @@ export function useCloudAccount(opts: {
     }
   }, [toast])
 
+  // 👨‍👩‍👧 보호자 동의를 마친 뒤 보호자 카카오 계정으로 연결
+  const linkWithGuardian = useCallback(
+    async (g: GuardianInfo, items: GuardianConsentItems) => {
+      const pending: GuardianPending = { guardian: g, items, at: Date.now() }
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending))
+      await linkKakao()
+    },
+    [linkKakao],
+  )
+
+  // 보호자 동의 취소: 서버의 게임 기록을 지우고 연결을 끊음 (휴대폰 기록·캐시는 그대로)
+  const revokeGuardian = useCallback(async (): Promise<boolean> => {
+    const client = sb()
+    if (!client || !user) return false
+    try {
+      if (pushTimer.current) clearTimeout(pushTimer.current)
+      linkedRef.current = null
+      await revokeConsent(client, user.id, true)
+      await client.auth.signOut({ scope: "local" })
+    } catch {
+      linkedRef.current = user.id
+      toast("동의를 취소하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요 📶")
+      return false
+    }
+    handledRef.current = null
+    setGuardian(null)
+    setUser(null)
+    setCloudUserId(undefined)
+    toast("보호자 동의를 취소했어요. 서버 기록은 지웠고, 이 휴대폰의 기록과 캐시는 그대로예요")
+    return true
+  }, [setCloudUserId, toast, user])
+
   const logout = useCallback(async () => {
     const client = sb()
     if (!client) return
@@ -204,6 +282,9 @@ export function useCloudAccount(opts: {
       }
       setConflict(null)
       if (choice === "cancel") {
+        if (justConsentedRef.current) await revokeConsent(client, u.id, false).catch(() => {}) // 방금 한 동의도 취소 (서버 기록은 그대로)
+        justConsentedRef.current = false
+        setGuardian(null)
         await client.auth.signOut()
         handledRef.current = null
         setUser(null)
@@ -231,5 +312,8 @@ export function useCloudAccount(opts: {
     }
   }, [user])
 
-  return { user, linked: !!user && !conflict, conflict, busy, lastSyncedAt, notifySaved, linkKakao, logout, resolveConflict, deleteServerAccount }
+  return {
+    user, linked: !!user && !conflict, conflict, busy, lastSyncedAt, guardian,
+    notifySaved, linkKakao, linkWithGuardian, logout, resolveConflict, deleteServerAccount, revokeGuardian,
+  }
 }

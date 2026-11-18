@@ -18,6 +18,7 @@ import { Plate } from "@/components/game/Plate"
 import { PromotionCelebration } from "@/components/game/Promotion"
 import { Tutorial } from "@/components/game/Tutorial"
 import { useCloudAccount } from "@/components/game/useCloudAccount"
+import { GuardianLink } from "@/components/game/GuardianLink"
 
 /* =========================================================================
    카운터 팡팡 — 아이부터 어른까지 즐기는 번호판 두뇌 계산 모바일 웹 게임
@@ -768,6 +769,27 @@ export default function CounterPangPang() {
   const cloud = useCloudAccount({ loaded, setCloudUserId, suspendLocalSave, toast: flashToast })
   cloudNotifyRef.current = cloud.notifySaved
   const canLinkAccount = birthYear !== null && !isChild
+  // 👨‍👩‍👧 보호자 연결 (만 14세 미만). 🧪 본인인증 업체 계약 전이라 '테스트 모드'에서만 보여 줌
+  //   테스트 모드 켜기: 주소 뒤에 ?guardian-test=1 (끄기: ?guardian-test=0) 또는 Vercel 환경 변수 NEXT_PUBLIC_GUARDIAN_TEST=1
+  const [guardianTest, setGuardianTest] = useState(false)
+  const [showGuardianLink, setShowGuardianLink] = useState(false)
+  const [confirmRevoke, setConfirmRevoke] = useState(false)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const url = new URL(window.location.href)
+      const q = url.searchParams.get("guardian-test")
+      if (q === "1") localStorage.setItem("cp_guardian_test", "1")
+      if (q === "0") localStorage.removeItem("cp_guardian_test")
+      if (q !== null) {
+        url.searchParams.delete("guardian-test")
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash)
+      }
+      setGuardianTest(process.env.NEXT_PUBLIC_GUARDIAN_TEST === "1" || localStorage.getItem("cp_guardian_test") === "1")
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   /* --------------------- 게임 진행 --------------------- */
   const currentQ = questions[qIndex]
@@ -2227,6 +2249,12 @@ export default function CounterPangPang() {
                       <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
                         카카오 계정에 연결됐어요. 기록이 서버에도 자동으로 저장돼서 휴대폰을 바꿔도 이어서 할 수 있어요.
                       </p>
+                      {cloud.guardian && (
+                        <p className="mt-1 text-[11px] font-bold text-yellow-700">
+                          👨‍👩‍👧 보호자 동의: {cloud.guardian.guardian_name.slice(0, 1)}** 님 · {new Date(cloud.guardian.consented_at).toLocaleDateString("ko-KR")}
+                          {cloud.guardian.method === "test" && " (🧪 테스트 인증)"}
+                        </p>
+                      )}
                       <p className="mt-1 text-[11px] font-bold text-yellow-700">
                         {cloud.lastSyncedAt ? `마지막 서버 저장: ${new Date(cloud.lastSyncedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}` : "서버 저장 준비 완료"}
                       </p>
@@ -2237,6 +2265,23 @@ export default function CounterPangPang() {
                       >
                         로그아웃
                       </button>
+                      {cloud.guardian && (
+                        confirmRevoke ? (
+                          <div className="mt-2 rounded-lg bg-white p-2.5 ring-1 ring-rose-200">
+                            <p className="text-[11px] font-bold leading-relaxed text-rose-600">
+                              동의를 취소하면 서버의 기록을 지우고 연결을 끊어요. 이 휴대폰의 기록과 캐시는 그대로 남아요.
+                            </p>
+                            <div className="mt-2 grid grid-cols-2 gap-1.5">
+                              <button type="button" onClick={() => { sfxClick(); setConfirmRevoke(false); }} className="rounded-lg bg-slate-100 py-1.5 text-xs font-black text-slate-600">그대로 두기</button>
+                              <button type="button" onClick={async () => { sfxClick(); if (await cloud.revokeGuardian()) setConfirmRevoke(false); }} className="rounded-lg bg-rose-500 py-1.5 text-xs font-black text-white">동의 취소</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => { sfxClick(); setConfirmRevoke(true); }} className="mt-2 w-full text-[11px] font-bold text-rose-500 underline">
+                            보호자 동의 취소
+                          </button>
+                        )
+                      )}
                     </>
                   ) : canLinkAccount ? (
                     <>
@@ -2250,6 +2295,19 @@ export default function CounterPangPang() {
                         className="mt-3 w-full rounded-lg bg-[#FEE500] py-2.5 text-sm font-black text-[#191919] shadow-sm active:scale-[0.99] disabled:opacity-60"
                       >
                         {cloud.busy ? "카카오로 이동 중…" : "💬 카카오로 연결하기"}
+                      </button>
+                    </>
+                  ) : birthYear !== null && guardianTest ? (
+                    <>
+                      <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
+                        만 14세 미만은 보호자님이 동의하고 보호자님의 카카오 계정으로 연결해요. 기록을 서버에 보관해서 휴대폰을 바꿔도 이어서 할 수 있어요.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => { sfxClick(); setShowGuardianLink(true); }}
+                        className="mt-3 w-full rounded-lg bg-emerald-500 py-2.5 text-sm font-black text-white shadow-sm active:scale-[0.99]"
+                      >
+                        👨‍👩‍👧 보호자와 연결하기 <span className="text-[11px]">(🧪 테스트)</span>
                       </button>
                     </>
                   ) : (
@@ -2790,6 +2848,14 @@ export default function CounterPangPang() {
       )}
       {/* ============================ 🥋 승급 축하 연출 (그랄: '축' / 띠: Congratulations) ============================ */}
       {/* ============================ 🎂 기존 회원 연령 확인 (태어난 해가 없을 때 한 번만) ============================ */}
+      {showGuardianLink && (
+        <GuardianLink
+          childNickname={nickname ?? "아이"}
+          busy={cloud.busy}
+          onClose={() => setShowGuardianLink(false)}
+          onSubmit={(g, items) => { sfxClick(); void cloud.linkWithGuardian(g, items); }}
+        />
+      )}
       {/* ☁️ 기록 고르기: 처음 연결할 때 서버에도 기록이 있으면 */}
       {cloud.conflict && (
         <div data-testid="cloud-conflict" className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm">
