@@ -29,6 +29,7 @@ interface SaveData {
   birthYear?: number | null // 🎂 태어난 해 (연령 확인용: 어린이 광고 설정·상품권 교환 자격)
   cash?: number          // 💰 캐시 (광고 시청·초대로 적립, 상품권 교환용. 게임 포인트와 별개)
   cashExchangeMonth?: string // 상품권을 마지막으로 교환한 달 (YYYY-MM, 월 1회 제한)
+  premium?: boolean      // 💎 유료(월) 회원 여부 — 결제·서버를 붙이면 서버 값으로 설정 (지금은 항상 false)
 }
 
 
@@ -934,33 +935,59 @@ function ParentReport({ stats }: { stats: LearnStats }) {
 
 /* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
 // 🚗 카트(세트) 리스트 (실제 폴더의 이미지 파일명과 100% 일치)
-// bonus: 장착한 채로 레벨을 통과하면 통과 보너스 포인트에 추가로 주는 비율(%)
+// bonus: 장착하면 그 판에서 문제를 맞혀 받은 포인트에 추가로 주는 비율(%) — 통과 못 해도 적용
+// minLifetime: 구매할 수 있는 띠 (누적 포인트 기준). 💎 유료 회원은 띠와 상관없이 모두 구매 가능
+const BELT_BLUE = 20000
+const BELT_PURPLE = 60000
 const KARTS = [
-  { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0, bonus: 0 },
-  // 🚙 일반 자동차: +5%
-  { id: "car_suv", name: "SUV", file: "suv.png", price: 5, bonus: 5 },
-  { id: "car_police", name: "경찰차", file: "경찰차.png", price: 7, bonus: 5 },
-  { id: "car_fire", name: "소방차", file: "소방차.png", price: 6, bonus: 5 },
-  { id: "car_sports", name: "스포츠카", file: "스포츠카.png", price: 8, bonus: 5 },
-  { id: "car_tank", name: "전투 탱크", file: "탱크.png", price: 10, bonus: 5 },
-  { id: "car_forklift", name: "포크레인", file: "포크레인.png", price: 9, bonus: 5 },
-  // 🚒 특수 카트: +10%
-  { id: "kart_fire_truck", name: "소방 카트", file: "kart_fire_truck.png", price: 5, bonus: 10 },
-  { id: "kart_police", name: "경찰 카트", file: "kart_police.png", price: 7, bonus: 10 },
-  { id: "kart_tank", name: "탱크 카트", file: "kart_tank.png", price: 10, bonus: 10 },
-  // 🦁 캐릭터 카트: +15%
-  { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 5, bonus: 15 },
-  { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 5, bonus: 15 },
-  { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 4, bonus: 15 },
-  { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 6, bonus: 15 },
-  { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 8, bonus: 15 },
-  { id: "kart_ostrich", name: "다리가 짧은 타조 카트", file: "kart_ostrich.png", price: 3, bonus: 15 },
-  { id: "kart_owl", name: "눈이 작은부엉이 카트", file: "kart_owl.png", price: 5, bonus: 15 },
-  { id: "kart_rabbit", name: "귀가작은 토끼 카트", file: "kart_rabbit.png", price: 4, bonus: 15 },
+  { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0, bonus: 0, minLifetime: 0 },
+  // 🚙 일반 자동차: +5%, 화이트 벨트부터
+  { id: "car_suv", name: "SUV", file: "suv.png", price: 2000, bonus: 5, minLifetime: 0 },
+  { id: "car_police", name: "경찰차", file: "경찰차.png", price: 2500, bonus: 5, minLifetime: 0 },
+  { id: "car_fire", name: "소방차", file: "소방차.png", price: 2500, bonus: 5, minLifetime: 0 },
+  { id: "car_sports", name: "스포츠카", file: "스포츠카.png", price: 3000, bonus: 5, minLifetime: 0 },
+  { id: "car_forklift", name: "포크레인", file: "포크레인.png", price: 3000, bonus: 5, minLifetime: 0 },
+  { id: "car_tank", name: "전투 탱크", file: "탱크.png", price: 3500, bonus: 5, minLifetime: 0 },
+  // 🚒 특수 카트: +10%, 블루 벨트부터
+  { id: "kart_fire_truck", name: "소방 카트", file: "kart_fire_truck.png", price: 6000, bonus: 10, minLifetime: BELT_BLUE },
+  { id: "kart_police", name: "경찰 카트", file: "kart_police.png", price: 7000, bonus: 10, minLifetime: BELT_BLUE },
+  { id: "kart_tank", name: "탱크 카트", file: "kart_tank.png", price: 8000, bonus: 10, minLifetime: BELT_BLUE },
+  // 🦁 캐릭터(동물) 카트: +15%, 퍼플 벨트부터
+  { id: "kart_ostrich", name: "다리가 짧은 타조 카트", file: "kart_ostrich.png", price: 12000, bonus: 15, minLifetime: BELT_PURPLE },
+  { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 12000, bonus: 15, minLifetime: BELT_PURPLE },
+  { id: "kart_rabbit", name: "귀가작은 토끼 카트", file: "kart_rabbit.png", price: 13000, bonus: 15, minLifetime: BELT_PURPLE },
+  { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 13000, bonus: 15, minLifetime: BELT_PURPLE },
+  { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 14000, bonus: 15, minLifetime: BELT_PURPLE },
+  { id: "kart_owl", name: "눈이 작은부엉이 카트", file: "kart_owl.png", price: 14000, bonus: 15, minLifetime: BELT_PURPLE },
+  { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 15000, bonus: 15, minLifetime: BELT_PURPLE },
+  { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 16000, bonus: 15, minLifetime: BELT_PURPLE },
 ]
+const kartNeedLabel = (minLifetime: number) => (minLifetime >= BELT_PURPLE ? "퍼플 벨트부터" : minLifetime >= BELT_BLUE ? "블루 벨트부터" : "")
 const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
 
-const TUTORIAL_PAGES = ["게임 시작", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 보너스", "띠 승급", "관리 메뉴"]
+// 🏞️ 배경(테마) 리스트 (경로: /assets/mp4/). 모두 화이트 벨트부터 구매 가능
+// bonus: 장착하고 만점(15/15)으로 통과하면 그 판 포인트(정답 포인트 + 통과 보너스)에 추가로 주는 비율(%). 같은 단계는 같은 가격
+const BACKGROUNDS = [
+  { id: 0, name: "가로수드라이브 (기본)", file: "가로수드라이브.mp4", price: 0, bonus: 0 },
+  { id: 1, name: "해변의드라이브", file: "해변의드라이브.mp4", price: 0, bonus: 0 },
+  { id: 2, name: "벚꽃드라이브", file: "벚꽃드라이브.mp4", price: 1500, bonus: 5 },
+  { id: 3, name: "단풍길", file: "단풍길.mp4", price: 1500, bonus: 5 },
+  { id: 5, name: "눈오는산속", file: "눈오는산속.mp4", price: 1500, bonus: 5 },
+  { id: 6, name: "사막의질주", file: "사막의질주.mp4", price: 1500, bonus: 5 },
+  { id: 7, name: "아이스크림과캔디", file: "아이스크림과캔디.mp4", price: 4000, bonus: 10 },
+  { id: 4, name: "한밤의도심", file: "한밤의도심.mp4", price: 4000, bonus: 10 },
+  { id: 8, name: "지하도시", file: "지하도시.mp4", price: 4000, bonus: 10 },
+  { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 4000, bonus: 10 },
+  { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 7000, bonus: 15 },
+  { id: 11, name: "우주도시", file: "우주도시.mp4", price: 7000, bonus: 15 },
+  { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 7000, bonus: 15 },
+]
+const bgBonus = (file: string) => BACKGROUNDS.find((b) => b.file === file)?.bonus ?? 0
+
+// 💖 상점에서 포인트로 사는 하트 가격 (하루 3번까지)
+const HEART_PRICE = 150
+
+const TUTORIAL_PAGES = ["게임 시작", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 · 배경 보너스", "띠 승급", "관리 메뉴"]
 
 /* ------------------------- 📖 레벨별 게임 설명 팝업 (게임 시작 전) ------------------------- */
 const GUIDE_HOW: Record<number, string[]> = {
@@ -1080,7 +1107,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
               <p>🎮 게임 한 판에 <b className="text-rose-500">하트 1개</b>를 써요.</p>
               <p className="mt-2">🌅 매일 <b>5개</b>까지 다시 채워져요. (5개보다 많이 모아 두었으면 그대로!)</p>
               <p className="mt-2">📺 로비의 <b>광고 보고 하트 충전</b>: 광고 한 번에 하트 +1 (횟수 제한 없음)</p>
-              <p className="mt-2">🛒 <b>포인트 상점</b>: 50P로 하트 1개, 하루 3번</p>
+              <p className="mt-2">🛒 <b>포인트 상점</b>: {HEART_PRICE}P로 하트 1개, 하루 3번</p>
               <p className="mt-2 text-sm text-zinc-500">하트는 최대 {HEART_CAP}개까지 모을 수 있어요.</p>
             </Bubble>
           </>
@@ -1172,10 +1199,10 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
         return (
           <>
             <div className="grid grid-cols-2 gap-2 text-center text-sm font-black text-zinc-700">
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏎️ 카트<span className="block text-xs font-bold text-zinc-500">게임 화면의 내 차 · 클리어 보너스</span></div>
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏞️ 배경<span className="block text-xs font-bold text-zinc-500">게임 화면 뒤 풍경 · 레벨을 올리면 더 열려요</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏎️ 카트<span className="block text-xs font-bold text-zinc-500">게임 화면의 내 차 · 정답 보너스</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏞️ 배경<span className="block text-xs font-bold text-zinc-500">게임 화면 뒤 풍경 · 만점 보너스</span></div>
               <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">📸 이모티콘<span className="block text-xs font-bold text-zinc-500">사진첩에 저장해서 친구에게 보내기</span></div>
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">💖 하트<span className="block text-xs font-bold text-zinc-500">50P로 1개 (하루 3번)</span></div>
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">💖 하트<span className="block text-xs font-bold text-zinc-500">{HEART_PRICE}P로 1개 (하루 3번)</span></div>
             </div>
             <Bubble>
               <p>🛒 로비의 <b>포인트 상점</b>에서 보유 포인트로 아이템을 사요.</p>
@@ -1184,23 +1211,23 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
             </Bubble>
           </>
         )
-      case "카트 보너스": {
+      case "카트 · 배경 보너스": {
         const tiers = [
-          { pct: 5, label: "일반 자동차", ids: ["car_suv", "car_police", "car_fire", "car_sports"] },
-          { pct: 10, label: "특수 카트", ids: ["kart_fire_truck", "kart_police", "kart_tank"] },
-          { pct: 15, label: "캐릭터 카트", ids: ["kart_crocodile", "kart_lion", "kart_rabbit", "kart_owl"] },
+          { pct: 5, label: "일반 자동차 · 화이트부터", ids: ["car_suv", "car_police", "car_fire", "car_sports"] },
+          { pct: 10, label: "특수 카트 · 블루 벨트부터", ids: ["kart_fire_truck", "kart_police", "kart_tank"] },
+          { pct: 15, label: "동물 카트 · 퍼플 벨트부터", ids: ["kart_crocodile", "kart_lion", "kart_rabbit", "kart_owl"] },
         ]
         return (
           <>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {tiers.map((t) => (
-                <div key={t.pct} className="flex items-center gap-2 rounded-2xl bg-white/90 p-2 shadow-sm ring-1 ring-black/5">
-                  <span className="w-[72px] shrink-0 rounded-xl bg-amber-400 py-1 text-center font-black leading-tight text-amber-950"><span className="block text-[10px]">클리어 보너스</span><span className="block text-base">+{t.pct}%</span></span>
+                <div key={t.pct} className="flex items-center gap-2 rounded-2xl bg-white/90 p-1.5 shadow-sm ring-1 ring-black/5">
+                  <span className="w-[72px] shrink-0 rounded-xl bg-amber-400 py-1 text-center font-black leading-tight text-amber-950"><span className="block text-[10px]">정답 보너스</span><span className="block text-base">+{t.pct}%</span></span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-black text-zinc-700">{t.label}</p>
-                    <div className="mt-1 flex gap-1">
+                    <p className="text-[13px] font-black text-zinc-700">{t.label}</p>
+                    <div className="mt-0.5 flex gap-1">
                       {t.ids.map((id) => (
-                        <img key={id} src={lightImg("karts", KARTS.find((k) => k.id === id)!.file, "sm")} alt="" className="h-9 w-9 rounded-lg bg-slate-100 object-contain p-0.5" />
+                        <img key={id} src={lightImg("karts", KARTS.find((k) => k.id === id)!.file, "sm")} alt="" className="h-8 w-8 rounded-lg bg-slate-100 object-contain p-0.5" />
                       ))}
                     </div>
                   </div>
@@ -1208,8 +1235,12 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
               ))}
             </div>
             <Bubble>
-              <p>🏎️ <b>내 차고</b>에서 카트를 장착하고 레벨을 <b className="text-emerald-600">통과</b>하면, 통과 보너스 포인트를 <b className="text-amber-600">추가로</b> 더 받아요!</p>
-              <p className="mt-2 text-sm text-zinc-500">예) 통과 보너스 100P + 캐릭터 카트 15% = <b>115P</b></p>
+              <div className="text-sm">
+                <p>🏎️ <b>카트</b>: 문제를 맞혀 받은 포인트를 <b className="text-amber-600">더</b> 받아요. 통과 못 해도 적용!</p>
+                <p className="mt-0.5 text-xs text-zinc-500">예) 정답 포인트 150P + 동물 카트 15% = <b>+23P</b></p>
+                <p className="mt-1.5">🏞️ <b>배경</b>: <b className="text-emerald-600">만점(15/15)</b>으로 통과하면 그 판 포인트를 +5·10·15% 더 받아요.</p>
+                <p className="mt-0.5 text-xs text-zinc-500">💎 유료 회원은 띠와 상관없이 모든 카트를 살 수 있어요 (준비 중)</p>
+              </div>
             </Bubble>
           </>
         )
@@ -1532,33 +1563,18 @@ export default function CounterPangPang() {
   const myTitle = myRankInfo.currentRank;
 // 🎬 12단계 배경 데이터 (경로: /assets/mp4/)
   // 🎬 배경 데이터 (경로: /assets/mp4/)
-  const BACKGROUNDS = [
-    { id: 0, name: "가로수드라이브 (기본)", file: "가로수드라이브.mp4", price: 0, unlockLevel: 0 }, // 👈 새로 추가된 기존 배경!
-    { id: 1, name: "해변의드라이브", file: "해변의드라이브.mp4", price: 0, unlockLevel: 0 }, // (가격은 원하시는 대로 수정 가능합니다)
-    { id: 2, name: "벚꽃드라이브", file: "벚꽃드라이브.mp4", price: 20, unlockLevel: 1 },
-    { id: 3, name: "단풍길", file: "단풍길.mp4", price: 40, unlockLevel: 2 },
-    { id: 4, name: "한밤의도심", file: "한밤의도심.mp4", price: 60, unlockLevel: 3 },
-    { id: 5, name: "눈오는산속", file: "눈오는산속.mp4", price: 10, unlockLevel: 4 },
-    { id: 6, name: "사막의질주", file: "사막의질주.mp4", price: 10, unlockLevel: 5 },
-    { id: 7, name: "아이스크림과캔디", file: "아이스크림과캔디.mp4", price: 10, unlockLevel: 6 },
-    { id: 8, name: "지하도시", file: "지하도시.mp4", price: 20, unlockLevel: 7 },
-    { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 30, unlockLevel: 8 },
-    { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 40, unlockLevel: 12 },
-    { id: 11, name: "우주도시", file: "우주도시.mp4", price: 50, unlockLevel: 13 },
-    { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 70, unlockLevel: 14 },
-  ];
     
 // 📸 이모티콘 팩 리스트 (9종 캐릭터 x 5가지 감정)
   const EMOTICON_PACKS = [
-    { id: "pangi", name: "팡이", price: 30, unlockLevel: 0 },
-    { id: "croc", name: "주둥이 짧은 악어", price: 50, unlockLevel: 1 },
-    { id: "elephant", name: "코가 짧은 코끼리", price: 70, unlockLevel: 2 },
-    { id: "giraffe", name: "목이 짧은 기린", price: 90, unlockLevel: 3 },
-    { id: "hippo", name: "입이 작은 하마", price: 110, unlockLevel: 4 },
-    { id: "lion", name: "대머리 사자", price: 130, unlockLevel: 5 },
-    { id: "ostrich", name: "다리가 짧은 타조", price: 150, unlockLevel: 6 },
-    { id: "owl", name: "눈이 작은 부엉이", price: 170, unlockLevel: 7 },
-    { id: "rabbit", name: "귀가 작은 토끼", price: 190, unlockLevel: 8 },
+    { id: "pangi", name: "팡이", price: 300, unlockLevel: 0 },
+    { id: "croc", name: "주둥이 짧은 악어", price: 500, unlockLevel: 1 },
+    { id: "elephant", name: "코가 짧은 코끼리", price: 700, unlockLevel: 2 },
+    { id: "giraffe", name: "목이 짧은 기린", price: 900, unlockLevel: 3 },
+    { id: "hippo", name: "입이 작은 하마", price: 1100, unlockLevel: 4 },
+    { id: "lion", name: "대머리 사자", price: 1300, unlockLevel: 5 },
+    { id: "ostrich", name: "다리가 짧은 타조", price: 1500, unlockLevel: 6 },
+    { id: "owl", name: "눈이 작은 부엉이", price: 1700, unlockLevel: 7 },
+    { id: "rabbit", name: "귀가 작은 토끼", price: 1900, unlockLevel: 8 },
   ];
 
   const EMOTIONS = [
@@ -1658,7 +1674,9 @@ export default function CounterPangPang() {
 
   // 결과
   const [passed, setPassed] = useState(false)
-  const [clearReward, setClearReward] = useState<{ base: number; extra: number; pct: number } | null>(null)
+  // 결과 화면 보너스: base 통과 보너스, kart 카트 보너스(정답 포인트 기준), bg 배경 만점 보너스
+  const [clearReward, setClearReward] = useState<{ base: number; kart: number; kartPct: number; bg: number; bgPct: number } | null>(null)
+  const questionPtsRef = useRef(0) // 이번 판에서 문제를 맞혀 받은 포인트 합 (카트·배경 보너스 계산용)
   // 🏆 이번 달 신기록 (Lv.11·12·13 만점 최단 시간)
   const [monthBest, setMonthBest] = useState<MonthBest>({})
   const [recordResult, setRecordResult] = useState<{ ms: number | null; isNew: boolean; prev: number | null } | null>(null)
@@ -1685,6 +1703,7 @@ export default function CounterPangPang() {
   const [birthYear, setBirthYear] = useState<number | null>(null)
   const [birthInput, setBirthInput] = useState("") // 가입 화면·연령 확인 창의 선택값
   const [cash, setCash] = useState(0)
+  const [premium, setPremium] = useState(false) // 💎 유료 회원: 모든 카트를 화이트 벨트부터 구매 가능
   const [cashExchangeMonth, setCashExchangeMonth] = useState("")
   const isChild = isChildUser(birthYear)
   const adConfig = adRequestConfig(birthYear) // 📺 광고를 붙일 때 이 설정으로 요청 (어린이면 어린이용 광고만)
@@ -1738,6 +1757,11 @@ export default function CounterPangPang() {
   // 🚗 포인트로 차량 스킨 구매하는 함수
   const buyCar = (carId: string, price: number) => {
     sfxClick();
+    const kart = KARTS.find((k) => k.id === carId);
+    if (kart && !premium && lifetimePoints < kart.minLifetime) {
+      flashToast(`🔒 ${kartNeedLabel(kart.minLifetime)} 살 수 있어요!`);
+      return;
+    }
     if (ownedCars.includes(carId)) {
       flashToast("이미 차고에 있는 멋진 차량입니다! 🚗");
       return;
@@ -1769,7 +1793,7 @@ export default function CounterPangPang() {
     }
   }, []);
 
-  // 💖 포인트로 하트 구매하는 함수 (50P 소모, 하루 최대 3회)
+  // 💖 포인트로 하트 구매하는 함수 (HEART_PRICE 소모, 하루 최대 3회)
   const buyHeartWithPoints = () => {
     sfxClick();
     const currentToday = today();
@@ -1780,8 +1804,8 @@ export default function CounterPangPang() {
       return;
     }
 
-    if (points < 50) {
-      flashToast(`포인트가 부족해요! (${points}P / 50P) 😥`);
+    if (points < HEART_PRICE) {
+      flashToast(`포인트가 부족해요! (${points}P / ${HEART_PRICE}P) 😥`);
       return;
     }
 
@@ -1790,14 +1814,14 @@ export default function CounterPangPang() {
       return;
     }
 
-    setPoints(prev => prev - 50);
+    setPoints(prev => prev - HEART_PRICE);
     setHearts(prev => prev + 1);
 
     const newBuyData = { date: currentToday, count: currentCount + 1 };
     setHeartBuyData(newBuyData);
     localStorage.setItem("cp_heart_buy", JSON.stringify(newBuyData));
 
-    flashToast(`50P로 하트 충전 완료! 💖 (오늘 ${newBuyData.count}/3회)`);
+    flashToast(`${HEART_PRICE}P로 하트 충전 완료! 💖 (오늘 ${newBuyData.count}/3회)`);
   };
 
   // 이번 주 월요일 날짜 구하기 (주간 초기화용)
@@ -1937,6 +1961,7 @@ export default function CounterPangPang() {
         setNickname(d.nickname ?? null)
         setBirthYear(typeof d.birthYear === "number" ? d.birthYear : null)
         setCash(typeof d.cash === "number" ? d.cash : 0)
+        setPremium(d.premium === true)
         setCashExchangeMonth(d.cashExchangeMonth ?? "")
         setHearts(h)
         setHeartDate(hd)
@@ -1969,11 +1994,11 @@ export default function CounterPangPang() {
     if (!loaded) return;
     const data: SaveData = {
       ver: SAVE_VERSION,
-      nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cash, cashExchangeMonth,
+      nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cash, cashExchangeMonth, premium,
       lifetimePoints, monthlyPoints, monthlyDate
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth]);
+  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth, premium]);
 
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const [quitConfirm, setQuitConfirm] = useState(false); // 게임 중 뒤로가기 → "그만둘까요?" 확인창
@@ -2227,6 +2252,13 @@ export default function CounterPangPang() {
     setPassed(ok)
     setResultPhase("boom")
     recordGame(chosenLevel, score)
+    const qPts = questionPtsRef.current
+    // 🏎️ 카트 보너스: 이번 판 정답 포인트의 5·10·15% (통과 못 해도 지급, 최소 1P)
+    const kartPct = kartBonus(equippedCar)
+    const kartExtra = kartPct > 0 && qPts > 0 ? Math.max(1, Math.round((qPts * kartPct) / 100)) : 0
+    let passReward = 0
+    let bgExtra = 0
+    let bgPct = 0
     if (ok) {
         setRecords((r) => ({ ...r, [chosenLevel]: Math.max(r[chosenLevel] ?? 0, score) }))
         if (chosenLevel < MAX_LEVEL) setUnlocked((u) => Math.max(u, chosenLevel + 1))
@@ -2235,12 +2267,12 @@ export default function CounterPangPang() {
         const bonus = chosenLevel === 0 ? 5 : Math.min(20 + (chosenLevel * 10), 110);
         // 🔥 오늘의 도전 레벨을 오늘 처음 통과하면 보너스 2배
         const isDaily = daily.date === today() && !daily.done && chosenLevel === daily.level;
-        // 🏎️ 장착한 카트 등급만큼 통과 보너스 추가 지급 (5%·10%·15%, 최소 1P)
-        const baseReward = isDaily ? bonus * 2 : bonus;
-        const pct = kartBonus(equippedCar);
-        const extra = pct > 0 ? Math.max(1, Math.round(baseReward * pct / 100)) : 0;
-        setClearReward({ base: baseReward, extra, pct });
-        setPoints(prev => prev + baseReward + extra);
+        passReward = isDaily ? bonus * 2 : bonus;
+        // 🏞️ 배경 보너스: 만점(15/15)으로 통과하면 그 판 포인트(정답 + 통과 보너스)의 5·10·15%
+        if (score === TOTAL_Q) {
+          bgPct = bgBonus(equippedBg)
+          if (bgPct > 0) bgExtra = Math.max(1, Math.round(((qPts + passReward) * bgPct) / 100))
+        }
         if (isDaily) {
           const doneDaily = { ...daily, done: true };
           setDaily(doneDaily);
@@ -2248,7 +2280,8 @@ export default function CounterPangPang() {
           setTimeout(() => flashToast(`🔥 오늘의 도전 성공! 통과 보너스 2배 +${bonus * 2}P`), 300);
         }
       }
-    if (!ok) setClearReward(null)
+    setClearReward(passReward + kartExtra + bgExtra > 0 ? { base: passReward, kart: kartExtra, kartPct, bg: bgExtra, bgPct } : null)
+    if (passReward + kartExtra + bgExtra > 0) setPoints((prev) => prev + passReward + kartExtra + bgExtra)
     // 🏆 Lv.11·12·13 만점이면 이번 달 신기록 확인
     if (RECORD_LEVELS.includes(chosenLevel)) {
       const ms = Math.round(playMsRef.current)
@@ -2269,7 +2302,7 @@ export default function CounterPangPang() {
       setRecordResult(null)
     }
     setScreen("RESULT")
-  }, [chosenLevel, daily, equippedCar])
+  }, [chosenLevel, daily, equippedCar, equippedBg])
 
   const advance = useCallback(() => {
     if (screenRef.current !== "GAME") return // 게임 도중 나갔으면 진행 중단
@@ -2356,6 +2389,7 @@ export default function CounterPangPang() {
       correctRef.current = 0
       qIndexRef.current = 0
       playMsRef.current = 0
+      questionPtsRef.current = 0
       setChosenLevel(level)
       setQuestions(qs)
       setQIndex(0)
@@ -2440,9 +2474,11 @@ export default function CounterPangPang() {
       setIsFever(false);
       setFastCombo(0);
       setPoints((prev) => prev + 10);
+      questionPtsRef.current += 10
       return
     }
     setPoints((prev) => prev + (isFever ? 15 : 10));
+    questionPtsRef.current += isFever ? 15 : 10
     setFastCombo((prev) => {
       const newCombo = prev + 1;
       if (newCombo >= 3 && qIndex >= 3) setIsFever(true);
@@ -3320,11 +3356,12 @@ export default function CounterPangPang() {
                 </div>
               )}
 
-              {passed && clearReward && (
-                <p className="mt-3 text-sm font-bold text-white/90">
-                  🪙 통과 보너스 <b className="text-yellow-300">+{clearReward.base}P</b>
-                  {clearReward.extra > 0 && <> · 🏎️ 카트 보너스 <b className="text-amber-300">+{clearReward.extra}P</b> ({clearReward.pct}%)</>}
-                </p>
+              {clearReward && (
+                <div className="mt-3 space-y-0.5 text-sm font-bold text-white/90">
+                  {clearReward.base > 0 && <p>🪙 통과 보너스 <b className="text-yellow-300">+{clearReward.base}P</b></p>}
+                  {clearReward.kart > 0 && <p>🏎️ 카트 보너스 <b className="text-amber-300">+{clearReward.kart}P</b> (정답 포인트 {clearReward.kartPct}%)</p>}
+                  {clearReward.bg > 0 && <p>🏞️ 만점 보너스 <b className="text-emerald-300">+{clearReward.bg}P</b> (배경 {clearReward.bgPct}%)</p>}
+                </div>
               )}
 
               {passed && chosenLevel < MAX_LEVEL && (
@@ -3382,7 +3419,7 @@ export default function CounterPangPang() {
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:scale-[0.99]"
                 >
                   🛒 포인트 상점 열기 
-                  <span className="rounded-full bg-yellow-400/20 px-2 py-0.5 text-[11px] text-yellow-400">내 포인트: {points}P</span>
+                  <span className="rounded-full bg-yellow-400/20 px-2 py-0.5 text-[11px] text-yellow-400">내 포인트: {points.toLocaleString()}P</span>
                 </button>
               )}
               <button
@@ -3675,7 +3712,7 @@ export default function CounterPangPang() {
                       const isSelected = equippedCar === item.id;
                       return (
                         <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                          {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">클리어 보너스 +{item.bonus}%</span>}
+                          {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">정답 보너스 +{item.bonus}%</span>}
                           <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
                             {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본(없음)</span>}
                           </div>
@@ -3711,6 +3748,7 @@ export default function CounterPangPang() {
                       const isSelected = equippedBg === item.file;
                       return (
                         <div key={item.id} className={`relative p-3 rounded-xl border-2 transition-all ${isSelected ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                          {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-20 rounded-full bg-emerald-400 px-2 py-0.5 text-[11px] font-black text-emerald-950 shadow">만점 보너스 +{item.bonus}%</span>}
                           <div className="h-20 bg-slate-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative shadow-inner">
                             <video src={`/assets/mp4/${item.file}#t=0.1`} className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none" preload="metadata" />
                             <span className="relative z-10 text-white font-black text-xs drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-center px-1 break-keep">
@@ -3766,7 +3804,7 @@ export default function CounterPangPang() {
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-black text-zinc-900">🛒 포인트 상점</h3>
                 <span className="rounded-full bg-yellow-400/30 px-2 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-500/50">
-                  보유: {points}P
+                  보유: {points.toLocaleString()}P
                 </span>
               </div>
               <button
@@ -3789,7 +3827,7 @@ export default function CounterPangPang() {
                     <span className="text-2xl">💖</span>
                     <div>
                       <h4 className="text-sm font-black text-zinc-900">하트 즉시 충전</h4>
-                      <p className="text-[11px] font-bold text-zinc-500">50P로 하트 1개 충전</p>
+                      <p className="text-[11px] font-bold text-zinc-500">{HEART_PRICE}P로 하트 1개 충전</p>
                     </div>
                   </div>
                   <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
@@ -3802,7 +3840,7 @@ export default function CounterPangPang() {
                   onClick={buyHeartWithPoints}
                   className="w-full rounded-xl bg-gradient-to-b from-rose-400 to-rose-500 py-3 text-sm font-black text-white shadow-[0_3px_0_#be123c] active:translate-y-0.5 active:shadow-none"
                 >
-                  💖 하트 +1 충전하기 (50P)
+                  💖 하트 +1 충전하기 ({HEART_PRICE}P)
                 </button>
               </div>
 
@@ -3828,7 +3866,7 @@ export default function CounterPangPang() {
                   return (
                     <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-yellow-100/95 p-6 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
                       <h3 className="mb-2 text-2xl font-black text-zinc-900">{previewItem.title}</h3>
-                      <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points}P</p>
+                      <p className="mb-6 text-sm font-bold text-amber-700">내 포인트: {points.toLocaleString()}P</p>
 
                       {/* 미리보기 이미지 박스 */}
                       <div className={`relative mb-8 h-56 w-56 overflow-hidden rounded-2xl bg-white/80 ring-4 ${isOwned ? 'ring-emerald-400 shadow-emerald-200' : 'ring-yellow-400/80 shadow-yellow-200'} shadow-xl transition-all duration-500`}>
@@ -4026,27 +4064,31 @@ export default function CounterPangPang() {
                 <div className="grid grid-cols-2 gap-4">
                   {KARTS.map(item => {
                     const isOwned = ownedCars.includes(item.id);
+                    const beltLocked = !premium && lifetimePoints < item.minLifetime;
                     return (
                       <div key={item.id} className="relative p-3 rounded-xl border-2 border-slate-200 bg-white">
-                        {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">클리어 보너스 +{item.bonus}%</span>}
+                        {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow">정답 보너스 +{item.bonus}%</span>}
                         <div className="h-20 bg-slate-100 rounded-lg mb-2 flex items-center justify-center p-1 overflow-hidden">
                           {item.file ? <img src={lightImg("karts", item.file, "sm")} alt={item.name} loading="lazy" decoding="async" className="h-full w-full object-contain drop-shadow-md" /> : <span className="text-xs text-slate-400">기본</span>}
                         </div>
                         <p className="font-bold text-sm text-slate-700 text-center mb-2">{item.name}</p>
                         {isOwned ? (
                           <button disabled className="w-full py-1.5 rounded-lg text-xs font-bold bg-gray-200 text-gray-500">보유중</button>
+                        ) : beltLocked ? (
+                          <button disabled className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-gray-200 text-gray-500">🔒 {kartNeedLabel(item.minLifetime)} · {item.price.toLocaleString()}P</button>
                         ) : (
                           <button 
                             onClick={() => buyCar(item.id, item.price)} 
                             className="w-full py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm active:scale-95"
                           >
-                            {item.price} P 구매
+                            {item.price.toLocaleString()} P 구매
                           </button>
                         )}
                       </div>
                     );
                   })}
                 </div>
+                {!premium && <p className="mt-3 text-center text-[11px] font-bold text-zinc-500">💎 유료 회원은 띠와 상관없이 모든 카트를 살 수 있어요 (준비 중)</p>}
               </div>
 
               {/* 🏞️ 배경 구매 탭 */}
@@ -4095,24 +4137,22 @@ export default function CounterPangPang() {
                 <div className="grid grid-cols-2 gap-4">
                   {BACKGROUNDS.map(item => {
                     const isOwned = ownedBgs.includes(item.file);
-                    const isLocked = unlocked < item.unlockLevel;
                     return (
                       <div key={item.id} className="relative p-3 rounded-xl border-2 border-slate-200 bg-white">
+                        {item.bonus > 0 && <span className="absolute right-1.5 top-1.5 z-20 rounded-full bg-emerald-400 px-2 py-0.5 text-[11px] font-black text-emerald-950 shadow">만점 보너스 +{item.bonus}%</span>}
                         <div className="h-20 bg-slate-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative shadow-inner">
                           <video src={`/assets/mp4/${item.file}#t=0.1`} className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none" preload="metadata" />
                           <span className="relative z-10 text-white font-black text-xs drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] px-1 text-center break-keep">{item.name}</span>
                         </div>
                         <div className="mt-2">
-                          {isLocked ? (
-                            <button disabled className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-gray-200 text-gray-500">Lv.{item.unlockLevel} 해제</button>
-                          ) : isOwned ? (
+                          {isOwned ? (
                             <button disabled className="w-full py-1.5 rounded-lg text-xs font-bold bg-gray-200 text-gray-500">보유중</button>
                           ) : (
                             <button 
                               onClick={() => buyBackground(item.file, item.price)} 
                               className="w-full py-1.5 rounded-lg text-xs font-bold bg-yellow-400 text-slate-900 shadow-sm active:scale-95"
                             >
-                              {item.price} P 구매
+                              {item.price.toLocaleString()} P 구매
                             </button>
                           )}
                         </div>
