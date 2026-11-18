@@ -1218,7 +1218,7 @@ function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSki
         return (
           <>
             <div className="flex flex-col items-center gap-2">
-              {([["화이트", "0P"], ["블루", "1만P"], ["퍼플", "3만P"], ["브라운", "6만P"], ["블랙", "10만P"]] as const).map(([n, req]) => (
+              {([["화이트", "0P"], ["블루", "2만P"], ["퍼플", "6만P"], ["브라운", "12만P"], ["블랙", "20만P"]] as const).map(([n, req]) => (
                 <div key={n} className="flex w-full max-w-[290px] items-center gap-2">
                   <span className="w-14 text-right text-sm font-black text-zinc-600">{n}</span>
                   <div className="h-5 flex-1 rounded" style={{ background: BELT_COLORS[n].base, boxShadow: `inset 0 0 0 2px ${BELT_COLORS[n].edge}` }}>
@@ -1483,36 +1483,36 @@ export default function CounterPangPang() {
   // 🏆 누적 포인트(lifetimePoints)에 따른 주짓수 정통 그랄(Stripe) 승급 함수
   const getBeltInfo = (lp: number) => {
     const ranks = [
-      // ⬜ 화이트 벨트 구간 (0 ~ 10,000) - 2000P마다 1그랄
+      // ⬜ 화이트 벨트 구간 (0 ~ 20,000) - 4000P마다 1그랄
       { req: 0,     badge: "⬜ 화이트",        style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 2000,  badge: "⬜ 화이트 1그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 4000,  badge: "⬜ 화이트 2그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 6000,  badge: "⬜ 화이트 3그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 8000,  badge: "⬜ 화이트 4그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 4000,  badge: "⬜ 화이트 1그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 8000,  badge: "⬜ 화이트 2그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 12000,  badge: "⬜ 화이트 3그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
+      { req: 16000,  badge: "⬜ 화이트 4그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
       
-      // 🟦 블루 벨트 구간 (10,000 ~ 30,000) - 4000P마다 1그랄
-      { req: 10000, badge: "🟦 블루",        style: "bg-blue-600 text-white shadow-sm" },
-      { req: 14000, badge: "🟦 블루 1그랄",  style: "bg-blue-600 text-white shadow-sm" },
-      { req: 18000, badge: "🟦 블루 2그랄",  style: "bg-blue-600 text-white shadow-sm" },
-      { req: 22000, badge: "🟦 블루 3그랄",  style: "bg-blue-600 text-white shadow-sm" },
-      { req: 26000, badge: "🟦 블루 4그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      // 🟦 블루 벨트 구간 (20,000 ~ 60,000) - 8000P마다 1그랄
+      { req: 20000, badge: "🟦 블루",        style: "bg-blue-600 text-white shadow-sm" },
+      { req: 28000, badge: "🟦 블루 1그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      { req: 36000, badge: "🟦 블루 2그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      { req: 44000, badge: "🟦 블루 3그랄",  style: "bg-blue-600 text-white shadow-sm" },
+      { req: 52000, badge: "🟦 블루 4그랄",  style: "bg-blue-600 text-white shadow-sm" },
       
-      // 🟪 퍼플 벨트 구간 (30,000 ~ 60,000) - 6000P마다 1그랄
-      { req: 30000, badge: "🟪 퍼플",        style: "bg-purple-600 text-white shadow-sm" },
-      { req: 36000, badge: "🟪 퍼플 1그랄",  style: "bg-purple-600 text-white shadow-sm" },
-      { req: 42000, badge: "🟪 퍼플 2그랄",  style: "bg-purple-600 text-white shadow-sm" },
-      { req: 48000, badge: "🟪 퍼플 3그랄",  style: "bg-purple-600 text-white shadow-sm" },
-      { req: 54000, badge: "🟪 퍼플 4그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      // 🟪 퍼플 벨트 구간 (60,000 ~ 120,000) - 12000P마다 1그랄
+      { req: 60000, badge: "🟪 퍼플",        style: "bg-purple-600 text-white shadow-sm" },
+      { req: 72000, badge: "🟪 퍼플 1그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      { req: 84000, badge: "🟪 퍼플 2그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      { req: 96000, badge: "🟪 퍼플 3그랄",  style: "bg-purple-600 text-white shadow-sm" },
+      { req: 108000, badge: "🟪 퍼플 4그랄",  style: "bg-purple-600 text-white shadow-sm" },
       
-      // 🟫 브라운 벨트 구간 (60,000 ~ 100,000) - 8000P마다 1그랄
-      { req: 60000, badge: "🟫 브라운",        style: "bg-amber-800 text-white shadow-sm" },
-      { req: 68000, badge: "🟫 브라운 1그랄",  style: "bg-amber-800 text-white shadow-sm" },
-      { req: 76000, badge: "🟫 브라운 2그랄",  style: "bg-amber-800 text-white shadow-sm" },
-      { req: 84000, badge: "🟫 브라운 3그랄",  style: "bg-amber-800 text-white shadow-sm" },
-      { req: 92000, badge: "🟫 브라운 4그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      // 🟫 브라운 벨트 구간 (120,000 ~ 200,000) - 16000P마다 1그랄
+      { req: 120000, badge: "🟫 브라운",        style: "bg-amber-800 text-white shadow-sm" },
+      { req: 136000, badge: "🟫 브라운 1그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      { req: 152000, badge: "🟫 브라운 2그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      { req: 168000, badge: "🟫 브라운 3그랄",  style: "bg-amber-800 text-white shadow-sm" },
+      { req: 184000, badge: "🟫 브라운 4그랄",  style: "bg-amber-800 text-white shadow-sm" },
       
-      // ⬛ 블랙 벨트 (100,000 ~ )
-      { req: 100000, badge: "⬛ 블랙 벨트",    style: "bg-zinc-900 text-yellow-400 ring-1 ring-yellow-400/30 shadow-md" },
+      // ⬛ 블랙 벨트 (200,000 ~ )
+      { req: 200000, badge: "⬛ 블랙 벨트",    style: "bg-zinc-900 text-yellow-400 ring-1 ring-yellow-400/30 shadow-md" },
     ];
     
     let currentRankIndex = 0;
