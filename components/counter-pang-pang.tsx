@@ -1,1347 +1,28 @@
 "use client"
-import React from 'react';
-// 
-
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
+import { getBeltInfo } from "@/lib/game/belts"
+import { BIRTH_YEARS, ECONOMY, HEART_CAP, LEVEL_ART, LEVEL_ART_FILTER, LEVEL_DESC, LEVEL_NAMES, MAX_LEVEL, PASS_LINE, TOTAL_Q, adRequestConfig, isChildUser } from "@/lib/game/constants"
+import { BACKGROUNDS, EMOTICON_PACKS, EMOTIONS, HEART_PRICE, KARTS, bgBonus, kartBonus, kartNeedLabel } from "@/lib/game/items"
+import { buildGame, exampleText } from "@/lib/game/questions"
+import { MonthBest, RANK_SIZE, RANK_TABS, RECORD_LEVELS, RankTab, buildRanking, fmtRecord, monthBestTotal } from "@/lib/game/records"
+import { SAVE_VERSION, STORAGE_KEY, SaveData, migrateSave } from "@/lib/game/save"
+import { EMPTY_STATS, LearnStats } from "@/lib/game/stats"
+import { Question, Reaction, Screen } from "@/lib/game/types"
+import { isKakaoInApp, isMobileDevice, lfs, lightImg, localDate, sum, today } from "@/lib/game/utils"
+import { GameGuide } from "@/components/game/GameGuide"
+import { GameImage } from "@/components/game/GameImage"
+import { Numpad } from "@/components/game/Numpad"
+import { ParentReport } from "@/components/game/ParentReport"
+import { Plate } from "@/components/game/Plate"
+import { PromotionCelebration } from "@/components/game/Promotion"
+import { Tutorial } from "@/components/game/Tutorial"
 
 /* =========================================================================
    카운터 팡팡 — 아이부터 어른까지 즐기는 번호판 두뇌 계산 모바일 웹 게임
    플로우: INTRO -> LOGIN -> LOBBY -> GAME -> RESULT
+   (게임 데이터·문제 만들기는 lib/game/, 작은 화면 조각은 components/game/ 에 있어요)
    ========================================================================= */
-
-type Screen = "INTRO" | "LOGIN" | "LOBBY" | "GAME" | "RESULT"
-type QType = "numpad" | "compare" | "partition" | "target"
-type Reaction = "idle" | "correct" | "wrong"
-
-interface SaveData {
-  ver?: number // 저장 형식 버전 (2 = 레벨 13개 체계)
-  nickname: string | null
-  hearts: number
-  heartDate: string
-  unlocked: number
-  records: Record<number, number>
-  muted: boolean
-  points: number
-  lifetimePoints: number // 🌟 누적 획득 포인트 (승급용)
-  monthlyPoints: number  // 🌟 월간 획득 포인트 (랭킹용)
-  monthlyDate: string    // 🌟 월간 랭킹 초기화 기준 달 (YYYY-MM)
-  birthYear?: number | null // 🎂 태어난 해 (연령 확인용: 어린이 광고 설정·상품권 교환 자격)
-  cash?: number          // 💰 캐시 (광고 시청·초대로 적립, 상품권 교환용. 게임 포인트와 별개)
-  cashExchangeMonth?: string // 상품권을 마지막으로 교환한 달 (YYYY-MM, 월 1회 제한)
-  premium?: boolean      // 💎 유료(월) 회원 여부 — 결제·서버를 붙이면 서버 값으로 설정 (지금은 항상 false)
-}
-
-
-interface Question {
-  level: number // 로직 기준 레벨 (0/1 동일)
-  front: number[]
-  back: number[]
-  hangul: string
-  type: QType
-  title: string
-  desc: string
-  timer: number
-  answer: number | "front" | "back" | "equal" | null
-  hiddenPos?: number
-  totalForHidden?: number
-  lit?: number[]
-  canPartition?: boolean
-  target?: number // 숫자 골라 만들기의 목표 합 (Lv.9는 20, Lv.10은 문제마다 11~30)
-}
-
-const STORAGE_KEY = "counter-pang-pang-v1"
-
-// 💹 포인트·캐시·하트 숫자 모음 (⚠️ 테스트 단계 값 — 출시 전 여기서 한 번에 조정)
-//  - 게임 포인트(P): 게임으로 적립 → 띠 승급·월간 랭킹·아이템 구매 (돈으로 바꾸지 않음)
-//  - 캐시(C, 1C ≈ 1원): 광고 시청·친구 초대로 적립 → 모바일 상품권 교환 (월 1회)
-const ECONOMY = {
-  cashPerAd: 2, // '광고 보고 하트 충전' 1회당 캐시
-  cashPerInvite: 10, // 친구 초대 1회당 캐시
-  giftCardCash: 5000, // 모바일 상품권 5,000원 교환에 필요한 캐시
-  giftCardWon: 5000, // 상품권 금액
-  giftCardMinAge: 14, // 상품권 교환 가능 나이 (만 14세 미만은 보호자 동의 필요 → 일단 제외)
-}
-
-// 🎂 연령: 만 14세 미만은 '어린이'로 보고 어린이용 광고만 요청 (나이를 모르면 어린이로 취급)
-const CHILD_AGE = 14
-const ageFromBirthYear = (y?: number | null) => (y ? new Date().getFullYear() - y : null)
-const isChildUser = (y?: number | null) => {
-  const age = ageFromBirthYear(y)
-  return age === null || age < CHILD_AGE
-}
-// 📺 나중에 광고(AdMob 등)를 붙일 때 광고 요청에 그대로 넘길 설정
-//   (구글 혼합 연령 앱 정책: 어린이에게는 어린이 대상 표시 + 전체관람가(G) 광고 + 맞춤 광고 끄기)
-const adRequestConfig = (birthYear?: number | null) =>
-  isChildUser(birthYear)
-    ? { tagForChildDirectedTreatment: true, maxAdContentRating: "G", nonPersonalizedAds: true }
-    : { tagForChildDirectedTreatment: false, maxAdContentRating: "T", nonPersonalizedAds: false }
-
-// 태어난 해 선택 목록 (올해 ~ 1930년). 기본값 없이 고르게 함(중립적 나이 확인)
-const BIRTH_YEARS = Array.from({ length: new Date().getFullYear() - 1930 + 1 }, (_, i) => new Date().getFullYear() - i)
-const TOTAL_Q = 15
-const PASS_LINE = 13
-const MAX_LEVEL = 14
-const HEART_CAP = 10
-
-const HANGUL = ["가", "나", "다", "라", "마", "거", "너", "더", "러", "머", "바", "사", "아", "자", "하", "호"]
-
-const LEVEL_NAMES: Record<number, string> = {
-  0: "게임 방법",
-  1: "앞자리 팡팡",
-  2: "뒷자리 팡팡",
-  3: "구형 완전정복",
-  4: "신형 완전정복",
-  5: "앞뒤 비교왕",
-  6: "앞뒤 차이왕",
-  7: "홀짝 마법사",
-  8: "숨은 숫자 탐정",
-  9: "20 만들기",
-  10: "숫자 만들기",
-  11: "큰 수 덧셈",
-  12: "이등분 퍼즐",
-  13: "불빛 곱셈",
-  14: "그랜드 마스터",
-}
-
-// 🎮 스테이지 선택 카드 이름 캡슐에 표시되는 레벨별 게임 설명 (없으면 LEVEL_NAMES 사용)
-const LEVEL_DESC: Record<number, string> = {
-  0: "📖 게임 방법",
-  1: "앞자리 합",
-  2: "뒷자리 합",
-  3: "6자리 합",
-  4: "7자리 합",
-  5: "앞뒤 자리 비교",
-  6: "앞뒤 차이",
-  7: "홀수/짝수만 합",
-  8: "?에 들어갈 숫자",
-  9: "골라서 20 만들기",
-  10: "골라서 제시된\n숫자 만들기",
-  11: "뒷자리+앞자리\n큰 수 덧셈", // \n = 카드 안에서 줄바꿈
-  12: "전체합의 이등분\n조합선택",
-  13: "붉은 숫자의 곱",
-}
-
-const LEVEL_TIMER: Record<number, number> = {
-  0: 15,
-  1: 15,
-  2: 15,
-  3: 20,
-  4: 20,
-  5: 15,
-  6: 20,
-  7: 18,
-  8: 20,
-  9: 25,
-  10: 30,
-  11: 30,
-  12: 30,
-  13: 18,
-  14: 20,
-}
-
-// 🖼️ 레벨 카드·결과 그림: Lv.0~10은 숫자가 그려진 전용 그림, Lv.11~14는 왕관 그림(11번 그림)을 임시로 사용
-const LEVEL_ART = (lv: number) => (lv <= 10 ? lv : 11)
-// 왕관 그림을 같이 쓰는 레벨끼리 구분되도록 색만 살짝 다르게
-const LEVEL_ART_FILTER: Record<number, string> = { 11: "hue-rotate(-70deg)", 12: "hue-rotate(-35deg)", 13: "hue-rotate(35deg)" }
-
-// 🔁 레벨 번호가 바뀐 업데이트마다 기존 저장값의 레벨 번호를 옮기는 규칙 (저장 형식 버전별로 한 단계씩 적용)
-//  - ver1 → 2: 10·20 만들기(Lv.9·10) 추가 → 옛 9,10,11 → 11,12,13
-//  - ver2 → 3: 큰 수 덧셈(Lv.11) 추가 → 옛 11,12,13 → 12,13,14
-//  - ver3 → 4: 10 만들기(옛 Lv.9)를 '제시된 숫자 만들기'로 바꿔 Lv.10으로, 20 만들기(옛 Lv.10)는 Lv.9로 → 9 ↔ 10 기록 교환
-const SAVE_VERSION = 4
-const LEVEL_SHIFTS: Record<number, (lv: number) => number> = {
-  1: (lv) => (lv >= 9 ? lv + 2 : lv),
-  2: (lv) => (lv >= 11 ? lv + 1 : lv),
-  3: (lv) => (lv === 9 ? 10 : lv === 10 ? 9 : lv),
-}
-// 순서만 바꾼 업데이트는 열린 레벨 수를 그대로 둠 (Lv.9가 열린 사람이 Lv.10까지 열리는 일이 없게)
-const KEEP_UNLOCKED_VERSIONS = new Set([3])
-function migrateSave() {
-  if (typeof window === "undefined") return
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-    const d = JSON.parse(raw)
-    let ver: number = d.ver ?? 1
-    if (ver >= SAVE_VERSION) return
-    const lvRaw = localStorage.getItem("pangpang_level")
-    let lastLv = lvRaw ? Number(lvRaw) : null
-    const st = JSON.parse(localStorage.getItem("cp_stats") ?? "null")
-    while (ver < SAVE_VERSION) {
-      const sh = LEVEL_SHIFTS[ver]
-      d.records = Object.fromEntries(Object.entries(d.records ?? {}).map(([k, v]) => [sh(Number(k)), v]))
-      if (!KEEP_UNLOCKED_VERSIONS.has(ver)) d.unlocked = sh(d.unlocked ?? 0)
-      if (lastLv !== null) lastLv = sh(lastLv)
-      if (st && st.types && st.games) {
-        // 학습 기록의 문제 유형 번호·게임 레벨도 같이 옮김
-        st.types = Object.fromEntries(Object.entries(st.types).map(([k, v]) => [sh(Number(k)), v]))
-        st.games = st.games.map((g: { level: number }) => ({ ...g, level: sh(g.level) }))
-      }
-      ver++
-    }
-    d.ver = SAVE_VERSION
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(d))
-    if (lastLv !== null) localStorage.setItem("pangpang_level", String(lastLv))
-    if (st && st.types && st.games) localStorage.setItem("cp_stats", JSON.stringify(st))
-    localStorage.removeItem("cp_daily") // 오늘의 도전은 새 번호로 다시 뽑음
-  } catch {
-    /* ignore */
-  }
-}
-
-const FACE_EMOJI = ["🐣", "🐥", "🐤", "🦆", "🐦", "🦉", "🦜", "🦢", "🕊️", "🦅", "🦩", "👑"]
-
-/* ----------------------------- 유틸 ----------------------------- */
-const ri = (max: number) => Math.floor(Math.random() * max)
-const rd = () => ri(10)
-const mkDigits = (n: number) => Array.from({ length: n }, rd)
-const sum = (a: number[]) => a.reduce((x, y) => x + y, 0)
-// 📅 휴대폰 현지 시간 기준 날짜 (YYYY-MM-DD). toISOString()은 UTC라 한국에선 오전 9시에 날짜가 바뀌는 문제가 있음
-const localDate = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-const today = () => localDate()
-
-// 🔠 로비 위쪽(닉네임·버튼·배너) 글씨 크기: 원래 글씨 비율은 그대로 두고 화면 폭에 맞춰 최대한 크게
-//  - 폭 385px 화면에서 원래의 1.2배 → 360px 폰 약 1.12배, 412px 폰 약 1.28배, 최대 폭(440px) 약 1.37배
-//  - 하트 10개·포인트 여섯 자리일 때도 한 줄에 들어가는 최대 크기로 맞춤
-const LOBBY_TEXT_SCALE = 1.2
-const LOBBY_REF_WIDTH = 385
-const lfs = (px: number): React.CSSProperties => {
-  const size = px * LOBBY_TEXT_SCALE
-  const cap = (size * 440) / LOBBY_REF_WIDTH // 게임 화면 최대 폭(440px)에서 멈춤
-  return { fontSize: `min(${+cap.toFixed(2)}px, ${+((size * 100) / LOBBY_REF_WIDTH).toFixed(3)}vw)` }
-}
-
-// 🏆 이번 달 신기록 챌린지: Lv.11·12·13 만점 최단 기록(문제 푸는 시간만)의 합계로 겨룸. 매달 1일 새로 시작
-const RECORD_LEVELS = [11, 12, 13]
-type MonthBest = Partial<Record<number, number>> // 레벨 → 최고 기록(ms)
-const loadMonthBest = (): MonthBest => {
-  if (typeof window === "undefined") return {}
-  try {
-    const d = JSON.parse(localStorage.getItem("cp_month_best") ?? "null")
-    if (d && d.month === today().slice(0, 7)) return d.best ?? {}
-  } catch {
-    /* ignore */
-  }
-  return {}
-}
-const monthBestTotal = (b: MonthBest) =>
-  RECORD_LEVELS.every((lv) => typeof b[lv] === "number") ? RECORD_LEVELS.reduce((a, lv) => a + (b[lv] as number), 0) : null
-type RankTab = "points" | 11 | 12 | 13 | "total"
-const RANK_TABS: { id: RankTab; label: string; desc: string }[] = [
-  { id: "points", label: "월간\n포인트", desc: "이번 달에 모은 포인트가 많은 순서" },
-  { id: 11, label: "Lv.11", desc: "Lv.11 만점 기록이 빠른 순서" },
-  { id: 12, label: "Lv.12", desc: "Lv.12 만점 기록이 빠른 순서" },
-  { id: 13, label: "Lv.13", desc: "Lv.13 만점 기록이 빠른 순서" },
-  { id: "total", label: "합산", desc: "Lv.11+12+13 만점 기록 합계가 빠른 순서" },
-]
-const RANK_SIZE = 10
-type RankEntry = { name: string; value: number; me?: boolean }
-// 📡 지금은 서버가 없어서 이 기기(내) 기록만 들어감. 서버가 생기면 탭별 상위 10명을 받아와 이 목록을 채우면 됨
-const buildRanking = (tab: RankTab, me: { name: string; monthlyPoints: number; best: MonthBest }): RankEntry[] => {
-  const mine =
-    tab === "points" ? (me.monthlyPoints > 0 ? me.monthlyPoints : null)
-    : tab === "total" ? monthBestTotal(me.best)
-    : me.best[tab] ?? null
-  const list: RankEntry[] = mine === null ? [] : [{ name: me.name, value: mine, me: true }]
-  // 포인트는 많은 순, 기록(시간)은 짧은 순
-  return list.sort((a, b) => (tab === "points" ? b.value - a.value : a.value - b.value)).slice(0, RANK_SIZE)
-}
-const fmtRecord = (ms: number) => {
-  const sec = ms / 1000
-  const m = Math.floor(sec / 60)
-  const rest = (sec - m * 60).toFixed(2)
-  return m > 0 ? `${m}분 ${rest.padStart(5, "0")}초` : `${rest}초`
-}
-
-function canSplitEven(arr: number[]) {
-  const total = sum(arr)
-  if (total === 0) return arr.length >= 2
-  if (total % 2 !== 0) return false
-  const target = total / 2
-  const dp = new Array(target + 1).fill(false)
-  dp[0] = true
-  for (const n of arr) {
-    for (let j = target; j >= n; j--) if (dp[j - n]) dp[j] = true
-  }
-  return dp[target]
-}
-
-// 숫자 몇 개를 골라 합이 target이 되는 조합이 있는지 (빈 선택 제외)
-function hasSubsetSum(arr: number[], target: number) {
-  const dp = new Array(target + 1).fill(false)
-  dp[0] = true
-  for (const n of arr) for (let j = target; j >= n; j--) if (dp[j - n]) dp[j] = true
-  return dp[target]
-}
-
-function pickDistinct(count: number, poolSize: number) {
-  const idx = Array.from({ length: poolSize }, (_, i) => i)
-  for (let i = idx.length - 1; i > 0; i--) {
-    const j = ri(i + 1)
-    ;[idx[i], idx[j]] = [idx[j], idx[i]]
-  }
-  return idx.slice(0, count).sort((a, b) => a - b)
-}
-
-// 🧩 한 판(15문제) 만들기
-// 이등분 퍼즐(Lv.12)은 '이등분 불가' 정답을 한 판에 2~3문제만 섞고, 나머지는 숫자 조합을 골라야 하는 문제로 구성
-function buildGame(chosenLevel: number): Question[] {
-  if (chosenLevel === 12) {
-    const impossible = new Set(pickDistinct(2 + ri(2), TOTAL_Q))
-    return Array.from({ length: TOTAL_Q }, (_, i) => buildQuestion(chosenLevel, i, !impossible.has(i)))
-  }
-  return Array.from({ length: TOTAL_Q }, (_, i) => buildQuestion(chosenLevel, i))
-}
-
-function buildQuestion(chosenLevel: number, index: number, wantPartition?: boolean): Question {
-  // 그랜드 마스터(Lv.14)는 매 문제 Lv1~13 무작위, 그 외엔 선택 레벨(0은 1과 동일 로직)
-  const logic = chosenLevel === 14 ? 1 + ri(13) : chosenLevel === 0 ? 1 : chosenLevel
-  const timer = LEVEL_TIMER[logic]
-  const hangul = HANGUL[ri(HANGUL.length)]
-
-  const base = (frontCount: number) => {
-    const front = mkDigits(frontCount)
-    const back = mkDigits(4)
-    return { front, back }
-  }
-
-  switch (logic) {
-    case 1: {
-      const { front, back } = base(2 + ri(2))
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: "앞자리 더하기", desc: "앞 번호 숫자를 모두 더하세요", answer: sum(front),
-      }
-    }
-    case 2: {
-      const { front, back } = base(2 + ri(2))
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: "뒷자리 더하기", desc: "뒤 4자리 숫자를 모두 더하세요", answer: sum(back),
-      }
-    }
-    case 3: {
-      const { front, back } = base(2)
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: "구형 전체 더하기", desc: "번호판 6자리를 모두 더하세요", answer: sum(front) + sum(back),
-      }
-    }
-    case 4: {
-      const { front, back } = base(3)
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: "신형 전체 더하기", desc: "번호판 7자리를 모두 더하세요", answer: sum(front) + sum(back),
-      }
-    }
-    case 5: {
-      const { front, back } = base(2 + ri(2))
-      const f = sum(front)
-      const b = sum(back)
-      return {
-        level: logic, front, back, hangul, type: "compare", timer,
-        title: "앞뒤 비교", desc: "앞 숫자 합과 뒤 숫자 합을 비교하세요",
-        answer: f > b ? "front" : f < b ? "back" : "equal",
-      }
-    }
-    case 6: {
-      const { front, back } = base(2 + ri(2))
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: "앞뒤 차이", desc: "큰 쪽 합에서 작은 쪽 합을 빼세요",
-        answer: Math.abs(sum(front) - sum(back)),
-      }
-    }
-    case 7: {
-      const { front, back } = base(2 + ri(2))
-      const even = ri(2) === 0
-      const all = [...front, ...back]
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: even ? "짝수만 더하기" : "홀수만 더하기",
-        desc: even ? "짝수 숫자만 골라 더하세요 (0은 짝수)" : "홀수 숫자만 골라 더하세요",
-        answer: sum(all.filter((d) => (even ? d % 2 === 0 : d % 2 === 1))),
-      }
-    }
-    case 8: {
-      const { front, back } = base(2 + ri(2))
-      const all = [...front, ...back]
-      const total = sum(all)
-      const hiddenPos = ri(all.length)
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: "가려진 숫자", desc: "전체 합을 보고 가려진 숫자를 맞히세요",
-        answer: all[hiddenPos], hiddenPos, totalForHidden: total,
-      }
-    }
-    case 9:
-    case 10: {
-      // 🔢 숫자 골라 만들기: 7자리 번호판에서 숫자를 골라 합이 20(Lv.9) / 문제마다 제시되는 11~30(Lv.10)이 되게 (항상 정답이 있는 번호판만 출제)
-      const target = logic === 9 ? 20 : 11 + ri(20)
-      let { front, back } = base(3)
-      for (let tries = 0; tries < 500 && !hasSubsetSum([...front, ...back], target); tries++) ({ front, back } = base(3))
-      return {
-        level: logic, front, back, hangul, type: "target", timer,
-        title: `${target} 만들기`, desc: `번호판 숫자를 골라 합이 ${target}${[2, 4, 5, 9].includes(target % 10) ? "가" : "이"} 되게 하세요`,
-        answer: target, target,
-      }
-    }
-    case 11: {
-      // ➕ 큰 수 덧셈: 뒷자리 4자리 수 + 앞자리 2·3자리 수 (예: 37가 4521 → 4521 + 37 = 4558)
-      // 정답은 숫자판으로 입력할 수 있게 4자리 이하(9999 이하), 헷갈리지 않게 앞·뒷자리 첫 숫자는 0이 아니게
-      const toNum = (ds: number[]) => Number(ds.join(""))
-      let front: number[] = []
-      let back: number[] = []
-      for (let tries = 0; tries < 500; tries++) {
-        front = [1 + ri(9), ...mkDigits(1 + ri(2))]
-        back = [1 + ri(9), ...mkDigits(3)]
-        if (toNum(front) + toNum(back) <= 9999) break
-      }
-      return {
-        level: logic, front, back, hangul, type: "numpad", timer,
-        title: "큰 수 덧셈", desc: "뒷자리 네 자리 수 + 앞자리 수를 계산하세요",
-        answer: toNum(back) + toNum(front),
-      }
-    }
-    case 12: {
-      // wantPartition: true = 이등분 가능한 번호판, false = 이등분 불가 번호판
-      // (지정이 없으면 그랜드 마스터용: 약 20%만 이등분 불가)
-      const want = wantPartition ?? Math.random() >= 0.2
-      let { front, back } = base(2 + ri(2))
-      let all = [...front, ...back]
-      for (let tries = 0; tries < 500; tries++) {
-        if (sum(all) > 0 && canSplitEven(all) === want) break
-        ;({ front, back } = base(2 + ri(2)))
-        all = [...front, ...back]
-      }
-      return {
-        level: logic, front, back, hangul, type: "partition", timer,
-        title: "이등분 퍼즐", desc: "숫자를 골라 두 그룹의 합을 같게 만드세요",
-        answer: null, canPartition: canSplitEven(all),
-      }
-    }
-    case 13:
-    default: {
-      const { front, back } = base(2 + ri(2))
-      
-      // 🔥 난이도 상승: 번호판의 0과 1을 2~9 사이의 숫자로 강제 변환
-      const hardFront = front.map(n => n <= 1 ? 2 + ri(8) : n)
-      const hardBack = back.map(n => n <= 1 ? 2 + ri(8) : n)
-      const all = [...hardFront, ...hardBack]
-      
-      const litCount = 3 // 무조건 3개의 숫자 곱셈
-      const lit = pickDistinct(litCount, all.length)
-      const product = lit.reduce((p, i) => p * all[i], 1)
-      
-      return {
-        level: logic, 
-        front: hardFront, // 변환된 어려운 숫자 적용
-        back: hardBack,   // 변환된 어려운 숫자 적용
-        hangul, type: "numpad", timer,
-        title: "불빛 곱셈", desc: "불이 켜진 숫자를 모두 곱하세요", answer: product, lit,
-      }
-    }
-  }
-}
-
-function exampleText(q: Question) {
-  if (q.type === "compare") return q.answer === "front" ? "앞이 큼" : q.answer === "back" ? "뒤가 큼" : "같음"
-  if (q.type === "target" && q.target) {
-    const all = [...q.front, ...q.back]
-    for (let m = 1; m < 1 << all.length; m++) {
-      const picked = all.filter((_, i) => (m >> i) & 1)
-      if (sum(picked) === q.target && !picked.includes(0)) return `${picked.join("+")} = ${q.target}`
-    }
-    return String(q.target)
-  }
-  if (q.type === "partition") {
-    if (!q.canPartition) return "이등분 불가"
-    // 합이 전체의 절반이 되는 숫자 조합 하나 찾아서 보여주기 (예: 7+1 = 8)
-    const all = [...q.front, ...q.back]
-    const half = sum(all) / 2
-    for (let m = 1; m < (1 << all.length) - 1; m++) {
-      const picked = all.filter((_, i) => (m >> i) & 1)
-      if (sum(picked) === half) return `${picked.join("+")} = ${half}`
-    }
-    return "이등분 가능"
-  }
-  return String(q.answer)
-}
-
-/* ------------------------ 화면용 가벼운 이미지 경로 ------------------------ */
-// 원본 PNG(1254px, 장당 ~1MB)는 이모티콘 저장할 때만 쓰고, 화면에는 미리 줄여 둔 webp를 사용 (데이터 절약)
-//  - sm: 상점·차고 목록용 작은 이미지 / md: 미리보기·게임 화면용 중간 이미지
-const lightImg = (folder: "emoticons" | "karts", file: string, size: "sm" | "md") =>
-  `/assets/${folder}/${size}/${file.replace(/\.png$/, ".webp")}`
-
-// 📱 실행 환경 확인 (카카오톡 앱 안 브라우저는 파일 다운로드가 막혀 있음)
-const isKakaoInApp = () => typeof navigator !== "undefined" && /KAKAOTALK/i.test(navigator.userAgent)
-const isMobileDevice = () => typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-
-/* ------------------------ 이미지 (폴백 포함) ------------------------ */
-function GameImage({
-  src,
-  alt,
-  fallback,
-  className,
-  style,
-}: {
-  src: string
-  alt: string
-  fallback: React.ReactNode
-  className?: string
-  style?: React.CSSProperties
-}) {
-  const [err, setErr] = useState(false)
-  useEffect(() => setErr(false), [src])
-  if (!err && src) {
-    return (
-      <img
-        src={src || "/placeholder.svg"}
-        alt={alt}
-        className={className}
-        style={style}
-        draggable={false}
-        onError={() => setErr(true)}
-      />
-    )
-  }
-  return (
-    <div
-      className={cn(className, "flex items-center justify-center leading-none select-none overflow-hidden")}
-      style={style}
-      role="img"
-      aria-label={alt}
-    >
-      {fallback}
-    </div>
-  )
-}
-
-/* ----------------------------- 번호판 ----------------------------- */
-function Plate({
-  q,
-  selected,
-  onToggle,
-}: {
-  q: Question
-  selected?: number[]
-  onToggle?: (i: number) => void
-}) {
-  const litSet = useMemo(() => new Set(q.lit ?? []), [q.lit])
-  const selSet = useMemo(() => new Set(selected ?? []), [selected])
-  const combined = [...q.front, ...q.back]
-
-  const cell = (d: number, gi: number, edge: boolean) => {
-    const hidden = q.hiddenPos === gi
-    const lit = litSet.has(gi)
-    const sel = selSet.has(gi)
-    const clickable = !!onToggle
-    const content = hidden ? "?" : d
-    const classes = cn(
-      "grid place-items-center rounded-lg font-black tabular-nums transition-all duration-150",
-      "h-11 w-8 sm:h-12 sm:w-9 text-2xl sm:text-3xl",
-      "shadow-[inset_0_-3px_0_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.3)]",
-      hidden
-        ? "bg-rose-500 text-white animate-pulse"
-        : lit
-          ? "bg-red-500 text-white animate-pulse ring-2 ring-red-300 shadow-lg"
-          : sel
-            ? "bg-sky-400 text-white ring-2 ring-sky-200 scale-105"
-            : "bg-white text-zinc-900",
-      clickable && "active:scale-95 cursor-pointer",
-    )
-    if (clickable) {
-      return (
-        <button
-          key={`${edge}-${gi}`}
-          type="button"
-          onClick={() => onToggle?.(gi)}
-          className={classes}
-          aria-pressed={sel}
-        >
-          {content}
-        </button>
-      )
-    }
-    return (
-      <span key={`${edge}-${gi}`} className={classes}>
-        {content}
-      </span>
-    )
-  }
-
-  return (
-    <div className="inline-flex items-center gap-1 rounded-2xl border-4 border-zinc-900/80 bg-gradient-to-b from-amber-300 to-amber-400 px-2.5 py-2 shadow-[0_8px_0_rgba(0,0,0,0.35),0_12px_20px_rgba(0,0,0,0.4)]">
-      <div className="flex gap-1">{q.front.map((d, i) => cell(d, i, false))}</div>
-      <span className="px-0.5 text-2xl sm:text-3xl font-black text-zinc-900">{q.hangul}</span>
-      <div className="flex gap-1">{q.back.map((d, i) => cell(d, q.front.length + i, true))}</div>
-    </div>
-  )
-}
-
-/* ------------------------------ 넘패드 ------------------------------ */
-function Numpad({
-  value,
-  onKey,
-  onBackspace,
-  onSubmit,
-  disabled,
-}: {
-  value: string
-  onKey: (k: string) => void
-  onBackspace: () => void
-  onSubmit: () => void
-  disabled: boolean
-}) {
-  const keyBtn =
-    "select-none rounded-2xl bg-white/90 text-zinc-900 text-2xl font-black shadow-[0_4px_0_rgba(0,0,0,0.25)] active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.25)] disabled:opacity-40 transition-all"
-  return (
-    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-        <button key={n} type="button" disabled={disabled} onClick={() => onKey(String(n))} className={cn(keyBtn, "py-1.5 sm:py-2.5")}>
-          {n}
-        </button>
-      ))}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onBackspace}
-        className={cn(keyBtn, "py-1.5 sm:py-2.5 bg-rose-200 text-rose-800 text-lg")}
-        aria-label="지움"
-      >
-        ⌫
-      </button>
-      <button key={0} type="button" disabled={disabled} onClick={() => onKey("0")} className={cn(keyBtn, "py-1.5 sm:py-2.5")}>
-        0
-      </button>
-      <button
-        type="button"
-        disabled={disabled || value.length === 0}
-        onClick={onSubmit}
-        className={cn(keyBtn, "py-1.5 sm:py-2.5 bg-emerald-300 text-emerald-950 text-lg")}
-        aria-label="입력"
-      >
-        입력
-      </button>
-    </div>
-  )
-}
-
-/* =========================================================================
-   메인 앱 컴포넌트
-   ========================================================================= */
-/* ------------------------- 🥋 승급 축하 연출 ------------------------- */
-const BELT_NAMES = ["화이트", "블루", "퍼플", "브라운", "블랙"] as const
-type BeltName = (typeof BELT_NAMES)[number]
-
-// 띠 색상 (base: 띠 색, edge: 테두리, bar: 그랄이 감기는 랭크바, stitch: 박음질 선)
-const BELT_COLORS: Record<BeltName, { base: string; edge: string; bar: string; stitch: string }> = {
-  화이트: { base: "#f8fafc", edge: "#cbd5e1", bar: "#18181b", stitch: "rgba(100,116,139,0.45)" },
-  블루: { base: "#2563eb", edge: "#1e3a8a", bar: "#18181b", stitch: "rgba(255,255,255,0.35)" },
-  퍼플: { base: "#7c3aed", edge: "#4c1d95", bar: "#18181b", stitch: "rgba(255,255,255,0.35)" },
-  브라운: { base: "#92400e", edge: "#451a03", bar: "#18181b", stitch: "rgba(255,255,255,0.3)" },
-  블랙: { base: "#18181b", edge: "#000000", bar: "#dc2626", stitch: "rgba(255,255,255,0.25)" },
-}
-
-// "🟦 블루 3그랄" → { name: "블루", stripes: 3 }
-function parseBelt(badge: string): { name: BeltName; stripes: number } {
-  const name = BELT_NAMES.find((n) => badge.includes(n)) ?? "화이트"
-  const m = badge.match(/(\d)그랄/)
-  return { name, stripes: m ? Number(m[1]) : 0 }
-}
-
-// 화면 가운데 크게 보이는 띠 그림 (끝부분 랭크바에 그랄 최대 4개)
-function BeltGraphic({ name, stripes, flyLastStripe = false }: { name: BeltName; stripes: number; flyLastStripe?: boolean }) {
-  const c = BELT_COLORS[name]
-  const stitchLine = { backgroundImage: `repeating-linear-gradient(90deg, ${c.stitch} 0 7px, transparent 7px 12px)` }
-  return (
-    <div
-      className="relative h-16 w-[78vw] max-w-[320px] rounded-lg"
-      style={{
-        background: `linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 45%, rgba(0,0,0,0.18)), ${c.base}`,
-        boxShadow: `0 14px 28px rgba(0,0,0,0.22), inset 0 0 0 2px ${c.edge}`,
-      }}
-    >
-      <div className="absolute inset-x-2 top-2.5 h-px" style={stitchLine} />
-      <div className="absolute inset-x-2 bottom-2.5 h-px" style={stitchLine} />
-      {/* 랭크바 + 그랄 */}
-      <div
-        className="absolute inset-y-0 right-[9%] flex w-[26%] items-stretch justify-evenly px-1"
-        style={{ background: c.bar, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.4)" }}
-      >
-        {[0, 1, 2, 3].map((i) =>
-          i < stripes ? (
-            <span
-              key={i}
-              className={cn(
-                "w-[9px] rounded-[1px] bg-white shadow-[0_0_2px_rgba(0,0,0,0.4)]",
-                flyLastStripe && i === stripes - 1 && "cpp-stripe-fly",
-              )}
-            />
-          ) : (
-            <span key={i} className="w-[9px]" />
-          ),
-        )}
-      </div>
-    </div>
-  )
-}
-
-function PromotionCelebration({ from, to, onClose }: { from?: string; to: { badge: string; style: string }; onClose: () => void }) {
-  const next = parseBelt(to.badge)
-  const prev = from ? parseBelt(from) : { name: next.name, stripes: Math.max(0, next.stripes - 1) }
-  const isBeltUp = prev.name !== next.name
-
-  // 꽃가루 / 불꽃놀이 입자 (처음 한 번만 무작위로 만들기)
-  const petals = useMemo(
-    () =>
-      Array.from({ length: 56 }, (_, i) => ({
-        left: Math.random() * 100,
-        w: 10 + Math.random() * 11,
-        color: ["#f9a8d4", "#fbcfe8", "#fde68a", "#ffffff", "#c4b5fd", "#fda4af"][i % 6],
-        t: 3.6 + Math.random() * 3,
-        d: 1.0 + Math.random() * 2.2,
-        sway: (Math.random() < 0.5 ? -1 : 1) * (20 + Math.random() * 40),
-        round: i % 3 === 0,
-      })),
-    [],
-  )
-  const bursts = useMemo(
-    () =>
-      [
-        { x: 18, y: 16 }, { x: 80, y: 13 }, { x: 50, y: 6 }, { x: 14, y: 46 }, { x: 86, y: 42 }, { x: 52, y: 78 },
-      ].map((b, bi) => ({
-        ...b,
-        color: ["#f43f5e", "#f59e0b", "#8b5cf6", "#10b981", "#3b82f6", "#ec4899"][bi],
-        sparks: Array.from({ length: 20 }, (_, i) => {
-          const a = (i / 20) * Math.PI * 2
-          const r = 65 + Math.random() * 55
-          return { dx: Math.cos(a) * r, dy: Math.sin(a) * r }
-        }),
-        d: 1.4 + bi * 0.3,
-      })),
-    [],
-  )
-
-  return (
-    <div className="cpp-promo-in fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden bg-gradient-to-b from-amber-50 via-rose-50 to-sky-100 px-6">
-      {/* 은은하게 도는 햇살 */}
-      <div className="cpp-promo-rays pointer-events-none absolute left-1/2 top-[42%] h-[180vmax] w-[180vmax] -translate-x-1/2 -translate-y-1/2 rounded-full" />
-      <div className="pointer-events-none absolute left-1/2 top-[42%] h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/70 blur-3xl" />
-
-      {/* 🎆 불꽃놀이 (띠 승급 때만) */}
-      {isBeltUp &&
-        bursts.map((b, bi) => (
-          <div key={bi} className="pointer-events-none absolute" style={{ left: `${b.x}%`, top: `${b.y}%` }}>
-            {b.sparks.map((sp, i) => (
-              <span
-                key={i}
-                className="cpp-spark absolute h-2 w-2 rounded-full"
-                style={{
-                  background: b.color,
-                  boxShadow: `0 0 6px ${b.color}`,
-                  ["--dx" as string]: `${sp.dx}px`,
-                  ["--dy" as string]: `${sp.dy}px`,
-                  ["--d" as string]: `${b.d}s`,
-                } as React.CSSProperties}
-              />
-            ))}
-          </div>
-        ))}
-
-      {/* 🌸 꽃가루 */}
-      <div className="pointer-events-none absolute inset-0">
-        {petals.map((pt, i) => (
-          <span
-            key={i}
-            className="cpp-petal absolute top-0"
-            style={{
-              left: `${pt.left}%`,
-              width: pt.w,
-              height: pt.w * 0.75,
-              background: pt.color,
-              borderRadius: pt.round ? "50%" : "100% 0 100% 0",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
-              ["--t" as string]: `${pt.t}s`,
-              ["--d" as string]: `${pt.d}s`,
-              ["--sway" as string]: `${pt.sway}px`,
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
-
-      <div className="relative flex w-full max-w-sm flex-col items-center text-center">
-        {/* 상단 문구: 그랄 = '축' 도장 / 띠 = Congratulations */}
-        <div className="flex h-36 items-end justify-center">
-          {isBeltUp ? (
-            <h2 className="cpp-congrats pb-2 text-[clamp(28px,9vw,40px)] font-black italic leading-none drop-shadow-[0_3px_0_rgba(255,255,255,0.8)]">
-              Congratulations!
-            </h2>
-          ) : (
-            <div className="cpp-stamp grid h-32 w-32 place-items-center rounded-full border-[5px] border-amber-300 bg-gradient-to-br from-rose-500 to-red-600 shadow-[0_10px_25px_rgba(225,29,72,0.45),inset_0_0_0_4px_rgba(255,255,255,0.35)]">
-              <span className="text-[72px] font-black leading-none text-white drop-shadow-[0_3px_0_rgba(127,29,29,0.6)]">축</span>
-            </div>
-          )}
-        </div>
-
-        {/* 가운데 큰 띠 */}
-        <div className="relative my-10 grid place-items-center">
-          {isBeltUp ? (
-            <>
-              <div className="cpp-old-belt-out col-start-1 row-start-1">
-                <BeltGraphic name={prev.name} stripes={prev.stripes} />
-              </div>
-              <div className="cpp-belt-fly col-start-1 row-start-1">
-                <BeltGraphic name={next.name} stripes={next.stripes} />
-              </div>
-              <div
-                className="cpp-impact-flash pointer-events-none col-start-1 row-start-1 h-40 w-40 rounded-full bg-white"
-                style={{ animationDelay: "1.25s", filter: "blur(8px)" }}
-              />
-            </>
-          ) : (
-            <div className="cpp-belt-pop">
-              <BeltGraphic name={next.name} stripes={next.stripes} flyLastStripe />
-            </div>
-          )}
-        </div>
-
-        {/* 새 등급 이름 */}
-        <div className="cpp-rise-in" style={{ ["--d" as string]: "1.9s" } as React.CSSProperties}>
-          <div className={cn("inline-block rounded-xl px-6 py-2 text-xl font-black shadow-lg", to.style)}>{to.badge}</div>
-          <p className="mt-3 text-lg font-black text-rose-500 drop-shadow-sm">
-            {isBeltUp ? `${next.name} 띠로 승급했어요! 🥋` : `그랄을 하나 더 감았어요! 🎀`}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="cpp-rise-in mt-8 w-full max-w-[220px] rounded-full bg-gradient-to-b from-yellow-300 to-amber-400 py-4 text-lg font-black text-amber-950 shadow-[0_5px_0_#b45309] active:translate-y-1 active:shadow-none"
-          style={{ ["--d" as string]: "2.3s" } as React.CSSProperties}
-        >
-          확인 🥋
-        </button>
-      </div>
-    </div>
-  )
-}
-
-/* ------------------------- 📊 학습 기록 · 부모님 리포트 ------------------------- */
-// 기기 안(localStorage "cp_stats")에만 저장. 예제 3문제는 정답을 보여주므로 기록에서 제외, 시간 초과는 오답으로 기록
-interface LearnStats {
-  types: Record<number, { tries: number; correct: number }> // 문제 유형(로직 레벨 1~10)별
-  days: Record<string, { games: number; solved: number; correct: number }> // 날짜별
-  games: { date: string; level: number; score: number }[] // 최근 게임 (최대 30개)
-}
-const EMPTY_STATS: LearnStats = { types: {}, days: {}, games: [] }
-const STATS_KEY = "cp_stats"
-
-function ParentReport({ stats }: { stats: LearnStats }) {
-  const typeRows = Array.from({ length: MAX_LEVEL - 1 }, (_, i) => i + 1).map((lv) => {
-    const t = stats.types[lv] ?? { tries: 0, correct: 0 }
-    return { lv, name: (LEVEL_DESC[lv] ?? "").replace("\n", " "), ...t, rate: t.tries ? Math.round((t.correct / t.tries) * 100) : null }
-  })
-  const total = typeRows.reduce((a, r) => ({ tries: a.tries + r.tries, correct: a.correct + r.correct }), { tries: 0, correct: 0 })
-  const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    const key = localDate(d)
-    return { key, label: i === 6 ? "오늘" : `${d.getMonth() + 1}/${d.getDate()}`, games: stats.days[key]?.games ?? 0 }
-  })
-  const weekGames = last7.reduce((a, d) => a + d.games, 0)
-  const maxGames = Math.max(1, ...last7.map((d) => d.games))
-  const rated = typeRows.filter((r) => r.tries >= 5) // 5문제 이상 푼 유형만 강점/약점 판단
-  const best = rated.length ? rated.reduce((a, b) => ((b.rate ?? 0) > (a.rate ?? 0) ? b : a)) : null
-  const weak = rated.length ? rated.reduce((a, b) => ((b.rate ?? 101) < (a.rate ?? 101) ? b : a)) : null
-  const barColor = (r: number) => (r >= 80 ? "bg-emerald-400" : r >= 60 ? "bg-amber-400" : "bg-rose-400")
-
-  if (total.tries === 0) {
-    return (
-      <div className="rounded-xl bg-slate-50 p-6 text-center ring-1 ring-slate-200">
-        <p className="text-4xl">📊</p>
-        <p className="mt-2 text-sm font-bold text-slate-500">아직 기록이 없어요.<br />게임을 하면 여기에 학습 기록이 쌓여요!</p>
-      </div>
-    )
-  }
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl bg-sky-50 p-3 ring-1 ring-sky-100"><p className="text-[11px] font-bold text-sky-500">푼 문제</p><p className="text-lg font-black text-sky-700">{total.tries}</p></div>
-        <div className="rounded-xl bg-emerald-50 p-3 ring-1 ring-emerald-100"><p className="text-[11px] font-bold text-emerald-500">정답률</p><p className="text-lg font-black text-emerald-700">{Math.round((total.correct / total.tries) * 100)}%</p></div>
-        <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-100"><p className="text-[11px] font-bold text-amber-500">최근 7일</p><p className="text-lg font-black text-amber-700">{weekGames}판</p></div>
-      </div>
-
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-        <p className="mb-3 text-sm font-black text-slate-700">📅 최근 7일 게임 수</p>
-        <div className="flex h-24 items-end justify-between gap-1.5">
-          {last7.map((d) => (
-            <div key={d.key} className="flex flex-1 flex-col items-center gap-1">
-              <span className="text-[10px] font-black text-slate-500">{d.games || ""}</span>
-              <div className="w-full rounded-t bg-sky-400" style={{ height: `${(d.games / maxGames) * 60}px`, minHeight: d.games ? 4 : 0 }} />
-              <span className="text-[10px] font-bold text-slate-400">{d.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {(best || weak) && (
-        <div className="space-y-2">
-          {best && <div className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">💪 잘하는 유형: <b>{best.name}</b> ({best.rate}%)</div>}
-          {weak && weak.lv !== best?.lv && (
-            <div className="rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-800 ring-1 ring-rose-200">
-              🎯 더 연습하면 좋은 유형: <b>{weak.name}</b> ({weak.rate}%)<br />
-              <span className="text-xs font-bold text-rose-600">→ Lv.{weak.lv}를 몇 번 더 해 보면 금방 늘어요!</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-        <p className="mb-3 text-sm font-black text-slate-700">🧮 문제 유형별 정답률</p>
-        <div className="space-y-2">
-          {typeRows.map((r) => (
-            <div key={r.lv} className="flex items-center gap-2">
-              <span className="w-10 text-[11px] font-black text-slate-400">Lv.{r.lv}</span>
-              <span className="w-[92px] truncate text-xs font-bold text-slate-600">{r.name}</span>
-              <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
-                {r.rate !== null && <div className={cn("h-full rounded-full", barColor(r.rate))} style={{ width: `${r.rate}%` }} />}
-              </div>
-              <span className="w-[64px] text-right text-[11px] font-bold text-slate-500">{r.rate === null ? "아직 안 함" : `${r.rate}% (${r.tries})`}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-[10px] font-bold text-slate-400">괄호 안은 푼 문제 수예요. 그랜드 마스터(Lv.14)에서 푼 문제도 유형별로 함께 계산돼요.</p>
-      </div>
-
-      {stats.games.length > 0 && (
-        <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-          <p className="mb-2 text-sm font-black text-slate-700">🕹️ 최근 게임</p>
-          {stats.games.slice(-5).reverse().map((g, i) => (
-            <div key={i} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-xs font-bold text-slate-600 last:border-0">
-              <span className="text-slate-400">{g.date.slice(5).replace("-", "/")}</span>
-              <span>Lv.{g.level} {LEVEL_NAMES[g.level]}</span>
-              <span className={g.score >= PASS_LINE ? "text-emerald-600" : "text-rose-500"}>{g.score}/{TOTAL_Q} {g.score >= PASS_LINE ? "통과" : "탈락"}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ------------------------- 🎓 튜토리얼 (Lv.0 게임 방법) ------------------------- */
-// 🚗 카트(세트) 리스트 (실제 폴더의 이미지 파일명과 100% 일치)
-// bonus: 장착하면 그 판에서 문제를 맞혀 받은 포인트에 추가로 주는 비율(%) — 통과 못 해도 적용
-// minLifetime: 구매할 수 있는 띠 (누적 포인트 기준). 💎 유료 회원은 띠와 상관없이 모두 구매 가능
-const BELT_BLUE = 20000
-const BELT_PURPLE = 60000
-const KARTS = [
-  { id: "kart_basic", name: "기본 차량", file: "kart_default_yellow.png", price: 0, bonus: 0, minLifetime: 0 },
-  // 🚙 일반 자동차: +5%, 화이트 벨트부터
-  { id: "car_suv", name: "SUV", file: "suv.png", price: 2000, bonus: 5, minLifetime: 0 },
-  { id: "car_police", name: "경찰차", file: "경찰차.png", price: 2500, bonus: 5, minLifetime: 0 },
-  { id: "car_fire", name: "소방차", file: "소방차.png", price: 2500, bonus: 5, minLifetime: 0 },
-  { id: "car_sports", name: "스포츠카", file: "스포츠카.png", price: 3000, bonus: 5, minLifetime: 0 },
-  { id: "car_forklift", name: "포크레인", file: "포크레인.png", price: 3000, bonus: 5, minLifetime: 0 },
-  { id: "car_tank", name: "전투 탱크", file: "탱크.png", price: 3500, bonus: 5, minLifetime: 0 },
-  // 🚒 특수 카트: +10%, 블루 벨트부터
-  { id: "kart_fire_truck", name: "소방 카트", file: "kart_fire_truck.png", price: 6000, bonus: 10, minLifetime: BELT_BLUE },
-  { id: "kart_police", name: "경찰 카트", file: "kart_police.png", price: 7000, bonus: 10, minLifetime: BELT_BLUE },
-  { id: "kart_tank", name: "탱크 카트", file: "kart_tank.png", price: 8000, bonus: 10, minLifetime: BELT_BLUE },
-  // 🦁 캐릭터(동물) 카트: +15%, 퍼플 벨트부터
-  { id: "kart_ostrich", name: "다리가 짧은 타조 카트", file: "kart_ostrich.png", price: 12000, bonus: 15, minLifetime: BELT_PURPLE },
-  { id: "kart_giraffe", name: "목이 짧은 기린 카트", file: "kart_giraffe.png", price: 12000, bonus: 15, minLifetime: BELT_PURPLE },
-  { id: "kart_rabbit", name: "귀가작은 토끼 카트", file: "kart_rabbit.png", price: 13000, bonus: 15, minLifetime: BELT_PURPLE },
-  { id: "kart_elephant", name: "코가 짧은 코끼리 카트", file: "kart_elephant.png", price: 13000, bonus: 15, minLifetime: BELT_PURPLE },
-  { id: "kart_crocodile", name: "주둥이짧은 악어 카트", file: "kart_crocodile.png", price: 14000, bonus: 15, minLifetime: BELT_PURPLE },
-  { id: "kart_owl", name: "눈이 작은부엉이 카트", file: "kart_owl.png", price: 14000, bonus: 15, minLifetime: BELT_PURPLE },
-  { id: "kart_hippo", name: "입이 작은 하마 카트", file: "kart_hippo.png", price: 15000, bonus: 15, minLifetime: BELT_PURPLE },
-  { id: "kart_lion", name: "대머리사자 카트", file: "kart_lion.png", price: 16000, bonus: 15, minLifetime: BELT_PURPLE },
-]
-const kartNeedLabel = (minLifetime: number) => (minLifetime >= BELT_PURPLE ? "퍼플 벨트부터" : minLifetime >= BELT_BLUE ? "블루 벨트부터" : "")
-const kartBonus = (id: string) => KARTS.find((k) => k.id === id)?.bonus ?? 0
-
-// 🏞️ 배경(테마) 리스트 (경로: /assets/mp4/). 모두 화이트 벨트부터 구매 가능
-// bonus: 장착하고 만점(15/15)으로 통과하면 그 판 포인트(정답 포인트 + 통과 보너스)에 추가로 주는 비율(%). 같은 단계는 같은 가격
-const BACKGROUNDS = [
-  { id: 0, name: "가로수드라이브 (기본)", file: "가로수드라이브.mp4", price: 0, bonus: 0 },
-  { id: 1, name: "해변의드라이브", file: "해변의드라이브.mp4", price: 0, bonus: 0 },
-  { id: 2, name: "벚꽃드라이브", file: "벚꽃드라이브.mp4", price: 1500, bonus: 5 },
-  { id: 3, name: "단풍길", file: "단풍길.mp4", price: 1500, bonus: 5 },
-  { id: 5, name: "눈오는산속", file: "눈오는산속.mp4", price: 1500, bonus: 5 },
-  { id: 6, name: "사막의질주", file: "사막의질주.mp4", price: 1500, bonus: 5 },
-  { id: 7, name: "아이스크림과캔디", file: "아이스크림과캔디.mp4", price: 4000, bonus: 10 },
-  { id: 4, name: "한밤의도심", file: "한밤의도심.mp4", price: 4000, bonus: 10 },
-  { id: 8, name: "지하도시", file: "지하도시.mp4", price: 4000, bonus: 10 },
-  { id: 9, name: "스핑크스로드", file: "스핑크스로드.mp4", price: 4000, bonus: 10 },
-  { id: 10, name: "화산과용암", file: "화산과용암.mp4", price: 7000, bonus: 15 },
-  { id: 11, name: "우주도시", file: "우주도시.mp4", price: 7000, bonus: 15 },
-  { id: 12, name: "황금의나라", file: "황금의나라.mp4", price: 7000, bonus: 15 },
-]
-const bgBonus = (file: string) => BACKGROUNDS.find((b) => b.file === file)?.bonus ?? 0
-
-// 💖 상점에서 포인트로 사는 하트 가격 (하루 3번까지)
-const HEART_PRICE = 150
-
-const TUTORIAL_PAGES = ["게임 시작", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 · 배경 보너스", "띠 승급", "관리 메뉴"]
-
-/* ------------------------- 📖 레벨별 게임 설명 팝업 (게임 시작 전) ------------------------- */
-const GUIDE_HOW: Record<number, string[]> = {
-  1: ["번호판 <b>앞자리 숫자</b>를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
-  2: ["번호판 <b>뒷자리 4개</b> 숫자를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
-  3: ["앞자리 2개 + 뒷자리 4개, <b>6개 숫자</b>를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
-  4: ["앞자리 3개 + 뒷자리 4개, <b>7개 숫자</b>를 모두 더해요.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
-  5: ["앞자리 합과 뒷자리 합을 <b>비교</b>해요.", "<b>앞이 큼 · 같음 · 뒤가 큼</b> 중 하나를 눌러요."],
-  6: ["앞자리 합과 뒷자리 합을 각각 구해요.", "<b>큰 쪽에서 작은 쪽을 빼서</b> 입력해요."],
-  7: ["문제 위에 나오는 대로 <b>홀수만</b> 또는 <b>짝수만</b> 더해요.", "0은 짝수예요."],
-  8: ["번호판의 <b>전체 합</b>이 주어져요.", "<b>?</b> 자리에 들어갈 숫자를 찾아 입력해요."],
-  9: ["번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>20</b>이 되면 <b>제출</b>!"],
-  10: ["문제마다 <b>만들 숫자가 달라요</b>. (11~30, 예: 17 만들기)", "번호판 숫자를 눌러 골라요 (<b>파란 불</b>).", "고른 숫자의 합이 <b>제시된 숫자</b>가 되면 <b>제출</b>!"],
-  11: ["뒷자리 4개를 <b>네 자리 수</b> 하나로 읽어요. (예: 1234)", "거기에 <b>앞자리 수</b>를 더해요. (예: 1234 + 56)"],
-  12: ["숫자를 <b>두 묶음</b>으로 나눠 두 묶음의 합이 <b>똑같게</b> 만들어요.", "전체 합의 <b>절반</b>이 되도록 숫자를 골라 <b>제출</b>!", "어떻게 해도 못 나누면 <b>이등분 불가</b> 버튼 (전체 합이 홀수면 무조건 불가)"],
-  13: ["<b>붉게 빛나는 숫자</b>만 모두 <b>곱해요</b>.", "숫자 버튼으로 답을 누르고 <b>입력</b>!"],
-  14: ["Lv.1~13 문제가 <b>섞여서</b> 나와요!", "문제마다 화면 위의 설명을 잘 읽고 풀어요."],
-}
-
-function GameGuide({ level, onClose }: { level: number; onClose: () => void }) {
-  // 설명용 예시 문제 (팝업을 열 때마다 새로 뽑음, 이등분은 나눌 수 있는 문제로)
-  const sample = useMemo(() => (level === 14 ? null : buildQuestion(level, 5, level === 12 ? true : undefined)), [level])
-  return (
-    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-[380px] flex-col rounded-3xl bg-gradient-to-b from-amber-50 to-white p-4 shadow-2xl cpp-pop">
-        <div className="text-center">
-          <h2 className="text-xl font-black text-zinc-900"><span className="mr-1.5 rounded-full bg-amber-400 px-2.5 py-0.5 align-middle text-xs font-black text-amber-950">Lv.{level}</span>{LEVEL_NAMES[level]}</h2>
-        </div>
-        <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto cpp-no-scrollbar">
-          {sample && (
-            <div className="rounded-2xl bg-zinc-900 px-2 py-2.5 text-center">
-              <p className="text-sm font-black text-yellow-300">{sample.desc}</p>
-              <div className="mt-2 flex justify-center"><Plate q={sample} /></div>
-              {typeof sample.totalForHidden === "number" && (
-                <p className="mt-2 text-sm font-black text-white">전체 합 = <span className="text-yellow-300">{sample.totalForHidden}</span></p>
-              )}
-              <p className="mt-2 text-sm font-black text-emerald-300">예) 정답: {exampleText(sample)}</p>
-            </div>
-          )}
-          <div className="rounded-2xl bg-white px-3 py-2.5 text-left text-sm font-bold leading-snug text-zinc-700 shadow-sm ring-1 ring-black/5">
-            {GUIDE_HOW[level]?.map((line, i) => (
-              <p key={i} className={i > 0 ? "mt-1" : ""}>
-                {i + 1}. <span dangerouslySetInnerHTML={{ __html: line }} />
-              </p>
-            ))}
-          </div>
-          <div className="space-y-0.5 rounded-2xl bg-sky-50 px-3 py-2 text-left text-xs font-bold leading-snug text-sky-800 ring-1 ring-sky-100">
-            <p>⏰ {level === 14 ? "문제마다 제한 시간이 달라요" : `문제당 ${LEVEL_TIMER[level]}초`}</p>
-            <p>✅ 15문제 중 <b>13개 이상</b> 맞히면 통과 · 처음 3문제는 정답을 알려줘요</p>
-            <p>⚡ 빨리 3번 연속 맞히면 <b>피버 타임</b> (문제당 15P)</p>
-            {RECORD_LEVELS.includes(level) && <p>🏆 만점이면 <b>랭킹 기록</b>에 올라가요</p>}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-2 w-full rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 py-3 text-lg font-black text-emerald-950 shadow-[0_4px_0_#047857] active:translate-y-0.5"
-        >
-          닫기 · 게임 시작 ▶
-        </button>
-        <p className="mt-1.5 text-center text-[11px] font-bold text-zinc-400">⚙️ 관리 → 내 정보에서 게임 설명을 끌 수 있어요</p>
-      </div>
-    </div>
-  )
-}
-
-function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
-  const [page, setPage] = useState(0)
-  const last = TUTORIAL_PAGES.length - 1
-  const go = (n: number) => {
-    playClick()
-    setPage(Math.max(0, Math.min(last, n)))
-  }
-
-  // 👆 좌우로 밀어서 넘기기
-  const touchX = useRef<number | null>(null)
-  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX }
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchX.current == null) return
-    const dx = e.changedTouches[0].clientX - touchX.current
-    touchX.current = null
-    if (dx < -60 && page < last) go(page + 1)
-    if (dx > 60 && page > 0) go(page - 1)
-  }
-
-  const Bubble = ({ children }: { children: React.ReactNode }) => (
-    <div className="rounded-2xl bg-white/90 p-4 text-left text-[15px] font-bold leading-relaxed text-zinc-700 shadow-sm ring-1 ring-black/5">{children}</div>
-  )
-
-  const body = (() => {
-    switch (TUTORIAL_PAGES[page]) {
-      case "게임 시작":
-        return (
-          <>
-            <div className="flex justify-center"><GameImage src="/assets/0-2-2.png" alt="팡이" className="h-16 w-16 object-contain" fallback={<span className="text-5xl">🐣</span>} /></div>
-            <Bubble>
-              <div className="text-sm">
-                <p>🚗 자동차 <b>번호판 숫자</b>로 계산하는 두뇌 게임이에요. 레벨이 <b>14개</b> 있어요.</p>
-                <p className="mt-1.5">① 로비의 <b>레벨 카드</b>를 눌러요</p>
-                <p className="mt-1">② <b>게임 설명</b>을 읽고 <b className="whitespace-nowrap rounded bg-emerald-200 px-1.5 text-emerald-800">닫기 · 게임 시작</b></p>
-                <p className="mt-1">③ 15문제 중 <b className="text-emerald-600">13개 이상</b> 맞히면 통과! <b>다음 레벨</b>이 열려요</p>
-              </div>
-            </Bubble>
-            <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] font-bold text-zinc-600">
-              <div className="rounded-xl bg-white/90 px-1 py-2 shadow-sm ring-1 ring-black/5"><p className="text-base font-black text-yellow-500">+30P</p>카드 아래 숫자는<br />통과 보너스</div>
-              <div className="rounded-xl bg-white/90 px-1 py-2 shadow-sm ring-1 ring-black/5"><p className="text-base">⭐</p>통과한 레벨</div>
-              <div className="rounded-xl bg-white/90 px-1 py-2 shadow-sm ring-1 ring-black/5"><p className="text-base">🔒</p>아직 잠긴 레벨</div>
-            </div>
-            <p className="text-center text-xs font-bold text-zinc-500">💡 게임 설명은 ⚙️ 관리 → 내 정보에서 켜고 끌 수 있어요</p>
-          </>
-        )
-      case "하트":
-        return (
-          <>
-            <p className="text-center text-6xl">💖</p>
-            <Bubble>
-              <p>🎮 게임 한 판에 <b className="text-rose-500">하트 1개</b>를 써요.</p>
-              <p className="mt-2">🌅 매일 <b>5개</b>까지 다시 채워져요. (5개보다 많이 모아 두었으면 그대로!)</p>
-              <p className="mt-2">📺 로비의 <b>광고 보고 하트 충전</b>: 광고 한 번에 하트 +1 (횟수 제한 없음)</p>
-              <p className="mt-2">🛒 <b>포인트 상점</b>: {HEART_PRICE}P로 하트 1개, 하루 3번</p>
-              <p className="mt-2 text-sm text-zinc-500">하트는 최대 {HEART_CAP}개까지 모을 수 있어요.</p>
-            </Bubble>
-          </>
-        )
-      case "포인트 · 캐시":
-        return (
-          <>
-            <div className="space-y-2">
-              {[
-                { icon: "🪙", name: "보유 포인트", use: "상점에서 아이템을 살 때 써요", tone: "bg-blue-50 text-blue-700 ring-blue-100" },
-                { icon: "📅", name: "이번 달 포인트", use: "이번 달에 모은 포인트 · 월간 순위 (준비 중)", tone: "bg-amber-50 text-amber-700 ring-amber-100" },
-                { icon: "🥋", name: "누적 포인트", use: "지금까지 모은 전체 포인트 · 띠 승급", tone: "bg-slate-50 text-slate-700 ring-slate-200" },
-                { icon: "💵", name: "캐시", use: "광고 보기·친구 초대로 모아요 · 기프티콘 교환 (준비 중)", tone: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
-              ].map((r) => (
-                <div key={r.name} className={cn("flex items-center gap-3 rounded-2xl px-3 py-1.5 ring-1", r.tone)}>
-                  <span className="text-2xl">{r.icon}</span>
-                  <div className="min-w-0 text-left">
-                    <p className="text-sm font-black">{r.name}</p>
-                    <p className="text-[13px] font-bold leading-snug text-zinc-600">{r.use}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Bubble>
-              <div className="text-sm">
-                <p>🪙 <b>포인트</b>: 문제 맞히기(10P, 피버 15P) · 레벨 통과 · 출석 · 친구 초대</p>
-                <p className="mt-1">💵 <b>캐시</b>: 광고 보고 하트 충전 · 친구 초대</p>
-                <p className="mt-1 text-xs text-zinc-500">포인트를 써도 누적 포인트는 줄지 않아요. 만 14세 미만은 보호자 동의 후 기프티콘 교환 (준비 중) · 로비의 포인트 칸을 누르면 한눈에 보여요</p>
-              </div>
-            </Bubble>
-          </>
-        )
-      case "오늘의 도전":
-        return (
-          <>
-            <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-400 to-rose-400 p-3 shadow ring-1 ring-orange-300">
-              <span className="text-3xl">🔥</span>
-              <div className="text-left">
-                <p className="text-xs font-black text-white/90">오늘의 도전 · 통과 보너스 2배!</p>
-                <p className="text-sm font-black text-white">매일 레벨 하나가 정해져요</p>
-              </div>
-            </div>
-            <Bubble>
-              <p>📆 매일 열린 레벨 중 <b>하나</b>가 오늘의 도전으로 정해져요.</p>
-              <p className="mt-2">🏆 그 레벨을 오늘 <b>처음 통과</b>하면 통과 보너스가 <b className="text-rose-500">2배</b>!</p>
-              <p className="mt-2">🔁 실패해도 하트만 있으면 <b>몇 번이든</b> 다시 도전할 수 있어요.</p>
-              <p className="mt-2 text-sm text-zinc-500">2배 보너스는 하루에 한 번이에요. 내일은 새로운 도전이 열려요.</p>
-            </Bubble>
-          </>
-        )
-      case "랭킹":
-        return (
-          <>
-            <div className="grid grid-cols-5 gap-1 text-center">
-              {RANK_TABS.map((t) => (
-                <span key={t.id} className="flex min-h-[40px] items-center justify-center whitespace-pre-line rounded-xl bg-indigo-500 px-0.5 py-1 text-[11px] font-black leading-tight text-white shadow-sm">{t.label}</span>
-              ))}
-            </div>
-            <Bubble>
-              <p>🏆 로비의 <b>랭킹</b> 버튼을 누르면 5가지 순위를 <b>10위까지</b> 볼 수 있어요.</p>
-              <p className="mt-2">🪙 <b>월간 포인트</b>: 이번 달에 모은 포인트가 많은 순서</p>
-              <p className="mt-2">⏱ <b>Lv.11 · 12 · 13</b>: 15문제를 <b className="text-emerald-600">모두 맞힌(만점)</b> 기록이 빠른 순서</p>
-              <p className="mt-2">➕ <b>합산</b>: 세 레벨 만점 기록을 <b>더한 시간</b>이 짧은 순서</p>
-              <p className="mt-2 text-sm text-zinc-500">기록은 문제를 푸는 시간만 재요(정답·오답 화면 시간 제외). 매달 1일에 새로 시작해요.</p>
-            </Bubble>
-          </>
-        )
-      case "출석 · 친구 초대":
-        return (
-          <>
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                <div key={d} className={cn("rounded-lg py-2 text-xs font-black shadow-sm ring-1 ring-black/5", d === 3 || d === 5 || d === 7 ? "bg-amber-300 text-amber-950" : "bg-white/90 text-zinc-600")}>
-                  {d}일
-                  <span className="block text-[10px]">{d === 3 ? "+5" : d === 5 ? "+10" : d === 7 ? "+20" : "✔"}</span>
-                </div>
-              ))}
-            </div>
-            <Bubble>
-              <p>📅 <b>출석체크</b>: 하루 한 번 누르면 <b>+5P</b></p>
-              <p className="mt-1">한 주에 <b>3일·5일·7일</b> 출석하면 보너스 <b>+5P · +10P · +20P</b>를 더 받아요. (매주 월요일에 새로 시작)</p>
-            </Bubble>
-            <Bubble>
-              <p>💌 <b>친구 초대</b>: 친구에게 게임을 알려 주면 <b>+30P</b>와 <b>캐시 +{ECONOMY.cashPerInvite}C</b> (하루 5번까지)</p>
-            </Bubble>
-          </>
-        )
-      case "포인트 상점":
-        return (
-          <>
-            <div className="grid grid-cols-2 gap-2 text-center text-sm font-black text-zinc-700">
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏎️ 카트<span className="block text-xs font-bold text-zinc-500">게임 화면의 내 차 · 정답 보너스</span></div>
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">🏞️ 배경<span className="block text-xs font-bold text-zinc-500">게임 화면 뒤 풍경 · 만점 보너스</span></div>
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">📸 이모티콘<span className="block text-xs font-bold text-zinc-500">사진첩에 저장해서 친구에게 보내기</span></div>
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">💖 하트<span className="block text-xs font-bold text-zinc-500">{HEART_PRICE}P로 1개 (하루 3번)</span></div>
-            </div>
-            <Bubble>
-              <p>🛒 로비의 <b>포인트 상점</b>에서 보유 포인트로 아이템을 사요.</p>
-              <p className="mt-2">⚙️ 산 카트와 배경은 <b>관리 → 내 차고 · 내 테마</b>에서 장착해요.</p>
-              <p className="mt-2">🎁 <b>상품권</b> 탭: 모은 캐시로 기프티콘을 바꾸는 곳이에요 (준비 중).</p>
-            </Bubble>
-          </>
-        )
-      case "카트 · 배경 보너스": {
-        const tiers = [
-          { pct: 5, label: "일반 자동차 · 화이트부터", ids: ["car_suv", "car_police", "car_fire", "car_sports"] },
-          { pct: 10, label: "특수 카트 · 블루 벨트부터", ids: ["kart_fire_truck", "kart_police", "kart_tank"] },
-          { pct: 15, label: "동물 카트 · 퍼플 벨트부터", ids: ["kart_crocodile", "kart_lion", "kart_rabbit", "kart_owl"] },
-        ]
-        return (
-          <>
-            <div className="space-y-1.5">
-              {tiers.map((t) => (
-                <div key={t.pct} className="flex items-center gap-2 rounded-2xl bg-white/90 p-1.5 shadow-sm ring-1 ring-black/5">
-                  <span className="w-[72px] shrink-0 rounded-xl bg-amber-400 py-1 text-center font-black leading-tight text-amber-950"><span className="block text-[10px]">정답 보너스</span><span className="block text-base">+{t.pct}%</span></span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-black text-zinc-700">{t.label}</p>
-                    <div className="mt-0.5 flex gap-1">
-                      {t.ids.map((id) => (
-                        <img key={id} src={lightImg("karts", KARTS.find((k) => k.id === id)!.file, "sm")} alt="" className="h-8 w-8 rounded-lg bg-slate-100 object-contain p-0.5" />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Bubble>
-              <div className="text-sm">
-                <p>🏎️ <b>카트</b>: 문제를 맞혀 받은 포인트를 <b className="text-amber-600">더</b> 받아요. 통과 못 해도 적용!</p>
-                <p className="mt-0.5 text-xs text-zinc-500">예) 정답 포인트 150P + 동물 카트 15% = <b>+23P</b></p>
-                <p className="mt-1.5">🏞️ <b>배경</b>: <b className="text-emerald-600">만점(15/15)</b>으로 통과하면 그 판 포인트를 +5·10·15% 더 받아요.</p>
-                <p className="mt-0.5 text-xs text-zinc-500">💎 유료 회원은 띠와 상관없이 모든 카트를 살 수 있어요 (준비 중)</p>
-              </div>
-            </Bubble>
-          </>
-        )
-      }
-      case "띠 승급":
-        return (
-          <>
-            <div className="flex flex-col items-center gap-2">
-              {([["화이트", "0P"], ["블루", "2만P"], ["퍼플", "6만P"], ["브라운", "12만P"], ["블랙", "20만P"]] as const).map(([n, req]) => (
-                <div key={n} className="flex w-full max-w-[290px] items-center gap-2">
-                  <span className="w-14 text-right text-sm font-black text-zinc-600">{n}</span>
-                  <div className="h-5 flex-1 rounded" style={{ background: BELT_COLORS[n].base, boxShadow: `inset 0 0 0 2px ${BELT_COLORS[n].edge}` }}>
-                    <div className="ml-auto mr-[10%] h-full w-[28%]" style={{ background: BELT_COLORS[n].bar }} />
-                  </div>
-                  <span className="w-12 text-xs font-black text-zinc-500">{req}</span>
-                </div>
-              ))}
-            </div>
-            <Bubble>
-              <p>🥋 지금까지 모은 <b>누적 포인트</b>로 띠가 올라가요. 상점에서 포인트를 써도 줄지 않아요!</p>
-              <p className="mt-2">🎀 띠마다 <b>그랄(줄무늬) 4개</b>를 모으면 다음 띠로 승급해요. 그랄을 받거나 승급하면 <b>축하 화면</b>이 나와요!</p>
-              <p className="mt-2 text-sm text-zinc-500">내 띠와 다음 승급까지 남은 포인트는 ⚙️ 관리 맨 위에서 볼 수 있어요.</p>
-            </Bubble>
-          </>
-        )
-      case "관리 메뉴":
-        return (
-          <>
-            <div className="space-y-1">
-              {[
-                ["👤", "내 정보", "닉네임 · 연령 구분 · 게임 설명 켜기/끄기"],
-                ["🚗", "내 차고 · 🏞️ 내 테마", "산 카트와 배경 장착"],
-                ["📊", "리포트", "레벨별 정답률 · 학습 기록 (부모님과 함께 보기)"],
-                ["🔊", "소리 끄기/켜기", "로비 오른쪽 위 버튼"],
-                ["📲", "홈 화면에 추가", "앱처럼 바로 실행하기"],
-              ].map(([icon, name, desc]) => (
-                <div key={name} className="flex items-center gap-2.5 rounded-2xl bg-white/90 px-3 py-1.5 text-left shadow-sm ring-1 ring-black/5">
-                  <span className="text-2xl">{icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-zinc-700">{name}</p>
-                    <p className="text-xs font-bold text-zinc-500">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Bubble>
-              <p className="text-sm">💾 기록은 <b>지금 쓰는 휴대폰(앱·브라우저)</b>에 저장돼요. 다른 앱이나 브라우저로 열면 기록이 따로예요.</p>
-              <p className="mt-1.5 text-sm">📖 이 게임 방법은 레벨 목록의 <b>Lv.0</b>에서 언제든 다시 볼 수 있어요.</p>
-            </Bubble>
-          </>
-        )
-      default:
-        return null
-    }
-  })()
-
-  return (
-    <div
-      className="cpp-promo-in fixed inset-0 z-[90] flex flex-col bg-gradient-to-b from-amber-50 via-rose-50 to-sky-100"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      <div className="mx-auto flex h-full w-full max-w-[440px] flex-col px-5 pb-5 pt-4">
-        {/* 상단: 단계 표시 + 건너뛰기 (언제든 가능) */}
-        <div className="flex items-center justify-between">
-          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-black text-zinc-500 shadow-sm">🎓 게임 방법 {page + 1}/{TUTORIAL_PAGES.length}</span>
-          <button type="button" onClick={() => { playClick(); onSkip() }} className="rounded-full bg-white/80 px-3 py-1.5 text-sm font-black text-zinc-600 shadow-sm active:scale-95">
-            건너뛰기 ✕
-          </button>
-        </div>
-
-        <h2 key={`t${page}`} className="mt-4 text-center text-3xl font-black text-zinc-800 cpp-pop">{TUTORIAL_PAGES[page]}</h2>
-
-        <div key={`b${page}`} className="cpp-rise-in mt-4 flex min-h-0 flex-1 flex-col justify-center-safe gap-4 overflow-y-auto cpp-no-scrollbar">
-          {body}
-        </div>
-
-        {/* 하단: 점 표시 + 이전/다음 */}
-        <div className="mt-4 flex justify-center gap-1.5">
-          {TUTORIAL_PAGES.map((_, i) => (
-            <span key={i} className={cn("h-2 rounded-full transition-all", i === page ? "w-6 bg-amber-500" : "w-2 bg-zinc-300")} />
-          ))}
-        </div>
-        <div className="mt-3 grid grid-cols-[1fr_2fr] gap-2">
-          <button type="button" disabled={page === 0} onClick={() => go(page - 1)} className="rounded-2xl bg-white py-3.5 text-base font-black text-zinc-600 shadow-sm ring-1 ring-black/10 disabled:opacity-40">
-            ◀ 이전
-          </button>
-          {page < last ? (
-            <button type="button" onClick={() => go(page + 1)} className="rounded-2xl bg-gradient-to-b from-yellow-300 to-amber-400 py-3.5 text-base font-black text-amber-950 shadow-[0_4px_0_#b45309] active:translate-y-0.5">
-              다음 ▶
-            </button>
-          ) : (
-            <button type="button" onClick={() => { playClick(); onFinish() }} className="rounded-2xl bg-gradient-to-b from-emerald-300 to-emerald-500 py-3.5 text-base font-black text-emerald-950 shadow-[0_4px_0_#047857] active:translate-y-0.5">
-              시작하기! 🚀
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function CounterPangPang() {
   // 🔁 옛 저장 데이터의 레벨 번호 변환 (다른 저장값 불러오기보다 먼저 실행되도록 맨 위에 둠)
@@ -1512,51 +193,6 @@ export default function CounterPangPang() {
   }, [points, loaded, monthlyDate]);
   // 🏆 누적 포인트(lifetimePoints)에 따른 주짓수 정통 그랄(Stripe) 승급 함수
   // 🏆 누적 포인트(lifetimePoints)에 따른 주짓수 정통 그랄(Stripe) 승급 함수
-  const getBeltInfo = (lp: number) => {
-    const ranks = [
-      // ⬜ 화이트 벨트 구간 (0 ~ 20,000) - 4000P마다 1그랄
-      { req: 0,     badge: "⬜ 화이트",        style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 4000,  badge: "⬜ 화이트 1그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 8000,  badge: "⬜ 화이트 2그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 12000,  badge: "⬜ 화이트 3그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      { req: 16000,  badge: "⬜ 화이트 4그랄",  style: "bg-white text-gray-700 border border-gray-300 shadow-sm" },
-      
-      // 🟦 블루 벨트 구간 (20,000 ~ 60,000) - 8000P마다 1그랄
-      { req: 20000, badge: "🟦 블루",        style: "bg-blue-600 text-white shadow-sm" },
-      { req: 28000, badge: "🟦 블루 1그랄",  style: "bg-blue-600 text-white shadow-sm" },
-      { req: 36000, badge: "🟦 블루 2그랄",  style: "bg-blue-600 text-white shadow-sm" },
-      { req: 44000, badge: "🟦 블루 3그랄",  style: "bg-blue-600 text-white shadow-sm" },
-      { req: 52000, badge: "🟦 블루 4그랄",  style: "bg-blue-600 text-white shadow-sm" },
-      
-      // 🟪 퍼플 벨트 구간 (60,000 ~ 120,000) - 12000P마다 1그랄
-      { req: 60000, badge: "🟪 퍼플",        style: "bg-purple-600 text-white shadow-sm" },
-      { req: 72000, badge: "🟪 퍼플 1그랄",  style: "bg-purple-600 text-white shadow-sm" },
-      { req: 84000, badge: "🟪 퍼플 2그랄",  style: "bg-purple-600 text-white shadow-sm" },
-      { req: 96000, badge: "🟪 퍼플 3그랄",  style: "bg-purple-600 text-white shadow-sm" },
-      { req: 108000, badge: "🟪 퍼플 4그랄",  style: "bg-purple-600 text-white shadow-sm" },
-      
-      // 🟫 브라운 벨트 구간 (120,000 ~ 200,000) - 16000P마다 1그랄
-      { req: 120000, badge: "🟫 브라운",        style: "bg-amber-800 text-white shadow-sm" },
-      { req: 136000, badge: "🟫 브라운 1그랄",  style: "bg-amber-800 text-white shadow-sm" },
-      { req: 152000, badge: "🟫 브라운 2그랄",  style: "bg-amber-800 text-white shadow-sm" },
-      { req: 168000, badge: "🟫 브라운 3그랄",  style: "bg-amber-800 text-white shadow-sm" },
-      { req: 184000, badge: "🟫 브라운 4그랄",  style: "bg-amber-800 text-white shadow-sm" },
-      
-      // ⬛ 블랙 벨트 (200,000 ~ )
-      { req: 200000, badge: "⬛ 블랙 벨트",    style: "bg-zinc-900 text-yellow-400 ring-1 ring-yellow-400/30 shadow-md" },
-    ];
-    
-    let currentRankIndex = 0;
-    for (let i = 0; i < ranks.length; i++) {
-      if (lp >= ranks[i].req) currentRankIndex = i;
-      else break;
-    }
-    
-    return { 
-      currentRank: ranks[currentRankIndex], 
-      nextRank: currentRankIndex < ranks.length - 1 ? ranks[currentRankIndex + 1] : null 
-    };
-  };
 
   // 내 실제 누적 포인트에 맞는 칭호와 다음 목표 세팅!
   const myRankInfo = getBeltInfo(lifetimePoints);
@@ -1565,53 +201,16 @@ export default function CounterPangPang() {
   // 🎬 배경 데이터 (경로: /assets/mp4/)
     
 // 📸 이모티콘 팩 리스트 (9종 캐릭터 x 5가지 감정)
-  const EMOTICON_PACKS = [
-    { id: "pangi", name: "팡이", price: 300, unlockLevel: 0 },
-    { id: "croc", name: "주둥이 짧은 악어", price: 500, unlockLevel: 1 },
-    { id: "elephant", name: "코가 짧은 코끼리", price: 700, unlockLevel: 2 },
-    { id: "giraffe", name: "목이 짧은 기린", price: 900, unlockLevel: 3 },
-    { id: "hippo", name: "입이 작은 하마", price: 1100, unlockLevel: 4 },
-    { id: "lion", name: "대머리 사자", price: 1300, unlockLevel: 5 },
-    { id: "ostrich", name: "다리가 짧은 타조", price: 1500, unlockLevel: 6 },
-    { id: "owl", name: "눈이 작은 부엉이", price: 1700, unlockLevel: 7 },
-    { id: "rabbit", name: "귀가 작은 토끼", price: 1900, unlockLevel: 8 },
-  ];
-
-  const EMOTIONS = [
-    { id: "joy", name: "기쁨" },
-    { id: "sad", name: "슬픔" },
-    { id: "angry", name: "화남" },
-    { id: "love", name: "사랑해" },
-    { id: "cheer", name: "화이팅" },
-  ];
 
 
   // 🌟 가로수드라이브를 기본 장착 배경으로 설정! (해변의 드라이브도 기본 보유)
   const [ownedBgs, setOwnedBgs] = useState<string[]>(["가로수드라이브.mp4", "해변의드라이브.mp4"]);
   const [equippedBg, setEquippedBg] = useState<string>("가로수드라이브.mp4");
 
-  // 🏞️ 앱 실행 시 저장된 보유/적용 배경 불러오기 (기본 보유 배경은 항상 유지)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const savedOwned = localStorage.getItem("cp_owned_bgs");
-      if (savedOwned) {
-        const parsed: string[] = JSON.parse(savedOwned);
-        setOwnedBgs(prev => Array.from(new Set([...prev, ...parsed])));
-      }
-      const savedEquipped = localStorage.getItem("cp_equipped_bg");
-      if (savedEquipped) setEquippedBg(savedEquipped);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
   const buyBackground = (file: string, price: number) => {
     if (points >= price) {
       setPoints(prev => prev - price);
-      const newOwned = Array.from(new Set([...ownedBgs, file]));
-      setOwnedBgs(newOwned);
-      localStorage.setItem("cp_owned_bgs", JSON.stringify(newOwned));
+      setOwnedBgs(prev => Array.from(new Set([...prev, file])));
       sfxClick();
       flashToast("🎉 배경 구매 완료! 관리 → 내 테마에서 적용해 보세요");
     } else {
@@ -1649,19 +248,6 @@ export default function CounterPangPang() {
 
   // 게임 상태
   const [chosenLevel, setChosenLevel] = useState(0)
-  // 화면이 처음 켜질 때, 저장된 레벨이 있으면 불러오기
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedLevel = parseInt(localStorage.getItem("pangpang_level") ?? "", 10);
-    if (!Number.isNaN(savedLevel)) setChosenLevel(savedLevel);
-  }, []);
-
-  // 레벨이 변할 때마다 영구 기억 장치에 자동으로 덮어쓰기
-  // (불러오기 완료 전에는 저장하지 않아야 초기값 0이 저장된 레벨을 덮어쓰지 않음)
-  useEffect(() => {
-    if (!loaded) return;
-    localStorage.setItem("pangpang_level", chosenLevel.toString());
-  }, [chosenLevel, loaded]);
   const [questions, setQuestions] = useState<Question[]>([])
   const [qIndex, setQIndex] = useState(0)
   const [input, setInput] = useState("")
@@ -1678,20 +264,14 @@ export default function CounterPangPang() {
   const [clearReward, setClearReward] = useState<{ base: number; kart: number; kartPct: number; bg: number; bgPct: number } | null>(null)
   const questionPtsRef = useRef(0) // 이번 판에서 문제를 맞혀 받은 포인트 합 (카트·배경 보너스 계산용)
   // 🏆 이번 달 신기록 (Lv.11·12·13 만점 최단 시간)
-  const [monthBest, setMonthBest] = useState<MonthBest>({})
+  const [monthBestData, setMonthBestData] = useState<{ month: string; best: MonthBest }>({ month: "", best: {} })
+  const monthBest: MonthBest = monthBestData.month === today().slice(0, 7) ? monthBestData.best : {} // 달이 바뀌면 새로 시작
   const [recordResult, setRecordResult] = useState<{ ms: number | null; isNew: boolean; prev: number | null } | null>(null)
   const [showRecords, setShowRecords] = useState(false) // 🏆 랭킹 창
   // 📖 게임 시작 전 설명 팝업 (관리 → 내 정보에서 보기/끄기, 기본은 보기)
   const [guideLevel, setGuideLevel] = useState<number | null>(null)
   const [showGuide, setShowGuide] = useState(true)
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    if (localStorage.getItem("cp_show_guide") === "off") setShowGuide(false)
-  }, [])
-  const changeShowGuide = (on: boolean) => {
-    setShowGuide(on)
-    try { localStorage.setItem("cp_show_guide", on ? "on" : "off") } catch { /* ignore */ }
-  }
+  const changeShowGuide = (on: boolean) => setShowGuide(on)
   const [rankTab, setRankTab] = useState<RankTab>("points")
   const playMsRef = useRef(0) // 이번 판에서 문제를 푸는 데 쓴 시간 (일시정지·정답 연출 시간 제외)
   const [finalScore, setFinalScore] = useState(0)
@@ -1722,14 +302,6 @@ export default function CounterPangPang() {
   // --- 📸 이모티콘 보유 및 구매 관련 상태 & 함수 ---
   const [ownedEmoticons, setOwnedEmoticons] = useState<string[]>([]); // 👈 서버 에러 방지를 위해 일단 빈 배열로 시작
 
-  // 앱 실행 시 저장된 이모티콘 데이터 불러오기 (화면이 켜진 후 안전하게 실행)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedEmots = localStorage.getItem("cp_owned_emoticons");
-      if (savedEmots) setOwnedEmoticons(JSON.parse(savedEmots));
-    }
-  }, []);
-
   // 📸 이모티콘 구매 함수
   const buyEmoticon = (itemId: string, price: number, itemName: string) => {
     if (points < price) {
@@ -1737,23 +309,11 @@ export default function CounterPangPang() {
       return;
     }
     sfxClick();
-    const newPoints = points - price;
-    setPoints(newPoints);
-    localStorage.setItem("cp_points", newPoints.toString());
-
-    const updated = [...ownedEmoticons, itemId];
-    setOwnedEmoticons(updated);
-    localStorage.setItem("cp_owned_emoticons", JSON.stringify(updated));
+    setPoints(prev => prev - price);
+    setOwnedEmoticons(prev => [...prev, itemId]);
 
     flashToast(`${itemName} 구매 완료! 🎉`);
   };
-  useEffect(() => {
-    const savedOwned = localStorage.getItem("cp_owned_cars");
-    if (savedOwned) setOwnedCars(JSON.parse(savedOwned));
-    const savedEquipped = localStorage.getItem("cp_equipped_car");
-    if (savedEquipped) setEquippedCar(savedEquipped);
-  }, []);
-
   // 🚗 포인트로 차량 스킨 구매하는 함수
   const buyCar = (carId: string, price: number) => {
     sfxClick();
@@ -1772,27 +332,9 @@ export default function CounterPangPang() {
     }
     
     setPoints(prev => prev - price);
-    const newOwned = [...ownedCars, carId];
-    setOwnedCars(newOwned);
-    localStorage.setItem("cp_owned_cars", JSON.stringify(newOwned));
-    flashToast("차량 구매 완료! 곧 완성될 '내 차고'에서 장착할 수 있어요 🎁");
+    setOwnedCars(prev => [...prev, carId]);
+    flashToast("차량 구매 완료! ⚙️ 관리 → 🚗 내 차고에서 장착해 보세요 🎁");
   };
-  // 앱 켤 때 오늘 날짜의 하트 구매 횟수 불러오기 (자정 24시 리셋 기준)
-  useEffect(() => {
-    const saved = localStorage.getItem("cp_heart_buy");
-    const currentToday = today();
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.date !== currentToday) {
-        setHeartBuyData({ date: currentToday, count: 0 });
-      } else {
-        setHeartBuyData(parsed);
-      }
-    } else {
-      setHeartBuyData({ date: currentToday, count: 0 });
-    }
-  }, []);
-
   // 💖 포인트로 하트 구매하는 함수 (HEART_PRICE 소모, 하루 최대 3회)
   const buyHeartWithPoints = () => {
     sfxClick();
@@ -1819,7 +361,6 @@ export default function CounterPangPang() {
 
     const newBuyData = { date: currentToday, count: currentCount + 1 };
     setHeartBuyData(newBuyData);
-    localStorage.setItem("cp_heart_buy", JSON.stringify(newBuyData));
 
     flashToast(`${HEART_PRICE}P로 하트 충전 완료! 💖 (오늘 ${newBuyData.count}/3회)`);
   };
@@ -1832,21 +373,6 @@ export default function CounterPangPang() {
     return localDate(new Date(dt.setDate(diff)));
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem("cp_attendance");
-    const currentMonday = getMonday();
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.lastMonday !== currentMonday) {
-        setAttData({ date: "", weekCount: 0, lastMonday: currentMonday });
-      } else {
-        setAttData(parsed);
-      }
-    } else {
-      setAttData({ date: "", weekCount: 0, lastMonday: currentMonday });
-    }
-  }, []);
-
   const handleAttendance = () => {
     sfxClick();
     const todayStr = today();
@@ -1855,7 +381,9 @@ export default function CounterPangPang() {
       return;
     }
 
-    const newCount = attData.weekCount + 1;
+    // 이번 주(월요일 기준)가 아니면 0회부터 (앱을 켜 둔 채 주가 바뀌거나, 처음 출석하는 경우)
+    const monday = getMonday();
+    const newCount = (attData.lastMonday === monday ? attData.weekCount : 0) + 1;
     let bonus = 0;
     if (newCount === 3) bonus = 5;
     else if (newCount === 5) bonus = 10;
@@ -1864,9 +392,8 @@ export default function CounterPangPang() {
     const totalReward = 5 + bonus;
     setPoints(p => p + totalReward);
     
-    const newData = { date: todayStr, weekCount: newCount, lastMonday: attData.lastMonday };
+    const newData = { date: todayStr, weekCount: newCount, lastMonday: monday };
     setAttData(newData);
-    localStorage.setItem("cp_attendance", JSON.stringify(newData));
 
     if (bonus > 0) {
       flashToast(`주 ${newCount}회 출석 달성! 보너스 포함 ${totalReward}P 획득 🎉`);
@@ -1881,21 +408,8 @@ export default function CounterPangPang() {
   const [previewItem, setPreviewItem] = useState<{title: string, file: string, price: number} | null>(null);
   
   // --- 💌 초대하기 및 일일 보상 시스템 ---
-  const [inviteCount, setInviteCount] = useState(0);
-
-  // 날짜가 바뀌면 초대 횟수 자동 초기화
-  useEffect(() => {
-    const todayStr = new Date().toLocaleDateString();
-    const savedInvite = localStorage.getItem('cp_invite');
-    if (savedInvite) {
-      const { date, count } = JSON.parse(savedInvite);
-      if (date === todayStr) {
-        setInviteCount(count);
-      } else {
-        setInviteCount(0); 
-      }
-    }
-  }, []);
+  const [invite, setInvite] = useState({ date: "", count: 0 });
+  const inviteCount = invite.date === today() ? invite.count : 0; // 날짜가 바뀌면 0부터
 
   // 공유 버튼 클릭 시 실행될 함수
   // 공유 버튼 클릭 시 실행될 함수
@@ -1924,10 +438,9 @@ export default function CounterPangPang() {
       // 공유 또는 복사 성공 시 보상 지급
       sfxClick();
       const newCount = inviteCount + 1;
-      setInviteCount(newCount);
+      setInvite({ date: today(), count: newCount });
       setPoints(prev => prev + 30);
       setCash(c => c + ECONOMY.cashPerInvite);
-      localStorage.setItem('cp_invite', JSON.stringify({ date: new Date().toLocaleDateString(), count: newCount }));
       
       // 알림이 겹치지 않게 살짝 시간차를 두고 보상 알림 띄우기
       setTimeout(() => flashToast(`초대 성공! 30P + 캐시 ${ECONOMY.cashPerInvite}C 지급 🎁 (오늘 ${newCount}/5회)`), 1000);
@@ -1981,6 +494,24 @@ export default function CounterPangPang() {
           setMonthlyDate(d.monthlyDate ?? currentMonth);
         }
 
+        // ── 한 묶음에 들어 있는 나머지 항목들 (ver5)
+        if (Array.isArray(d.ownedCars) && d.ownedCars.length) setOwnedCars(d.ownedCars)
+        if (d.equippedCar) setEquippedCar(d.equippedCar)
+        if (Array.isArray(d.ownedBgs)) setOwnedBgs((prev) => Array.from(new Set([...prev, ...(d.ownedBgs ?? [])]))) // 기본 배경은 항상 유지
+        if (d.equippedBg) setEquippedBg(d.equippedBg)
+        if (Array.isArray(d.ownedEmoticons)) setOwnedEmoticons(d.ownedEmoticons)
+        // 하트 구매 횟수는 날짜가 바뀌면 0부터
+        setHeartBuyData(d.heartBuy && d.heartBuy.date === today() ? d.heartBuy : { date: today(), count: 0 })
+        // 출석은 주(월요일)가 바뀌면 새로 시작
+        const monday = getMonday()
+        setAttData(d.attendance && d.attendance.lastMonday === monday ? d.attendance : { date: "", weekCount: 0, lastMonday: monday })
+        if (d.invite) setInvite(d.invite)
+        if (d.daily && d.daily.date === today()) setDaily(d.daily)
+        if (d.monthBest) setMonthBestData(d.monthBest)
+        if (d.stats && d.stats.types && d.stats.days && d.stats.games) setLearnStats(d.stats)
+        if (typeof d.showGuide === "boolean") setShowGuide(d.showGuide)
+        if (typeof d.lastLevel === "number") setChosenLevel(d.lastLevel)
+
         if (d.nickname) setScreen("INTRO")
       }
     } catch {
@@ -1989,31 +520,12 @@ export default function CounterPangPang() {
     setLoaded(true)
   }, [])
 
-  // 🌟 모든 데이터 영구 저장 엔진 추가
-  useEffect(() => {
-    if (!loaded) return;
-    const data: SaveData = {
-      ver: SAVE_VERSION,
-      nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cash, cashExchangeMonth, premium,
-      lifetimePoints, monthlyPoints, monthlyDate
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth, premium]);
 
  // 📱 스마트폰 뒤로가기(하드웨어) 완벽 동기화 로직 (대표님 피드백 반영 완결판)
   const [quitConfirm, setQuitConfirm] = useState(false); // 게임 중 뒤로가기 → "그만둘까요?" 확인창
   const [showTutorial, setShowTutorial] = useState(false); // 🎓 Lv.0 튜토리얼(게임 방법)
   // 🔥 오늘의 도전: 매일 열린 레벨 중 하나를 골라, 오늘 처음 통과하면 통과 보너스 2배
   const [daily, setDaily] = useState<{ date: string; level: number; done: boolean }>({ date: "", level: 0, done: false });
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = JSON.parse(localStorage.getItem("cp_daily") ?? "null");
-      if (saved && saved.date === today()) setDaily(saved);
-    } catch {
-      /* ignore */
-    }
-  }, []);
   useEffect(() => {
     // 오늘 도전 레벨이 아직 없으면 정함 (날짜를 씨앗으로 써서 하루 동안 같은 레벨). Lv.1이 열려야 시작
     if (!loaded || unlocked < 1) return;
@@ -2023,27 +535,27 @@ export default function CounterPangPang() {
     const maxLv = Math.min(unlocked, MAX_LEVEL);
     const next = { date: day, level: 1 + (seed % maxLv), done: false };
     setDaily(next);
-    localStorage.setItem("cp_daily", JSON.stringify(next));
   }, [loaded, unlocked, daily.date]);
   const dailyActive = daily.date === today() && daily.level >= 1;
 
   // 📊 학습 기록 (부모님 리포트용)
   const [learnStats, setLearnStats] = useState<LearnStats>(EMPTY_STATS);
-  const [statsLoaded, setStatsLoaded] = useState(false); // 불러오기 전엔 저장하지 않음 (빈 기록이 덮어쓰지 않도록)
+
+  // 💾 내 정보 한 묶음 저장: 불러오기가 끝난 뒤, 무엇이든 바뀌면 묶음 전체를 저장 (서버를 붙이면 이 묶음을 올리면 됨)
+  // (모든 상태를 선언한 뒤에 두어야 함)
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(STATS_KEY) ?? "null");
-      if (saved && saved.types && saved.days && saved.games) setLearnStats(saved);
-    } catch {
-      /* ignore */
-    }
-    setStatsLoaded(true);
-  }, []);
-  useEffect(() => {
-    if (!statsLoaded) return;
-    localStorage.setItem(STATS_KEY, JSON.stringify(learnStats));
-  }, [learnStats, statsLoaded]);
+    if (!loaded) return;
+    const data: SaveData = {
+      ver: SAVE_VERSION,
+      nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cash, cashExchangeMonth, premium,
+      lifetimePoints, monthlyPoints, monthlyDate,
+      ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons,
+      heartBuy: heartBuyData, attendance: attData, invite, daily, monthBest: monthBestData,
+      stats: learnStats, showGuide, lastLevel: chosenLevel,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [loaded, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth, premium,
+      ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons, heartBuyData, attData, invite, daily, monthBestData, learnStats, showGuide, chosenLevel]);
   const recordAnswer = (logicLevel: number, isCorrect: boolean) => {
     const day = today();
     setLearnStats((st) => {
@@ -2237,7 +749,6 @@ export default function CounterPangPang() {
     setTimeLeft(q.timer)
   }, [screen, qIndex, questions])
 
-  useEffect(() => { setMonthBest(loadMonthBest()) }, [])
   // ⏱ 문제를 풀 수 있는 동안(잠금·일시정지 아닐 때)만 시간을 더함
   useEffect(() => {
     if (screen !== "GAME" || locked || isPaused) return
@@ -2276,7 +787,6 @@ export default function CounterPangPang() {
         if (isDaily) {
           const doneDaily = { ...daily, done: true };
           setDaily(doneDaily);
-          localStorage.setItem("cp_daily", JSON.stringify(doneDaily));
           setTimeout(() => flashToast(`🔥 오늘의 도전 성공! 통과 보너스 2배 +${bonus * 2}P`), 300);
         }
       }
@@ -2285,14 +795,13 @@ export default function CounterPangPang() {
     // 🏆 Lv.11·12·13 만점이면 이번 달 신기록 확인
     if (RECORD_LEVELS.includes(chosenLevel)) {
       const ms = Math.round(playMsRef.current)
-      const best = loadMonthBest()
+      const best = monthBest
       const prev = best[chosenLevel] ?? null
       if (score === TOTAL_Q) {
         const isNew = prev === null || ms < prev
         if (isNew) {
           const nextBest = { ...best, [chosenLevel]: ms }
-          localStorage.setItem("cp_month_best", JSON.stringify({ month: today().slice(0, 7), best: nextBest }))
-          setMonthBest(nextBest)
+          setMonthBestData({ month: today().slice(0, 7), best: nextBest })
         }
         setRecordResult({ ms, isNew, prev })
       } else {
@@ -2302,7 +811,7 @@ export default function CounterPangPang() {
       setRecordResult(null)
     }
     setScreen("RESULT")
-  }, [chosenLevel, daily, equippedCar, equippedBg])
+  }, [chosenLevel, daily, equippedCar, equippedBg, monthBestData])
 
   const advance = useCallback(() => {
     if (screenRef.current !== "GAME") return // 게임 도중 나갔으면 진행 중단
@@ -3722,7 +2231,6 @@ export default function CounterPangPang() {
                               onClick={() => {
                                 sfxClick();
                                 setEquippedCar(item.id);
-                                localStorage.setItem("cp_equipped_car", item.id);
                                 flashToast(`${item.name} 장착 완료! 💨`);
                               }} 
                               className={`w-full py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600 active:scale-95"}`}
@@ -3760,7 +2268,6 @@ export default function CounterPangPang() {
                               onClick={() => {
                                 sfxClick();
                                 setEquippedBg(item.file);
-                                localStorage.setItem("cp_equipped_bg", item.file);
                                 flashToast(`${item.name} 테마가 적용되었습니다! 🏞️`);
                               }} 
                               className={`w-full py-1.5 rounded-lg text-xs font-bold ${isSelected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600 active:scale-95"}`}
