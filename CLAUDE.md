@@ -11,10 +11,16 @@
 - 사용자가 직접 코드를 붙여넣고 싶다고 하면, 수정 위치(주석 구역)와 교체할 코드만 부분적으로 제공합니다.
 
 ## 프로젝트 핵심
-- Next.js + React(`"use client"`) + Tailwind CSS, Vercel 배포. 핵심 로직은 `components/counter-pang-pang.tsx` 한 파일.
+- Next.js + React(`"use client"`) + Tailwind CSS, Vercel 배포.
+- 파일 구조
+  - `components/counter-pang-pang.tsx`: 메인 화면(로비·게임·결과·상점·관리)과 게임 진행 상태
+  - `lib/game/`: 화면 없는 게임 데이터·규칙 — `constants`(레벨 이름·시간·경제 수치), `questions`(문제 만들기), `items`(카트·배경·이모티콘 가격과 보너스), `belts`(띠 기준), `records`(신기록·랭킹), `save`(저장 형식·예전 저장값 변환), `stats`, `utils`, `types`
+  - `components/game/`: 작은 화면 조각 — `Plate`(번호판), `Numpad`, `GameImage`, `GameGuide`(레벨별 설명 팝업), `Tutorial`(게임 방법), `ParentReport`, `Promotion`(승급 축하)
+- 저장: 내 정보는 모두 localStorage `counter-pang-pang-v1` **한 묶음**(`SaveData`, 현재 ver5)에 저장. 새 저장 항목은 `SaveData`에 추가하고 메인 화면의 불러오기·저장 한 곳에서 처리. 레벨 번호처럼 저장 의미가 바뀌면 `SAVE_VERSION`을 올리고 `migrateSave`에 변환 규칙 추가.
 - 모바일 세로 화면 최적화(`max-w-[440px]`).
 - SSR 안전성 필수: `localStorage`, `navigator` 등 브라우저 API는 `useEffect` 안에서, `typeof window !== "undefined"` 방어와 함께 사용.
 - 푸시 전 `next build`로 빌드 통과를 확인합니다. (`next.config.mjs`가 타입 에러를 무시하므로 `npx tsc --noEmit`도 함께 확인)
+- 자동 테스트는 `tests/` (방법은 `tests/README.md`): `npm test`(문제 만들기·저장값 변환), 브라우저 테스트 `features.test.js`(기능 점검)·`games.test.js`(자동 게임 100판). 큰 수정 뒤에는 브라우저 테스트까지 돌립니다.
 
 ## 수익·보상 구조 결정 사항
 - **포인트(P)와 캐시(C)를 분리**합니다.
