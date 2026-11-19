@@ -96,6 +96,16 @@ export function useCloudAccount(opts: {
     }
   }, [])
 
+  // 기다리는 저장이 있으면 지금 바로 올리기 (예: 랭킹을 열 때 내 최신 기록이 반영되게)
+  const flushNow = useCallback(async () => {
+    if (!linkedRef.current) return
+    if (pushTimer.current) {
+      clearTimeout(pushTimer.current)
+      pushTimer.current = null
+    }
+    await pushNow()
+  }, [pushNow])
+
   // 화면이 저장할 때마다 불러 줌 → 3초 뒤 서버에 올림
   const notifySaved = useCallback(() => {
     if (!linkedRef.current) return
@@ -368,7 +378,7 @@ export function useCloudAccount(opts: {
 
   return {
     kakaoName, linkedPopup, closeLinkedPopup: () => setLinkedPopup(null),
-    authReady, needsProfile, adoptNewProfile, leaveKakaoStart,
+    flushNow, authReady, needsProfile, adoptNewProfile, leaveKakaoStart,
     user, linked: !!user && !conflict && !needsProfile, conflict, busy, lastSyncedAt, guardian,
     notifySaved, linkKakao, linkWithGuardian, logout, resolveConflict, deleteServerAccount, revokeGuardian,
   }
