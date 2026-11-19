@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { getSupabase, markSessionAlive } from "@/lib/supabase"
 import {
+  INVITE_REF_KEY, claimInvite, fetchInviteCode, fetchInviteCount, fetchMyCash,
   deleteCloudAccount, fetchActiveConsent, fetchCloudSave, insertTestConsent, pushCloudSave, revokeConsent, summarizeSave,
   type GuardianConsent, type GuardianConsentItems, type GuardianInfo, type SaveSummary,
 } from "@/lib/game/cloud"
@@ -71,6 +72,26 @@ export function useCloudAccount(opts: {
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const sb = (): SupabaseClient | null => getSupabase()
+
+  // 💰 캐시·친구 초대 (서버 통장 기준. 연결한 사람만)
+  const [linkedUid, setLinkedUid] = useState<string | null>(null)
+  const [cash, setCash] = useState<number | null>(null)
+  const [inviteJoined, setInviteJoined] = useState<number | null>(null) // 내가 초대해서 가입한 친구 수
+  const markLinked = (uid: string | null) => {
+    linkedRef.current = uid
+    setLinkedUid(uid)
+  }
+  const refreshWallet = useCallback(async () => {
+    const client = sb()
+    if (!client || !linkedRef.current) return
+    try {
+      const [c, n] = await Promise.all([fetchMyCash(client), fetchInviteCount(client)])
+      setCash(c)
+      setInviteJoined(n)
+    } catch {
+      /* 다음에 다시 */
+    }
+  }, [])
 
   // 서버 기록으로 바꾸고 새로고침
   const applyServerSave = useCallback(
@@ -167,13 +188,13 @@ export function useCloudAccount(opts: {
           applyServerSave(row.save, u.id, "다른 기기에서 한 최신 기록을 불러왔어요 ☁️")
           return
         }
-        linkedRef.current = u.id
+        markLinked(u.id)
         void pushNow()
         return
       }
       if (!row) {
         // 서버에 기록이 없음 → 이 휴대폰 기록을 연결 (저장되면 자동으로 올라감)
-        linkedRef.current = u.id
+        markLinked(u.id)
         setCloudUserId(u.id)
         setLinkedPopup("이 휴대폰의 기록을 서버에 보관하기 시작했어요.")
         return
@@ -191,7 +212,7 @@ export function useCloudAccount(opts: {
   // 처음 오신 분(카카오로 시작): 화면에서 닉네임·태어난 해를 정한 뒤 불러 줌 → 이 새 기록으로 연결 (만 14세 이상만)
   const adoptNewProfile = useCallback(() => {
     if (!user) return
-    linkedRef.current = user.id
+    markLinked(user.id)
     setNeedsProfile(false)
     setCloudUserId(user.id)
     setLinkedPopup("새 기록을 만들었어요. 이제부터 서버에 자동으로 보관돼요.")
@@ -201,11 +222,56 @@ export function useCloudAccount(opts: {
   const leaveKakaoStart = useCallback(async () => {
     const client = sb()
     setNeedsProfile(false)
-    linkedRef.current = null
+    markLinked(null)
     handledRef.current = null
     setUser(null)
     if (client) await client.auth.signOut({ scope: "local" }).catch(() => {})
   }, [])
+
+  // 내 초대 코드 (연결한 사람만, 실패하면 null)
+  const inviteCodeRef = useRef<{ uid: string; code: string } | null>(null)
+  const getInviteCode = useCallback(async (): Promise<string | null> => {
+    const client = sb()
+    const uid = linkedRef.current
+    if (!client || !uid) return null
+    if (inviteCodeRef.current?.uid === uid) return inviteCodeRef.current.code
+    try {
+      const code = await fetchInviteCode(client)
+      inviteCodeRef.current = { uid, code }
+      return code
+    } catch {
+      return null
+    }
+  }, [])
+
+  // 연결되면: 초대 링크로 들어온 사람이면 초대 확인 → 캐시·초대 수 불러오기
+  useEffect(() => {
+    if (!linkedUid) {
+      setCash(null)
+      setInviteJoined(null)
+      return
+    }
+    const client = sb()
+    if (!client) return
+    ;(async () => {
+      let ref: { code: string; at: number } | null = null
+      try {
+        ref = JSON.parse(localStorage.getItem(INVITE_REF_KEY) ?? "null")
+      } catch {
+        /* ignore */
+      }
+      if (ref?.code) {
+        try {
+          const r = await claimInvite(client, ref.code)
+          localStorage.removeItem(INVITE_REF_KEY)
+          if (r === "ok") setTimeout(() => toast("친구 초대로 가입했어요! 초대해 준 친구에게 5C가 선물됐어요 🎁"), 1200)
+        } catch {
+          /* 인터넷 문제면 다음에 다시 확인 (코드는 남겨 둠) */
+        }
+      }
+      await refreshWallet()
+    })()
+  }, [linkedUid, refreshWallet, toast])
 
   // 로그인 상태 지켜보기
   useEffect(() => {
@@ -223,6 +289,13 @@ export function useCloudAccount(opts: {
     }
     // 카카오에서 돌아온 주소 정리 (?code=..., 취소했으면 ?error=...)
     const url = new URL(window.location.href)
+    // 💌 초대 링크(?ref=코드)로 들어왔으면 코드를 기억해 둠 → 카카오로 가입(연결)하면 확인
+    const refCode = url.searchParams.get("ref")
+    if (refCode) {
+      if (/^[A-Za-z0-9]{8}$/.test(refCode)) localStorage.setItem(INVITE_REF_KEY, JSON.stringify({ code: refCode.toUpperCase(), at: Date.now() }))
+      url.searchParams.delete("ref")
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash)
+    }
     if (url.searchParams.get("error")) {
       localStorage.removeItem(PENDING_KEY)
       toast("카카오 연결을 취소했어요")
@@ -244,7 +317,7 @@ export function useCloudAccount(opts: {
             window.history.replaceState(window.history.state, "", u.pathname + u.search + u.hash)
           }
         } else {
-          linkedRef.current = null
+          markLinked(null)
           handledRef.current = null
           setGuardian(null)
           setNeedsProfile(false)
@@ -300,11 +373,11 @@ export function useCloudAccount(opts: {
     if (!client || !user) return false
     try {
       if (pushTimer.current) clearTimeout(pushTimer.current)
-      linkedRef.current = null
+      markLinked(null)
       await revokeConsent(client, user.id, true)
       await client.auth.signOut({ scope: "local" })
     } catch {
-      linkedRef.current = user.id
+      markLinked(user.id)
       toast("동의를 취소하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요 📶")
       return false
     }
@@ -312,7 +385,7 @@ export function useCloudAccount(opts: {
     setGuardian(null)
     setUser(null)
     setCloudUserId(undefined)
-    toast("보호자 동의를 취소했어요. 서버 기록은 지웠고, 이 휴대폰의 기록과 캐시는 그대로예요")
+    toast("보호자 동의를 취소했어요. 서버 게임 기록은 지웠고, 휴대폰 기록과 모은 캐시는 남아 있어요")
     return true
   }, [setCloudUserId, toast, user])
 
@@ -321,7 +394,7 @@ export function useCloudAccount(opts: {
     if (!client) return
     await pushNow()
     await client.auth.signOut()
-    linkedRef.current = null
+    markLinked(null)
     handledRef.current = null
     setUser(null)
     toast("로그아웃했어요. 이 휴대폰의 기록은 그대로 남아 있어요")
@@ -349,7 +422,7 @@ export function useCloudAccount(opts: {
         toast("계정 연결을 취소했어요")
         return
       }
-      linkedRef.current = u.id
+      markLinked(u.id)
       setCloudUserId(u.id) // 저장되면서 서버 기록을 이 휴대폰 기록으로 덮어씀
       setLinkedPopup("이 휴대폰의 기록으로 연결했어요. 서버 기록은 이 기록으로 바뀌어요.")
     },
@@ -362,7 +435,7 @@ export function useCloudAccount(opts: {
     if (!client || !user) return true
     try {
       await deleteCloudAccount(client)
-      linkedRef.current = null
+      markLinked(null)
       await client.auth.signOut({ scope: "local" })
       return true
     } catch {
@@ -378,7 +451,7 @@ export function useCloudAccount(opts: {
 
   return {
     kakaoName, linkedPopup, closeLinkedPopup: () => setLinkedPopup(null),
-    flushNow, authReady, needsProfile, adoptNewProfile, leaveKakaoStart,
+    cash, inviteJoined, refreshWallet, getInviteCode, flushNow, authReady, needsProfile, adoptNewProfile, leaveKakaoStart,
     user, linked: !!user && !conflict && !needsProfile, conflict, busy, lastSyncedAt, guardian,
     notifySaved, linkKakao, linkWithGuardian, logout, resolveConflict, deleteServerAccount, revokeGuardian,
   }

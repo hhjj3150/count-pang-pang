@@ -138,3 +138,29 @@ export async function fetchRanking(sb: SupabaseClient, tab: string, topN = 10): 
   if (error) throw error
   return (data ?? []) as ServerRankRow[]
 }
+
+// 💰 캐시 통장 (supabase/04_cash.sql) — 캐시는 서버 통장에만 있음. 앱은 읽기만
+export async function fetchMyCash(sb: SupabaseClient): Promise<number> {
+  const { data, error } = await sb.rpc("get_my_cash")
+  if (error) throw error
+  return Number(data ?? 0)
+}
+
+// 💌 친구 초대: 내 초대 코드 / 초대해서 가입한 친구 수 / 초대받아 가입했을 때 확인
+export async function fetchInviteCode(sb: SupabaseClient): Promise<string> {
+  const { data, error } = await sb.rpc("get_my_invite_code")
+  if (error) throw error
+  return String(data)
+}
+export async function fetchInviteCount(sb: SupabaseClient): Promise<number> {
+  const { data, error } = await sb.rpc("get_my_invite_count")
+  if (error) throw error
+  return Number(data ?? 0)
+}
+export type ClaimResult = "ok" | "not_kakao" | "bad_code" | "self" | "already" | "not_new"
+export async function claimInvite(sb: SupabaseClient, code: string): Promise<ClaimResult> {
+  const { data, error } = await sb.rpc("claim_invite", { invite_code: code })
+  if (error) throw error
+  return data as ClaimResult
+}
+export const INVITE_REF_KEY = "cp_ref" // 초대 링크(?ref=코드)로 들어온 사람의 초대 코드 (localStorage)
