@@ -28,6 +28,7 @@ export interface SaveData {
   heartBuy?: { date: string; count: number } // 💖 오늘 상점에서 하트를 산 횟수
   attendance?: { date: string; weekCount: number; lastMonday: string } // 📅 출석 (주마다 새로 시작)
   invite?: { date: string; count: number } // 💌 오늘 친구 초대 횟수
+  inviteRewarded?: number // 💌 초대해서 가입한 친구 중 포인트 보상을 이미 받은 수 (캐시를 끈 동안)
   daily?: { date: string; level: number; done: boolean } // 🔥 오늘의 도전
   monthBest?: { month: string; best: MonthBest } // 🏆 이번 달 신기록
   stats?: LearnStats     // 📊 학습 기록 (부모님 리포트)

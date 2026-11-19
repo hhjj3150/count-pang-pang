@@ -2,13 +2,14 @@
 import React, { useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { BELT_COLORS } from "@/lib/game/belts"
-import { ECONOMY, HEART_CAP } from "@/lib/game/constants"
+import { CASH_ENABLED, ECONOMY, HEART_CAP } from "@/lib/game/constants"
 import { HEART_PRICE, KARTS } from "@/lib/game/items"
 import { RANK_TABS } from "@/lib/game/records"
 import { lightImg } from "@/lib/game/utils"
 import { GameImage } from "./GameImage"
 
-export const TUTORIAL_PAGES = ["게임 시작", "하트", "포인트 · 캐시", "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 · 배경 보너스", "띠 승급", "관리 메뉴"]
+const POINT_PAGE = CASH_ENABLED ? "포인트 · 캐시" : "포인트"
+export const TUTORIAL_PAGES = ["게임 시작", "하트", POINT_PAGE, "오늘의 도전", "랭킹", "출석 · 친구 초대", "포인트 상점", "카트 · 배경 보너스", "띠 승급", "관리 메뉴"]
 
 export function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void; onSkip: () => void; playClick: () => void }) {
   const [page, setPage] = useState(0)
@@ -68,7 +69,7 @@ export function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void
             </Bubble>
           </>
         )
-      case "포인트 · 캐시":
+      case POINT_PAGE:
         return (
           <>
             <div className="space-y-2">
@@ -76,7 +77,7 @@ export function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void
                 { icon: "🪙", name: "보유 포인트", use: "상점에서 아이템을 살 때 써요", tone: "bg-blue-50 text-blue-700 ring-blue-100" },
                 { icon: "📅", name: "이번 달 포인트", use: "이번 달에 모은 포인트 · 월간 순위 (준비 중)", tone: "bg-amber-50 text-amber-700 ring-amber-100" },
                 { icon: "🥋", name: "누적 포인트", use: "지금까지 모은 전체 포인트 · 띠 승급", tone: "bg-slate-50 text-slate-700 ring-slate-200" },
-                { icon: "💵", name: "캐시", use: "광고 보기·친구 초대로 모아요 · 기프티콘 교환 (준비 중)", tone: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
+                ...(CASH_ENABLED ? [{ icon: "💵", name: "캐시", use: "광고 보기·친구 초대로 모아요 · 기프티콘 교환 (준비 중)", tone: "bg-emerald-50 text-emerald-700 ring-emerald-100" }] : []),
               ].map((r) => (
                 <div key={r.name} className={cn("flex items-center gap-3 rounded-2xl px-3 py-1.5 ring-1", r.tone)}>
                   <span className="text-2xl">{r.icon}</span>
@@ -90,8 +91,8 @@ export function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void
             <Bubble>
               <div className="text-sm">
                 <p>🪙 <b>포인트</b>: 문제 맞히기(10P, 피버 15P) · 레벨 통과 · 출석 · 친구 초대</p>
-                <p className="mt-1">💵 <b>캐시</b>: 광고 보고 하트 충전 · 친구 초대</p>
-                <p className="mt-1 text-xs text-zinc-500">포인트를 써도 누적 포인트는 줄지 않아요. 만 14세 미만은 보호자 동의 후 기프티콘 교환 (준비 중) · 로비의 포인트 칸을 누르면 한눈에 보여요</p>
+                {CASH_ENABLED && <p className="mt-1">💵 <b>캐시</b>: 광고 보고 하트 충전 · 친구 초대</p>}
+                <p className="mt-1 text-xs text-zinc-500">포인트를 써도 누적 포인트는 줄지 않아요.{CASH_ENABLED ? " 만 14세 미만은 보호자 동의 후 기프티콘 교환 (준비 중)" : ""} · 로비의 포인트 칸을 누르면 한눈에 보여요</p>
               </div>
             </Bubble>
           </>
@@ -147,7 +148,8 @@ export function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void
               <p className="mt-1">한 주에 <b>3일·5일·7일</b> 출석하면 보너스 <b>+5P · +10P · +20P</b>를 더 받아요. (매주 월요일에 새로 시작)</p>
             </Bubble>
             <Bubble>
-              <p>💌 <b>친구 초대</b>: 친구에게 게임을 알려 주면 <b>+30P</b>와 <b>캐시 +{ECONOMY.cashPerInvite}C</b> (하루 5번까지)</p>
+              <p>💌 <b>친구 초대</b>: 친구에게 게임을 알려 주면 <b>+30P</b> (하루 5번까지)</p>
+              <p className="mt-1">카카오 연결한 사람의 초대 링크로 친구가 <b>카카오로 가입</b>하면 {CASH_ENABLED ? <b>캐시 +{ECONOMY.cashPerInvite}C</b> : <b>+{ECONOMY.pointsPerInviteJoin}P</b>}를 더 받아요.</p>
             </Bubble>
           </>
         )
@@ -163,7 +165,7 @@ export function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void
             <Bubble>
               <p>🛒 로비의 <b>포인트 상점</b>에서 보유 포인트로 아이템을 사요.</p>
               <p className="mt-2">⚙️ 산 카트와 배경은 <b>관리 → 내 차고 · 내 테마</b>에서 장착해요.</p>
-              <p className="mt-2">🎁 <b>상품권</b> 탭: 모은 캐시로 기프티콘을 바꾸는 곳이에요 (준비 중).</p>
+              {CASH_ENABLED && <p className="mt-2">🎁 <b>상품권</b> 탭: 모은 캐시로 기프티콘을 바꾸는 곳이에요 (준비 중).</p>}
             </Bubble>
           </>
         )

@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { getBeltInfo } from "@/lib/game/belts"
-import { BIRTH_YEARS, ECONOMY, HEART_CAP, LEVEL_ART, LEVEL_ART_FILTER, LEVEL_DESC, LEVEL_NAMES, MAX_LEVEL, PASS_LINE, TOTAL_Q, adRequestConfig, isChildUser } from "@/lib/game/constants"
+import { BIRTH_YEARS, CASH_ENABLED, ECONOMY, HEART_CAP, LEVEL_ART, LEVEL_ART_FILTER, LEVEL_DESC, LEVEL_NAMES, MAX_LEVEL, PASS_LINE, TOTAL_Q, adRequestConfig, isChildUser } from "@/lib/game/constants"
 import { BACKGROUNDS, EMOTICON_PACKS, EMOTIONS, HEART_PRICE, KARTS, bgBonus, kartBonus, kartNeedLabel } from "@/lib/game/items"
 import { buildGame, exampleText } from "@/lib/game/questions"
 import { MonthBest, RANK_SIZE, RANK_TABS, RECORD_LEVELS, RankTab, buildRanking, fmtRecord, monthBestTotal } from "@/lib/game/records"
@@ -419,6 +419,7 @@ export default function CounterPangPang() {
   
   // --- 💌 초대하기 및 일일 보상 시스템 ---
   const [invite, setInvite] = useState({ date: "", count: 0 });
+  const [inviteRewarded, setInviteRewarded] = useState(0); // 초대해서 가입한 친구 중 포인트 보상을 받은 수
   const inviteCount = invite.date === today() ? invite.count : 0; // 날짜가 바뀌면 0부터
 
   // 공유 버튼 클릭 시 실행될 함수
@@ -454,9 +455,10 @@ export default function CounterPangPang() {
       setPoints(prev => prev + 30);
 
       // 알림이 겹치지 않게 살짝 시간차를 두고 보상 알림 띄우기 (캐시는 친구가 실제로 카카오 가입했을 때 서버가 지급)
+      const joinReward = CASH_ENABLED ? `캐시 +${ECONOMY.cashPerInvite}C` : `+${ECONOMY.pointsPerInviteJoin}P`;
       setTimeout(() => flashToast(code
-        ? `초대 링크를 보냈어요! 30P 지급 🎁 (오늘 ${newCount}/5회) · 친구가 이 링크로 카카오 가입하면 캐시 +${ECONOMY.cashPerInvite}C`
-        : `초대 링크를 보냈어요! 30P 지급 🎁 (오늘 ${newCount}/5회) · 카카오 연결하면 친구 가입마다 캐시가 쌓여요`), 1000);
+        ? `초대 링크를 보냈어요! 30P 지급 🎁 (오늘 ${newCount}/5회) · 친구가 이 링크로 카카오 가입하면 ${joinReward}`
+        : `초대 링크를 보냈어요! 30P 지급 🎁 (오늘 ${newCount}/5회) · 카카오 연결하면 친구가 가입할 때마다 ${joinReward}`), 1000);
     } catch (error) {
       // 사용자가 공유 창을 닫은 경우는 조용히 넘어가고, 공유·복사가 막힌 환경이면 안내
       if ((error as Error)?.name === "AbortError") return;
@@ -518,6 +520,7 @@ export default function CounterPangPang() {
         const monday = getMonday()
         setAttData(d.attendance && d.attendance.lastMonday === monday ? d.attendance : { date: "", weekCount: 0, lastMonday: monday })
         if (d.invite) setInvite(d.invite)
+        if (typeof d.inviteRewarded === "number") setInviteRewarded(d.inviteRewarded)
         if (d.daily && d.daily.date === today()) setDaily(d.daily)
         if (d.monthBest) setMonthBestData(d.monthBest)
         if (d.stats && d.stats.types && d.stats.days && d.stats.games) setLearnStats(d.stats)
@@ -564,7 +567,7 @@ export default function CounterPangPang() {
       nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cashExchangeMonth, premium,
       lifetimePoints, monthlyPoints, monthlyDate,
       ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons,
-      heartBuy: heartBuyData, attendance: attData, invite, daily, monthBest: monthBestData,
+      heartBuy: heartBuyData, attendance: attData, invite, inviteRewarded, daily, monthBest: monthBestData,
       stats: learnStats, showGuide, lastLevel: chosenLevel, cloudUserId,
     };
     // 내용이 실제로 바뀌었을 때만 저장 시각을 새로 (앱을 켜기만 해도 '최신 기록'이 되지 않게)
@@ -575,7 +578,7 @@ export default function CounterPangPang() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, savedAt: savedAtRef.current || undefined }));
     if (changed) cloudNotifyRef.current();
   }, [loaded, cloudUserId, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cashExchangeMonth, premium,
-      ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons, heartBuyData, attData, invite, daily, monthBestData, learnStats, showGuide, chosenLevel]);
+      ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons, heartBuyData, attData, invite, inviteRewarded, daily, monthBestData, learnStats, showGuide, chosenLevel]);
   const recordAnswer = (logicLevel: number, isCorrect: boolean) => {
     const day = today();
     setLearnStats((st) => {
@@ -774,6 +777,20 @@ export default function CounterPangPang() {
   const canLinkAccount = birthYear !== null && !isChild
   // 💰 캐시는 서버 통장 잔액만 (손님은 캐시가 없음 — 적립·저장 안 함)
   const cash = cloud.linked ? cloud.cash ?? 0 : 0
+  // 💌 캐시를 끈 동안: 내 초대 링크로 카카오 가입한 친구가 늘었으면 1명당 포인트 지급 (서버의 초대 기록 기준)
+  useEffect(() => {
+    if (CASH_ENABLED || !cloud.linked || cloud.inviteJoined === null) return
+    const n = cloud.inviteJoined - inviteRewarded
+    if (n <= 0) return
+    setInviteRewarded(cloud.inviteJoined)
+    setPoints((p) => p + n * ECONOMY.pointsPerInviteJoin)
+    setTimeout(() => flashToast(`💌 내 초대로 친구 ${n}명이 가입했어요! +${(n * ECONOMY.pointsPerInviteJoin).toLocaleString()}P 🎉`), 800)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloud.linked, cloud.inviteJoined])
+  useEffect(() => {
+    if (showMyPage && cloud.linked) void cloud.refreshWallet() // 관리 화면을 열면 초대 가입 수 다시 확인
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMyPage])
   useEffect(() => {
     if (shopCategory === "gift" && cloud.linked) void cloud.refreshWallet() // 상품권 탭을 열면 최신 잔액
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -835,7 +852,7 @@ export default function CounterPangPang() {
     await cloud.leaveKakaoStart()
     finishProfile(nickInput.trim(), Number(birthInput))
     if (mode === "guardian") setShowGuardianLink(true)
-    else flashToast("손님으로 시작해요! 기록은 이 휴대폰에만 저장되고, 보호자와 연결하기 전까지 기프티콘은 받을 수 없어요")
+    else flashToast("손님으로 시작해요! 기록은 이 휴대폰에만 저장되고, 보호자와 연결하면 서버에 보관돼요")
   }
   // 👨‍👩‍👧 보호자 연결 (만 14세 미만). 🧪 본인인증 업체 계약 전이라 '테스트 모드'에서만 보여 줌
   //   테스트 모드 켜기: 주소 뒤에 ?guardian-test=1 (끄기: ?guardian-test=0) 또는 Vercel 환경 변수 NEXT_PUBLIC_GUARDIAN_TEST=1
@@ -1179,7 +1196,7 @@ export default function CounterPangPang() {
     //    광고 회사가 서버(Vercel)에 알려 주고 → 서버가 캐시 통장(supabase/04_cash.sql, reason 'ad')에 +2C 기록
     //    (앱이 직접 캐시를 늘리지 않음. 손님은 캐시 없음)
     setHearts((h) => Math.min(HEART_CAP, h + 1))
-    flashToast(cloud.linked ? `하트 +1 💖 (실제 광고를 끝까지 보면 캐시 +${ECONOMY.cashPerAd}C — 광고 준비 중)` : "하트 +1 💖 (카카오 연결한 사람은 광고를 끝까지 보면 캐시가 쌓여요)")
+    flashToast(!CASH_ENABLED ? "광고 시청 완료! 하트 +1 💖" : cloud.linked ? `하트 +1 💖 (실제 광고를 끝까지 보면 캐시 +${ECONOMY.cashPerAd}C — 광고 준비 중)` : "하트 +1 💖 (카카오 연결한 사람은 광고를 끝까지 보면 캐시가 쌓여요)")
   }
 
   const reactionState = reaction === "correct" ? 1 : reaction === "wrong" ? 6 : 3
@@ -1300,7 +1317,7 @@ export default function CounterPangPang() {
                       onClick={() => { sfxClick(); void cloud.linkKakao(); }}
                       className="mt-2 w-full text-center text-xs font-black text-white underline drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
                     >
-                      손님으로 하는 중 · 💬 카카오 연결하고 기록 보관·기프티콘 받기 ›
+                      손님으로 하는 중 · 💬 카카오 연결하고 기록 보관·랭킹 참여하기 ›
                     </button>
                   ) : null}
                 </>
@@ -1384,7 +1401,7 @@ export default function CounterPangPang() {
           ) : (
             <p data-testid="signup-guest" className="mb-5 rounded-xl bg-white/85 px-3 py-2.5 text-center text-xs font-bold leading-relaxed text-zinc-700 shadow">
               👤 <b>손님으로 시작</b>해요. 기록은 이 휴대폰에만 저장돼요.<br />
-              <b className="text-rose-600">카카오 계정을 연결하기 전까지는 캐시가 쌓이지 않고 기프티콘을 받을 수 없어요.</b>
+              <b className="text-rose-600">카카오 계정을 연결하기 전까지는 기록이 서버에 보관되지 않고 랭킹에도 오르지 않아요.</b>
               <br />(나중에 관리 → 내 정보에서 연결할 수 있어요)
             </p>
           )}
@@ -1457,7 +1474,7 @@ export default function CounterPangPang() {
                     손님으로 먼저 하기
                   </button>
                   <p className="mt-2 text-[11px] font-bold leading-relaxed text-zinc-500">
-                    손님은 기록이 이 휴대폰에만 저장되고, 보호자와 연결하기 전까지 기프티콘은 받을 수 없어요.
+                    손님은 기록이 이 휴대폰에만 저장되고 랭킹에 오르지 않아요.
                   </p>
                   <button type="button" onClick={() => { sfxClick(); setKidStart(false); }} className="mt-2 text-xs font-bold text-zinc-400 underline">
                     태어난 해 다시 고르기
@@ -1557,7 +1574,7 @@ export default function CounterPangPang() {
               className="flex flex-none flex-col items-center justify-center whitespace-nowrap rounded-2xl bg-sky-200/60 px-2 py-1.5 font-bold text-black/80 active:scale-95"
             >
               <span className="font-black text-blue-700" style={lfs(14)}>🪙 {points.toLocaleString()}P</span>
-              <span className="text-emerald-700" style={lfs(11)}>💵 {cash.toLocaleString()}C</span>
+              {CASH_ENABLED && <span className="text-emerald-700" style={lfs(11)}>💵 {cash.toLocaleString()}C</span>}
             </button>
 
             <button
@@ -2394,11 +2411,19 @@ export default function CounterPangPang() {
                   <p className="text-sm font-black text-amber-700">{monthlyPoints.toLocaleString()}P</p>
                   <p className="text-[10px] font-bold text-slate-400">월간 순위</p>
                 </div>
-                <div className="rounded-xl bg-emerald-50 py-2 ring-1 ring-emerald-100">
-                  <p className="text-[10px] font-bold text-emerald-500">캐시</p>
-                  <p className="text-sm font-black text-emerald-700">{cash.toLocaleString()}C</p>
-                  <p className="text-[10px] font-bold text-slate-400">기프티콘 교환</p>
-                </div>
+                {CASH_ENABLED ? (
+                  <div className="rounded-xl bg-emerald-50 py-2 ring-1 ring-emerald-100">
+                    <p className="text-[10px] font-bold text-emerald-500">캐시</p>
+                    <p className="text-sm font-black text-emerald-700">{cash.toLocaleString()}C</p>
+                    <p className="text-[10px] font-bold text-slate-400">기프티콘 교환</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-slate-50 py-2 ring-1 ring-slate-200">
+                    <p className="text-[10px] font-bold text-slate-500">누적 포인트</p>
+                    <p className="text-sm font-black text-slate-700">{lifetimePoints.toLocaleString()}P</p>
+                    <p className="text-[10px] font-bold text-slate-400">띠 승급</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2461,7 +2486,7 @@ export default function CounterPangPang() {
                         confirmRevoke ? (
                           <div className="mt-2 rounded-lg bg-white p-2.5 ring-1 ring-rose-200">
                             <p className="text-[11px] font-bold leading-relaxed text-rose-600">
-                              동의를 취소하면 서버의 게임 기록을 지우고 연결을 끊어요. 이 휴대폰의 기록은 그대로이고, 모은 캐시는 서버 통장에 남아 다시 연결하면 쓸 수 있어요.
+                              동의를 취소하면 서버의 게임 기록을 지우고 연결을 끊어요. 이 휴대폰의 기록은 그대로 남아요.
                             </p>
                             <div className="mt-2 grid grid-cols-2 gap-1.5">
                               <button type="button" onClick={() => { sfxClick(); setConfirmRevoke(false); }} className="rounded-lg bg-slate-100 py-1.5 text-xs font-black text-slate-600">그대로 두기</button>
@@ -2480,7 +2505,7 @@ export default function CounterPangPang() {
                       <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
                         카카오 계정을 연결하면 기록을 서버에 보관해요. 휴대폰을 바꾸거나 앱을 지워도 기록을 되찾을 수 있어요.
                       </p>
-                      <p className="mt-1 text-xs font-black text-rose-600">손님은 카카오 계정을 연결하기 전까지 기프티콘을 받을 수 없어요.</p>
+                      <p className="mt-1 text-xs font-black text-rose-600">손님은 기록이 이 휴대폰에만 있고 랭킹에 오르지 않아요.</p>
                       <button
                         type="button"
                         disabled={cloud.busy}
@@ -2564,7 +2589,7 @@ export default function CounterPangPang() {
                       <p className="text-4xl">🗑️</p>
                       <h2 className="mt-2 text-xl font-black text-zinc-900">정말 모두 삭제할까요?</h2>
                       <p className="mt-2 text-sm font-bold leading-relaxed text-zinc-500">
-                        포인트·캐시·하트·띠, 산 아이템, 기록이 모두 사라지고 <b className="text-rose-500">되돌릴 수 없어요.</b>
+                        포인트·하트·띠, 산 아이템, 기록이 모두 사라지고 <b className="text-rose-500">되돌릴 수 없어요.</b>
                       </p>
                       <div className="mt-6 grid grid-cols-2 gap-2">
                         <button type="button" onClick={() => { sfxClick(); setConfirmDelete(false); }} className="rounded-2xl bg-slate-100 py-3 text-base font-black text-slate-700">
@@ -2725,7 +2750,7 @@ export default function CounterPangPang() {
                 <button onClick={() => { sfxClick(); setShopCategory("emoticon"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "emoticon" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>📸 이모티콘</button>
                 <button onClick={() => { sfxClick(); setShopCategory("car"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "car" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏎️ 카트</button>
                 <button onClick={() => { sfxClick(); setShopCategory("bg"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "bg" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🏞️ 배경</button>
-                <button onClick={() => { sfxClick(); setShopCategory("gift"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "gift" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🎁 상품권</button>
+                {CASH_ENABLED && <button onClick={() => { sfxClick(); setShopCategory("gift"); }} className={`px-2.5 py-2 text-[13px] min-[380px]:px-3 font-black rounded-xl transition-all shadow-sm ${shopCategory === "gift" ? "bg-yellow-400 text-yellow-950 ring-2 ring-yellow-500" : "bg-white/60 text-zinc-600"}`}>🎁 상품권</button>}
               </div>
 
               {/* 📸 이모티콘 구매 탭 */}
@@ -2969,7 +2994,7 @@ export default function CounterPangPang() {
 
               {/* 🏞️ 배경 구매 탭 */}
               {/* 🎁 캐시 → 모바일 상품권 (서버 연결 전이라 교환 버튼은 '준비 중') */}
-              {shopCategory === "gift" && (
+              {CASH_ENABLED && shopCategory === "gift" && (
                 <div className="space-y-3">
                   <div className="rounded-2xl bg-emerald-50 p-4 text-center ring-1 ring-emerald-200">
                     <p className="text-xs font-bold text-emerald-600">내 캐시</p>
