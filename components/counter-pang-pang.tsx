@@ -1386,7 +1386,7 @@ export default function CounterPangPang() {
               <div data-testid="kid-start" className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm">
                 <div className="w-full max-w-[340px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop">
                   <p className="text-5xl">👨‍👩‍👧</p>
-                  <h2 className="mt-2 text-xl font-black text-zinc-900">부모님과 함께 시작해요</h2>
+                  <h2 className="mt-2 text-xl font-black text-zinc-900">부모님 인증이 필요해요</h2>
                   <p className="mt-2 text-sm font-bold leading-relaxed text-zinc-600">
                     만 14세 미만은 카카오로 시작하려면 <b className="text-emerald-600">부모님(보호자)의 동의</b>가 필요해요.
                   </p>
