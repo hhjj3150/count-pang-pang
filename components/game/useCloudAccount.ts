@@ -23,6 +23,7 @@ export interface CloudConflict {
 
 const PUSH_DELAY_MS = 3000 // 저장이 연달아 일어나면 3초 뒤 한 번만 올림
 const NOTICE_KEY = "cp_cloud_notice" // 새로고침 뒤 보여 줄 안내 (sessionStorage)
+const LINKED_KEY = "cp_cloud_linked" // 새로고침 뒤 연결 완료 창 보여 주기 (sessionStorage)
 const PENDING_KEY = "cp_guardian_pending" // 보호자 동의를 마치고 카카오로 다녀오는 동안 잠시 보관 (localStorage)
 const PENDING_TTL_MS = 30 * 60 * 1000 // 30분 안에 카카오 연결을 끝내야 함
 
@@ -60,6 +61,7 @@ export function useCloudAccount(opts: {
   const [conflict, setConflict] = useState<CloudConflict | null>(null)
   const [busy, setBusy] = useState(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
+  const [linkedPopup, setLinkedPopup] = useState<string | null>(null) // 연결이 끝났을 때 크게 보여 줄 안내
   const [guardian, setGuardian] = useState<GuardianConsent | null>(null) // 만 14세 미만: 지금 유효한 보호자 동의
   const justConsentedRef = useRef(false) // 이번에 막 동의 기록을 넣었음 (기록 고르기에서 취소하면 동의도 취소)
   const linkedRef = useRef<string | null>(null) // 기록을 올려도 되는 계정 (기록 고르기 전에는 null)
@@ -148,7 +150,7 @@ export function useCloudAccount(opts: {
         // 서버에 기록이 없음 → 이 휴대폰 기록을 연결 (저장되면 자동으로 올라감)
         linkedRef.current = u.id
         setCloudUserId(u.id)
-        toast("카카오 계정 연결 완료! 이제 기록이 서버에도 저장돼요 ☁️")
+        setLinkedPopup("이 휴대폰의 기록을 서버에 보관하기 시작했어요.")
         return
       }
       // 서버에도 기록이 있음 → 고르게 함
@@ -168,9 +170,12 @@ export function useCloudAccount(opts: {
     if (!client) return
     // 새로고침 전에 남겨 둔 안내
     const notice = sessionStorage.getItem(NOTICE_KEY)
+    const linkedMsg = sessionStorage.getItem(LINKED_KEY)
+    sessionStorage.removeItem(LINKED_KEY)
     if (notice) {
       sessionStorage.removeItem(NOTICE_KEY)
-      setTimeout(() => toast(notice), 600)
+      if (linkedMsg) setLinkedPopup(linkedMsg)
+      else setTimeout(() => toast(notice), 600)
     }
     // 카카오에서 돌아온 주소 정리 (?code=..., 취소했으면 ?error=...)
     const url = new URL(window.location.href)
@@ -220,7 +225,12 @@ export function useCloudAccount(opts: {
     const client = sb()
     if (!client) return
     setBusy(true)
-    const { error } = await client.auth.signInWithOAuth({ provider: "kakao", options: { redirectTo: window.location.origin + "/" } })
+    const { error } = await client.auth.signInWithOAuth({ provider: "kakao", options: {
+        redirectTo: window.location.origin + "/",
+        // 이미 카카오에 로그인되어 있어도 '어떤 카카오 계정으로 연결할지' 확인 화면을 보여 줌
+        queryParams: { prompt: "select_account" },
+      },
+    })
     if (error) {
       setBusy(false)
       toast("카카오 연결을 시작하지 못했어요. 잠시 후 다시 해 주세요")
@@ -277,6 +287,7 @@ export function useCloudAccount(opts: {
       const u = user
       if (!client || !u || !conflict) return
       if (choice === "server") {
+        sessionStorage.setItem(LINKED_KEY, "서버에 있던 기록을 불러왔어요.")
         applyServerSave(conflict.serverSave, u.id, "서버 기록을 불러왔어요 ☁️")
         return
       }
@@ -293,7 +304,7 @@ export function useCloudAccount(opts: {
       }
       linkedRef.current = u.id
       setCloudUserId(u.id) // 저장되면서 서버 기록을 이 휴대폰 기록으로 덮어씀
-      toast("이 휴대폰 기록으로 연결했어요 ☁️")
+      setLinkedPopup("이 휴대폰의 기록으로 연결했어요. 서버 기록은 이 기록으로 바뀌어요.")
     },
     [applyServerSave, conflict, setCloudUserId, toast, user],
   )
@@ -312,7 +323,14 @@ export function useCloudAccount(opts: {
     }
   }, [user])
 
+  // 연결된 카카오 계정 이름 (카카오가 준 닉네임, 없으면 이메일 일부)
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
+  const pick = (...keys: string[]) => keys.map((k) => meta[k]).find((v): v is string => typeof v === "string" && v.trim() !== "")
+  const maskEmail = (e?: string | null) => (e ? e.replace(/^(.{2})[^@]*(@.*)$/, "$1***$2") : undefined)
+  const kakaoName = user ? pick("name", "full_name", "nickname", "user_name", "preferred_username") ?? maskEmail(user.email) ?? "카카오 계정" : null
+
   return {
+    kakaoName, linkedPopup, closeLinkedPopup: () => setLinkedPopup(null),
     user, linked: !!user && !conflict, conflict, busy, lastSyncedAt, guardian,
     notifySaved, linkKakao, linkWithGuardian, logout, resolveConflict, deleteServerAccount, revokeGuardian,
   }

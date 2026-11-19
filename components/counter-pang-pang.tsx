@@ -2249,6 +2249,9 @@ export default function CounterPangPang() {
                       <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
                         카카오 계정에 연결됐어요. 기록이 서버에도 자동으로 저장돼서 휴대폰을 바꿔도 이어서 할 수 있어요.
                       </p>
+                      <p className="mt-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-slate-800 ring-1 ring-yellow-200">
+                        💬 연결된 카카오 계정: {cloud.kakaoName}
+                      </p>
                       {cloud.guardian && (
                         <p className="mt-1 text-[11px] font-bold text-yellow-700">
                           👨‍👩‍👧 보호자 동의: {cloud.guardian.guardian_name.slice(0, 1)}** 님 · {new Date(cloud.guardian.consented_at).toLocaleDateString("ko-KR")}
@@ -2296,6 +2299,9 @@ export default function CounterPangPang() {
                       >
                         {cloud.busy ? "카카오로 이동 중…" : "💬 카카오로 연결하기"}
                       </button>
+                      <p className="mt-1.5 text-[11px] font-bold leading-relaxed text-yellow-700">
+                        카카오 화면에서 연결할 계정을 고르면 게임으로 돌아와요. 따로 회원가입은 없어요.
+                      </p>
                     </>
                   ) : birthYear !== null && guardianTest ? (
                     <>
@@ -2855,6 +2861,25 @@ export default function CounterPangPang() {
           onClose={() => setShowGuardianLink(false)}
           onSubmit={(g, items) => { sfxClick(); void cloud.linkWithGuardian(g, items); }}
         />
+      )}
+      {/* ☁️ 연결 완료 안내 */}
+      {cloud.linkedPopup && !cloud.conflict && (
+        <div data-testid="cloud-linked" className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm" onClick={cloud.closeLinkedPopup}>
+          <div className="w-full max-w-[330px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+            <p className="text-5xl">✅</p>
+            <h2 className="mt-2 text-xl font-black text-zinc-900">카카오 계정과 연결됐어요</h2>
+            <p className="mt-3 rounded-xl bg-yellow-50 px-3 py-2.5 text-sm font-black text-slate-800 ring-1 ring-yellow-200">
+              💬 {cloud.kakaoName ?? "카카오 계정"}
+            </p>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-zinc-600">{cloud.linkedPopup}</p>
+            <p className="mt-1 text-xs font-bold leading-relaxed text-zinc-500">
+              이제 게임 기록이 서버에 자동으로 저장돼요. 다른 휴대폰에서도 이 카카오 계정으로 연결하면 이어서 할 수 있어요.
+            </p>
+            <button type="button" onClick={() => { sfxClick(); cloud.closeLinkedPopup(); }} className="mt-5 w-full rounded-2xl bg-emerald-500 py-3 text-base font-black text-white">
+              확인
+            </button>
+          </div>
+        </div>
       )}
       {/* ☁️ 기록 고르기: 처음 연결할 때 서버에도 기록이 있으면 */}
       {cloud.conflict && (

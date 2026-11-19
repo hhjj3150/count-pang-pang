@@ -279,7 +279,7 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
     await p.route('**/auth/v1/authorize**', (r) => { authUrl = r.request().url(); r.abort() })
     await card.getByRole('button', { name: /카카오로 연결하기/ }).click(); await sleep(1500)
     await p.unroute('**/auth/v1/authorize**')
-    ck(authUrl.includes('zzekinnnhizuwaczyrqp.supabase.co') && authUrl.includes('provider=kakao') && authUrl.includes('code_challenge'), 'S3 버튼 → 카카오 로그인(Supabase)으로 이동')
+    ck(authUrl.includes('zzekinnnhizuwaczyrqp.supabase.co') && authUrl.includes('provider=kakao') && authUrl.includes('code_challenge') && authUrl.includes('prompt=select_account'), 'S3 버튼 → 카카오 로그인(Supabase)으로 이동, 계정 고르기 화면 요청')
     await H.seed(p, H.baseSave({ birthYear: new Date().getFullYear() - 9 }), H.doneDaily()); await H.enterLobby(p)
     await p.getByRole('button', { name: '⚙️ 관리' }).click(); await sleep(400)
     const c2 = p.getByTestId('cloud-card')
