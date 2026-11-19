@@ -66,7 +66,7 @@ export function GuardianLink({
             <ul className="mt-2 list-disc space-y-1 pl-5 text-left text-xs font-bold leading-relaxed text-zinc-500">
               <li>보호자님 본인인증과 동의는 <b>처음 한 번만</b> 해요.</li>
               <li>아이에게 카카오 계정이 없어도 돼요. <b>보호자님의 카카오 계정</b>으로 연결해요.</li>
-              <li>동의는 언제든 관리 화면에서 취소할 수 있어요. 취소해도 휴대폰의 기록과 캐시는 남아요.</li>
+              <li>동의는 언제든 관리 화면에서 취소할 수 있어요. 취소해도 휴대폰의 기록과 모은 캐시는 남아요.</li>
             </ul>
             <button type="button" onClick={() => setStep(1)} className="mt-5 w-full rounded-2xl bg-emerald-500 py-3 text-base font-black text-white">
               보호자예요, 시작할게요

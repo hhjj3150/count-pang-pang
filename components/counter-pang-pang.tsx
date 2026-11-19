@@ -286,7 +286,6 @@ export default function CounterPangPang() {
   // 🎂 태어난 해 / 💰 캐시
   const [birthYear, setBirthYear] = useState<number | null>(null)
   const [birthInput, setBirthInput] = useState("") // 가입 화면·연령 확인 창의 선택값
-  const [cash, setCash] = useState(0)
   const [premium, setPremium] = useState(false) // 💎 유료 회원: 모든 카트를 화이트 벨트부터 구매 가능
   const [cashExchangeMonth, setCashExchangeMonth] = useState("")
   const isChild = isChildUser(birthYear)
@@ -430,7 +429,9 @@ export default function CounterPangPang() {
       return;
     }
 
-    const shareUrl = 'https://count-pang-pang.vercel.app'; // 대표 메인 주소
+    // 대표 메인 주소. 카카오 연결한 사람은 내 초대 코드(?ref=)를 붙여서 → 친구가 이 링크로 카카오 가입하면 나에게 5C
+    const code = cloud.linked ? await cloud.getInviteCode() : null;
+    const shareUrl = 'https://count-pang-pang.vercel.app' + (code ? `/?ref=${code}` : '');
 
     try {
       if (navigator.share) {
@@ -451,10 +452,11 @@ export default function CounterPangPang() {
       const newCount = inviteCount + 1;
       setInvite({ date: today(), count: newCount });
       setPoints(prev => prev + 30);
-      setCash(c => c + ECONOMY.cashPerInvite);
-      
-      // 알림이 겹치지 않게 살짝 시간차를 두고 보상 알림 띄우기
-      setTimeout(() => flashToast(`초대 성공! 30P + 캐시 ${ECONOMY.cashPerInvite}C 지급 🎁 (오늘 ${newCount}/5회)`), 1000);
+
+      // 알림이 겹치지 않게 살짝 시간차를 두고 보상 알림 띄우기 (캐시는 친구가 실제로 카카오 가입했을 때 서버가 지급)
+      setTimeout(() => flashToast(code
+        ? `초대 링크를 보냈어요! 30P 지급 🎁 (오늘 ${newCount}/5회) · 친구가 이 링크로 카카오 가입하면 캐시 +${ECONOMY.cashPerInvite}C`
+        : `초대 링크를 보냈어요! 30P 지급 🎁 (오늘 ${newCount}/5회) · 카카오 연결하면 친구 가입마다 캐시가 쌓여요`), 1000);
     } catch (error) {
       // 사용자가 공유 창을 닫은 경우는 조용히 넘어가고, 공유·복사가 막힌 환경이면 안내
       if ((error as Error)?.name === "AbortError") return;
@@ -484,7 +486,6 @@ export default function CounterPangPang() {
         }
         setNickname(d.nickname ?? null)
         setBirthYear(typeof d.birthYear === "number" ? d.birthYear : null)
-        setCash(typeof d.cash === "number" ? d.cash : 0)
         setPremium(d.premium === true)
         setCashExchangeMonth(d.cashExchangeMonth ?? "")
         setHearts(h)
@@ -560,7 +561,7 @@ export default function CounterPangPang() {
     if (!loaded || deletingRef.current) return;
     const data: SaveData = {
       ver: SAVE_VERSION,
-      nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cash, cashExchangeMonth, premium,
+      nickname, hearts, heartDate, unlocked, records, muted, points, birthYear, cashExchangeMonth, premium,
       lifetimePoints, monthlyPoints, monthlyDate,
       ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons,
       heartBuy: heartBuyData, attendance: attData, invite, daily, monthBest: monthBestData,
@@ -573,7 +574,7 @@ export default function CounterPangPang() {
     lastBodyRef.current = body;
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, savedAt: savedAtRef.current || undefined }));
     if (changed) cloudNotifyRef.current();
-  }, [loaded, cloudUserId, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cash, cashExchangeMonth, premium,
+  }, [loaded, cloudUserId, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cashExchangeMonth, premium,
       ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons, heartBuyData, attData, invite, daily, monthBestData, learnStats, showGuide, chosenLevel]);
   const recordAnswer = (logicLevel: number, isCorrect: boolean) => {
     const day = today();
@@ -771,6 +772,12 @@ export default function CounterPangPang() {
   const cloud = useCloudAccount({ loaded, setCloudUserId, suspendLocalSave, toast: flashToast })
   cloudNotifyRef.current = cloud.notifySaved
   const canLinkAccount = birthYear !== null && !isChild
+  // 💰 캐시는 서버 통장 잔액만 (손님은 캐시가 없음 — 적립·저장 안 함)
+  const cash = cloud.linked ? cloud.cash ?? 0 : 0
+  useEffect(() => {
+    if (shopCategory === "gift" && cloud.linked) void cloud.refreshWallet() // 상품권 탭을 열면 최신 잔액
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopCategory, cloud.linked])
   // 🏆 서버 랭킹: 랭킹 창을 열거나 탭을 바꾸면 서버에서 받아옴 (실패하면 내 기록만)
   const [serverRank, setServerRank] = useState<{ tab: RankTab; rows: ServerRankRow[] | null; status: "loading" | "ok" | "error" }>({ tab: "points", rows: null, status: "loading" })
   useEffect(() => {
@@ -1168,10 +1175,11 @@ export default function CounterPangPang() {
       flashToast(`하트가 가득 찼어요! (최대 ${HEART_CAP}개) 💖`)
       return
     }
-    // 💰 나중에 실제 광고를 붙이면: 광고(adRequestConfig 설정으로 요청)를 끝까지 본 뒤에 아래 하트·캐시를 지급
+    // 💰 실제 광고를 붙이면: 광고(adRequestConfig 설정으로 요청)를 건너뛰지 않고 끝까지 본 경우에만
+    //    광고 회사가 서버(Vercel)에 알려 주고 → 서버가 캐시 통장(supabase/04_cash.sql, reason 'ad')에 +2C 기록
+    //    (앱이 직접 캐시를 늘리지 않음. 손님은 캐시 없음)
     setHearts((h) => Math.min(HEART_CAP, h + 1))
-    setCash((c) => c + ECONOMY.cashPerAd)
-    flashToast(`광고 시청 완료! 하트 +1 💖 · 캐시 +${ECONOMY.cashPerAd}C`)
+    flashToast(cloud.linked ? `하트 +1 💖 (실제 광고를 끝까지 보면 캐시 +${ECONOMY.cashPerAd}C — 광고 준비 중)` : "하트 +1 💖 (카카오 연결한 사람은 광고를 끝까지 보면 캐시가 쌓여요)")
   }
 
   const reactionState = reaction === "correct" ? 1 : reaction === "wrong" ? 6 : 3
@@ -1376,8 +1384,8 @@ export default function CounterPangPang() {
           ) : (
             <p data-testid="signup-guest" className="mb-5 rounded-xl bg-white/85 px-3 py-2.5 text-center text-xs font-bold leading-relaxed text-zinc-700 shadow">
               👤 <b>손님으로 시작</b>해요. 기록은 이 휴대폰에만 저장돼요.<br />
-              <b className="text-rose-600">카카오 계정을 연결하기 전까지는 기프티콘을 받을 수 없어요.</b>
-              <br />(캐시는 계속 모이고, 나중에 관리 → 내 정보에서 연결할 수 있어요)
+              <b className="text-rose-600">카카오 계정을 연결하기 전까지는 캐시가 쌓이지 않고 기프티콘을 받을 수 없어요.</b>
+              <br />(나중에 관리 → 내 정보에서 연결할 수 있어요)
             </p>
           )}
           {/* 👆 여기까지 👆 */}
@@ -2453,7 +2461,7 @@ export default function CounterPangPang() {
                         confirmRevoke ? (
                           <div className="mt-2 rounded-lg bg-white p-2.5 ring-1 ring-rose-200">
                             <p className="text-[11px] font-bold leading-relaxed text-rose-600">
-                              동의를 취소하면 서버의 기록을 지우고 연결을 끊어요. 이 휴대폰의 기록과 캐시는 그대로 남아요.
+                              동의를 취소하면 서버의 게임 기록을 지우고 연결을 끊어요. 이 휴대폰의 기록은 그대로이고, 모은 캐시는 서버 통장에 남아 다시 연결하면 쓸 수 있어요.
                             </p>
                             <div className="mt-2 grid grid-cols-2 gap-1.5">
                               <button type="button" onClick={() => { sfxClick(); setConfirmRevoke(false); }} className="rounded-lg bg-slate-100 py-1.5 text-xs font-black text-slate-600">그대로 두기</button>
@@ -2985,7 +2993,7 @@ export default function CounterPangPang() {
                     </div>
                     {!cloud.linked && (
                       <div data-testid="gift-guest" className="mt-3 rounded-lg bg-yellow-50 p-2.5 text-[11px] font-bold leading-relaxed text-yellow-800 ring-1 ring-yellow-200">
-                        👤 손님은 {isChild ? "보호자와 연결하기" : "카카오 계정을 연결하기"} 전까지 기프티콘을 받을 수 없어요. 캐시는 그대로 계속 모여요.
+                        👤 손님은 캐시가 쌓이지 않고 기프티콘도 받을 수 없어요. {isChild ? "보호자와 연결하면" : "카카오 계정을 연결하면"} 그때부터 캐시가 쌓여요.
                         {canLinkAccount && (
                           <button type="button" onClick={() => { sfxClick(); void cloud.linkKakao(); }} className="mt-2 block w-full rounded-lg bg-[#FEE500] py-2 text-xs font-black text-[#191919]">
                             💬 카카오 계정 연결하기
@@ -3004,8 +3012,12 @@ export default function CounterPangPang() {
                   </div>
                   <div className="rounded-2xl bg-zinc-50 p-4 text-xs font-bold leading-relaxed text-zinc-600 ring-1 ring-zinc-200">
                     <p className="mb-1 text-sm font-black text-zinc-700">💡 캐시는 이렇게 모아요</p>
-                    <p>📺 광고 보고 하트 충전 1회 +{ECONOMY.cashPerAd}C</p>
-                    <p>💌 친구 초대 1회 +{ECONOMY.cashPerInvite}C</p>
+                    <p>📺 광고를 건너뛰지 않고 끝까지 보면 1회 +{ECONOMY.cashPerAd}C <span className="text-zinc-400">(광고 준비 중)</span></p>
+                    <p>💌 내 초대 링크로 들어온 친구가 카카오로 가입하면 1명당 +{ECONOMY.cashPerInvite}C</p>
+                    {cloud.linked && cloud.inviteJoined !== null && (
+                      <p data-testid="invite-joined" className="mt-1 text-emerald-700">👥 내가 초대해서 가입한 친구 {cloud.inviteJoined}명</p>
+                    )}
+                    <p className="mt-2 text-zinc-400">캐시는 카카오 계정을 연결한 사람만 서버 통장에 쌓여요. 유효기간은 없어요.</p>
                     <p className="mt-2 text-zinc-400">게임 포인트(P)는 띠 승급·랭킹·아이템용이고, 캐시(C)와는 따로 모여요.</p>
                   </div>
                 </div>
@@ -3095,7 +3107,7 @@ export default function CounterPangPang() {
                   <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-600">
                     {sm.belt}<br />
                     누적 {sm.lifetimePoints.toLocaleString()}P<br />
-                    보유 {sm.points.toLocaleString()}P · {sm.cash.toLocaleString()}C<br />
+                    보유 {sm.points.toLocaleString()}P<br />
                     Lv.{sm.levels}까지 열림
                   </p>
                   <p className="mt-1 text-[10px] font-bold text-slate-400">
