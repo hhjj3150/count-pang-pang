@@ -12,7 +12,12 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
   // ── A. 신규 가입: 게임 방법 자동 표시 없음, Lv.1 열림
   await step('A', async () => {
     await H.seed(p, null)
-    ck(await p.getByRole('button', { name: /카카오로 시작하기/ }).isVisible() && await p.getByText(/다음부터 자동으로 로그인/).isVisible(), 'A0 첫 화면: 카카오로 시작하기 + 자동 로그인 안내')
+    const auto = p.getByRole('checkbox', { name: /다음부터 자동 로그인하기/ })
+    ck(await p.getByRole('button', { name: /카카오로 시작하기/ }).isVisible() && await auto.getAttribute('aria-checked') === 'true' && !(await p.getByText(/한 번 로그인하면/).count()), 'A0 첫 화면: 카카오로 시작하기 + 자동 로그인하기 버튼(기본 켜짐)')
+    await auto.click(); await sleep(200)
+    const off = await p.evaluate(() => localStorage.getItem('cp_auto_login'))
+    await auto.click(); await sleep(200)
+    ck(off === '0' && await p.evaluate(() => localStorage.getItem('cp_auto_login')) === null, 'A0-2 자동 로그인 끄기/켜기 저장')
     await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/intro_new.png' })
     await p.getByRole('button', { name: /손님으로 먼저 해 보기/ }).click(); await sleep(300)
     ck(/기프티콘을 받을 수 없어요/.test(await p.getByTestId('signup-guest').innerText()), 'A0-1 손님 가입 화면: 카카오 연결 전에는 기프티콘 못 받음 안내')

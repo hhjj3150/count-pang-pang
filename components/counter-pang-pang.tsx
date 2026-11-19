@@ -18,6 +18,7 @@ import { Plate } from "@/components/game/Plate"
 import { PromotionCelebration } from "@/components/game/Promotion"
 import { Tutorial } from "@/components/game/Tutorial"
 import { useCloudAccount } from "@/components/game/useCloudAccount"
+import { getAutoLogin, setAutoLogin } from "@/lib/supabase"
 import { GuardianLink } from "@/components/game/GuardianLink"
 
 /* =========================================================================
@@ -781,6 +782,21 @@ export default function CounterPangPang() {
     }
   }
   // 💬 카카오로 처음 시작 → 닉네임·태어난 해 정하는 화면으로
+  const [autoLogin, setAutoLoginState] = useState(true) // 🔐 다음부터 자동 로그인하기
+  useEffect(() => { setAutoLoginState(getAutoLogin()) }, [])
+  const toggleAutoLogin = () => { sfxClick(); setAutoLogin(!autoLogin); setAutoLoginState(!autoLogin) }
+  const AutoLoginToggle = (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={autoLogin}
+      onClick={toggleAutoLogin}
+      className="mx-auto mt-2 flex items-center gap-2 rounded-full bg-black/35 px-3.5 py-1.5 text-sm font-black text-white"
+    >
+      <span className={cn("flex h-5 w-5 items-center justify-center rounded-md text-xs", autoLogin ? "bg-[#FEE500] text-[#191919]" : "bg-white/90 text-transparent")}>✓</span>
+      다음부터 자동 로그인하기
+    </button>
+  )
   const [kidStart, setKidStart] = useState(false) // 카카오로 시작했는데 만 14세 미만: 부모님과 함께 / 손님으로
   useEffect(() => {
     if (cloud.needsProfile) setScreen("LOGIN")
@@ -1238,6 +1254,17 @@ export default function CounterPangPang() {
                   </button>
                   {cloud.linked ? (
                     <p className="mt-2 text-center text-xs font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">💬 {cloud.kakaoName} 님으로 로그인 중</p>
+                  ) : cloudUserId && cloud.authReady ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { sfxClick(); void cloud.linkKakao(); }}
+                        className="mt-3 w-full rounded-2xl bg-[#FEE500] py-3 text-base font-black text-[#191919] shadow-[0_4px_0_#c9b400] active:translate-y-1"
+                      >
+                        💬 카카오로 로그인하기
+                      </button>
+                      {AutoLoginToggle}
+                    </>
                   ) : canLinkAccount ? (
                     <button
                       type="button"
@@ -1258,9 +1285,7 @@ export default function CounterPangPang() {
                   >
                     {cloud.busy ? "카카오로 이동 중…" : "💬 카카오로 시작하기"}
                   </button>
-                  <p className="mt-2 text-center text-xs font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-                    카카오로 로그인해요. 한 번 로그인하면 다음부터 자동으로 로그인돼요.
-                  </p>
+                  {AutoLoginToggle}
                   <button
                     type="button"
                     onClick={() => { sfxClick(); setScreen("LOGIN"); }}
