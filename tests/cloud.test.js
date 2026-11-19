@@ -133,5 +133,18 @@ const res = []; const ck = (ok, m) => res.push((ok ? '✅ ' : '❌ ') + m)
   k = await H.getSave(p)
   const tok = await p.evaluate(() => localStorage.getItem('sb-zzekinnnhizuwaczyrqp-auth-token'))
   ck(k.nickname === '꼬마' && !k.cloudUserId && !tok && pushes.length === 0, '18 손님으로 먼저 하기 → 로그아웃, 기록은 휴대폰에만')
+  // ── 🔐 다음부터 자동 로그인하기를 끈 경우
+  await p.evaluate(() => sessionStorage.clear()) // 앞 단계에서 이 탭에 남은 '로그인함' 표시 지우기
+  server = null; pushes = []
+  await H.seed(p, H.baseSave({ points: 31, cloudUserId: UID }), withSession({ ...H.doneDaily(), cp_auto_login: '0' })); await sleep(3500)
+  let tok2 = await p.evaluate(() => localStorage.getItem('sb-zzekinnnhizuwaczyrqp-auth-token'))
+  ck(!tok2 && pushes.length === 0 && await p.getByRole('button', { name: '💬 카카오로 로그인하기' }).isVisible(), '19 자동 로그인 끔 + 앱을 새로 열면 → 로그아웃, 카카오로 로그인하기 버튼')
+  await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/intro_relogin.png' })
+  await p.evaluate(() => sessionStorage.setItem('cp_session_alive', '1')) // 이 탭에서 로그인한 상태
+  await H.seed(p, H.baseSave({ points: 32, cloudUserId: UID }), withSession({ ...H.doneDaily(), cp_auto_login: '0' }))
+  await p.reload(); await sleep(3500)
+  tok2 = await p.evaluate(() => localStorage.getItem('sb-zzekinnnhizuwaczyrqp-auth-token'))
+  ck(!!tok2 && /로그인 중/.test(await p.locator('body').innerText()), '20 자동 로그인 꺼도 같은 탭(로그인 직후·새로고침)에서는 로그인 유지')
+  await p.evaluate(() => sessionStorage.clear())
   console.log(res.join('\n')); await b.close()
 })()

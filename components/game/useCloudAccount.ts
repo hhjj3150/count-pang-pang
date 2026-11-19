@@ -7,7 +7,7 @@
 //   동의 기록이 없거나 취소됐으면 서버에 올리지 않음
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabase, markSessionAlive } from "@/lib/supabase"
 import {
   deleteCloudAccount, fetchActiveConsent, fetchCloudSave, insertTestConsent, pushCloudSave, revokeConsent, summarizeSave,
   type GuardianConsent, type GuardianConsentItems, type GuardianInfo, type SaveSummary,
@@ -61,6 +61,7 @@ export function useCloudAccount(opts: {
   const [conflict, setConflict] = useState<CloudConflict | null>(null)
   const [busy, setBusy] = useState(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
+  const [authReady, setAuthReady] = useState(false) // 로그인 상태 확인이 끝났음 (그 전에는 로그인 버튼을 잠깐 숨김)
   const [needsProfile, setNeedsProfile] = useState(false) // 카카오로 처음 시작: 닉네임·태어난 해를 정해야 함
   const [linkedPopup, setLinkedPopup] = useState<string | null>(null) // 연결이 끝났을 때 크게 보여 줄 안내
   const [guardian, setGuardian] = useState<GuardianConsent | null>(null) // 만 14세 미만: 지금 유효한 보호자 동의
@@ -223,6 +224,7 @@ export function useCloudAccount(opts: {
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       // Supabase 안내에 따라 콜백 안에서는 바로 기다리지 않고 다음 차례에 처리
       setTimeout(() => {
+        setAuthReady(true)
         setUser(session?.user ?? null)
         if (session?.user) {
           void handleSignedIn(session.user)
@@ -259,6 +261,7 @@ export function useCloudAccount(opts: {
     const client = sb()
     if (!client) return
     setBusy(true)
+    markSessionAlive() // 자동 로그인을 꺼도 카카오에 다녀오는 동안은 로그인 유지
     const { error } = await client.auth.signInWithOAuth({ provider: "kakao", options: {
         redirectTo: window.location.origin + "/",
         // 이미 카카오에 로그인되어 있어도 '어떤 카카오 계정으로 연결할지' 확인 화면을 보여 줌
@@ -365,7 +368,7 @@ export function useCloudAccount(opts: {
 
   return {
     kakaoName, linkedPopup, closeLinkedPopup: () => setLinkedPopup(null),
-    needsProfile, adoptNewProfile, leaveKakaoStart,
+    authReady, needsProfile, adoptNewProfile, leaveKakaoStart,
     user, linked: !!user && !conflict && !needsProfile, conflict, busy, lastSyncedAt, guardian,
     notifySaved, linkKakao, linkWithGuardian, logout, resolveConflict, deleteServerAccount, revokeGuardian,
   }
