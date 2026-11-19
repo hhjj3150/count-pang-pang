@@ -25,7 +25,7 @@ async function seed(p, save, extra = {}) {
   await p.goto(URL)
 }
 async function enterLobby(p) {
-  await p.getByText('시작하기').click()
+  await p.getByRole('button', { name: '시작하기 🚗' }).click()
   await p.getByRole('button', { name: /🪙/ }).waitFor({ timeout: 30000 })
   await sleep(600)
 }
