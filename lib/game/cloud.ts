@@ -125,3 +125,16 @@ export async function revokeConsent(sb: SupabaseClient, userId: string, deleteSa
   const { error: e2 } = await sb.from("profiles").delete().eq("id", userId)
   if (e2) throw e2
 }
+
+// 🏆 서버 랭킹 (supabase/03_ranking.sql 의 get_ranking) — 손님도 볼 수 있음
+export interface ServerRankRow {
+  rank: number
+  nickname: string
+  value: number
+  is_me: boolean
+}
+export async function fetchRanking(sb: SupabaseClient, tab: string, topN = 10): Promise<ServerRankRow[]> {
+  const { data, error } = await sb.rpc("get_ranking", { tab, top_n: topN })
+  if (error) throw error
+  return (data ?? []) as ServerRankRow[]
+}

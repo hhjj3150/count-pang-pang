@@ -15,7 +15,7 @@
 - 파일 구조
   - `components/counter-pang-pang.tsx`: 메인 화면(로비·게임·결과·상점·관리)과 게임 진행 상태
   - `lib/game/`: 화면 없는 게임 데이터·규칙 — `constants`(레벨 이름·시간·경제 수치), `questions`(문제 만들기), `items`(카트·배경·이모티콘 가격과 보너스), `belts`(띠 기준), `records`(신기록·랭킹), `save`(저장 형식·예전 저장값 변환), `stats`, `utils`, `types`
-  - `supabase/`: 서버 장부(데이터베이스) SQL. 번호 순서대로 Supabase SQL Editor에서 실행 (`01_profiles.sql`: 계정별 내 정보 묶음 + 탈퇴 함수, `02_guardian_consents.sql`: 보호자 동의 기록 — 앱은 `method='test'`만 넣을 수 있음). Supabase 프로젝트 주소 `https://zzekinnnhizuwaczyrqp.supabase.co`(서울)
+  - `supabase/`: 서버 장부(데이터베이스) SQL. 번호 순서대로 Supabase SQL Editor에서 실행 (`01_profiles.sql`: 계정별 내 정보 묶음 + 탈퇴 함수, `02_guardian_consents.sql`: 보호자 동의 기록 — 앱은 `method='test'`만 넣을 수 있음, `03_ranking.sql`: 이번 달 서버 랭킹 함수 `get_ranking` — 닉네임·순위 값만 공개, 손님도 조회 가능, 이상한 값은 거름). Supabase 프로젝트 주소 `https://zzekinnnhizuwaczyrqp.supabase.co`(서울)
   - 계정 연결: `lib/supabase.ts`(Supabase 연결, 공개 열쇠만), `lib/game/cloud.ts`(서버에 묶음 올리기·받기), `components/game/useCloudAccount.ts`(카카오 연결·자동 서버 저장·기록 고르기). 만 14세 이상은 바로 연결. 만 14세 미만은 `GuardianLink`(보호자 동의 → 본인인증 → 보호자 카카오 계정으로 연결)로만 연결하고, 유효한 동의 기록이 없으면 서버에 올리지 않음.
     - 🧪 본인인증은 업체 계약 전이라 **테스트용 가짜 인증**. 보호자 연결 버튼은 테스트 모드에서만 보임(`?guardian-test=1`로 켜고 `?guardian-test=0`으로 끔, 또는 환경 변수 `NEXT_PUBLIC_GUARDIAN_TEST=1`). 실제 인증을 붙일 때는 인증 결과 확인과 동의 기록 넣기를 서버(Vercel, 비밀 열쇠)에서 하고 테스트 모드를 없앰. 저장 묶음의 `savedAt`은 내용이 바뀔 때만 갱신
   - `components/game/`: 작은 화면 조각 — `Plate`(번호판), `Numpad`, `GameImage`, `GameGuide`(레벨별 설명 팝업), `Tutorial`(게임 방법), `ParentReport`, `Promotion`(승급 축하)

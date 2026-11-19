@@ -146,5 +146,32 @@ const res = []; const ck = (ok, m) => res.push((ok ? '✅ ' : '❌ ') + m)
   tok2 = await p.evaluate(() => localStorage.getItem('sb-zzekinnnhizuwaczyrqp-auth-token'))
   ck(!!tok2 && /로그인 중/.test(await p.locator('body').innerText()), '20 자동 로그인 꺼도 같은 탭(로그인 직후·새로고침)에서는 로그인 유지')
   await p.evaluate(() => sessionStorage.clear())
+  // ── 🏆 서버 랭킹 (가짜 서버 응답)
+  await p.evaluate(() => sessionStorage.clear())
+  let rankCalls = []
+  await p.unroute('**/rest/v1/rpc/get_ranking**')
+  await p.route('**/rest/v1/rpc/get_ranking**', async (r) => {
+    const body = JSON.parse(r.request().postData() || '{}'); rankCalls.push(body.tab)
+    const rows = body.tab === 'points'
+      ? [{ rank: 1, nickname: '일등', value: 9000, is_me: false }, { rank: 2, nickname: '이등', value: 5000, is_me: false }, { rank: 14, nickname: '테스터', value: 300, is_me: true }]
+      : [{ rank: 1, nickname: '번개', value: 41230, is_me: false }]
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) })
+  })
+  server = null; pushes = []
+  await H.seed(p, H.baseSave({ monthlyPoints: 300, cloudUserId: UID }), withSession(H.doneDaily())); await H.enterLobby(p); await sleep(1500)
+  await p.getByRole('button', { name: /랭킹/ }).first().click(); await sleep(1500)
+  const rl = p.getByTestId('rank-list')
+  const rtxt = (await rl.innerText()).replace(/\s+/g, ' ')
+  ck(await rl.getAttribute('data-source') === 'server' && /일등 9,000P/.test(rtxt) && /이등 5,000P/.test(rtxt), '21 서버 랭킹 1~10위 표시')
+  ck(/내 순위 14위 · 300P/.test(await p.locator('body').innerText()), '22 순위 밖이어도 내 순위 표시')
+  await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/rank_server.png' })
+  await p.getByRole('button', { name: 'Lv.11', exact: true }).click(); await sleep(1200)
+  ck(rankCalls.includes('11') && /번개 41\.23초/.test((await rl.innerText()).replace(/\s+/g, ' ')), '23 탭을 바꾸면 그 탭 순위를 받아옴 (기록은 초로 표시)')
+  // 손님: 서버 순위는 보이고, 내 기록은 연결 안내
+  await H.seed(p, H.baseSave({ monthlyPoints: 300 }), H.doneDaily()); await H.enterLobby(p)
+  await p.getByRole('button', { name: /랭킹/ }).first().click(); await sleep(1500)
+  const gtxt = await p.locator('body').innerText()
+  ck(/일등/.test(gtxt) && /내 기록 300P · 연결하면 순위에 올라가요/.test(gtxt) && /손님 기록은 순위에 오르지 않아요/.test(gtxt), '24 손님: 서버 순위 + 연결하면 순위에 오른다는 안내')
+  await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/rank_guest.png' })
   console.log(res.join('\n')); await b.close()
 })()

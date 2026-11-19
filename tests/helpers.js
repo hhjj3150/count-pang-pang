@@ -137,6 +137,8 @@ async function newPage(b, w = 390, h = 844, errs = []) {
   const p = await b.newPage({ viewport: { width: w, height: h } })
   p.on('pageerror', (e) => errs.push('pageerror: ' + e.message))
   p.on('console', (m) => { if (m.type() === 'error' && !/insights|404|Failed to load resource/.test(m.text())) errs.push('console: ' + m.text()) })
+  // 실제 서버 랭킹에 의존하지 않게 기본은 '서버 연결 실패'로 (cloud.test.js 는 가짜 서버 응답을 따로 넣음)
+  await p.route('**/rest/v1/rpc/get_ranking**', (r) => r.abort())
   return p
 }
 

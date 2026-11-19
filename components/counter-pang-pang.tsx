@@ -18,7 +18,8 @@ import { Plate } from "@/components/game/Plate"
 import { PromotionCelebration } from "@/components/game/Promotion"
 import { Tutorial } from "@/components/game/Tutorial"
 import { useCloudAccount } from "@/components/game/useCloudAccount"
-import { getAutoLogin, setAutoLogin } from "@/lib/supabase"
+import { getAutoLogin, getSupabase, setAutoLogin } from "@/lib/supabase"
+import { fetchRanking, type ServerRankRow } from "@/lib/game/cloud"
 import { GuardianLink } from "@/components/game/GuardianLink"
 
 /* =========================================================================
@@ -770,6 +771,26 @@ export default function CounterPangPang() {
   const cloud = useCloudAccount({ loaded, setCloudUserId, suspendLocalSave, toast: flashToast })
   cloudNotifyRef.current = cloud.notifySaved
   const canLinkAccount = birthYear !== null && !isChild
+  // 🏆 서버 랭킹: 랭킹 창을 열거나 탭을 바꾸면 서버에서 받아옴 (실패하면 내 기록만)
+  const [serverRank, setServerRank] = useState<{ tab: RankTab; rows: ServerRankRow[] | null; status: "loading" | "ok" | "error" }>({ tab: "points", rows: null, status: "loading" })
+  useEffect(() => {
+    if (!showRecords) return
+    let alive = true
+    setServerRank({ tab: rankTab, rows: null, status: "loading" })
+    ;(async () => {
+      const sb = getSupabase()
+      try {
+        if (!sb) throw new Error("no client")
+        await cloud.flushNow() // 방금 세운 기록이 바로 반영되게
+        const rows = await fetchRanking(sb, String(rankTab), RANK_SIZE)
+        if (alive) setServerRank({ tab: rankTab, rows, status: "ok" })
+      } catch {
+        if (alive) setServerRank({ tab: rankTab, rows: null, status: "error" })
+      }
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRecords, rankTab])
   // 🆕 처음 시작: 닉네임·태어난 해 저장하고 로비로
   const finishProfile = (name: string, year: number) => {
     setBirthYear(year)
@@ -2154,10 +2175,25 @@ export default function CounterPangPang() {
 {/* ============================ 🏆 랭킹 창 ============================ */}
           {showRecords && (() => {
             const tabInfo = RANK_TABS.find((t) => t.id === rankTab) ?? RANK_TABS[0]
-            const list = buildRanking(rankTab, { name: nickname ?? "나", monthlyPoints, best: monthBest })
+            const localList = buildRanking(rankTab, { name: nickname ?? "나", monthlyPoints, best: monthBest })
+            const myLocal = localList.find((e) => e.me)?.value ?? null // 이 휴대폰의 내 기록
+            const sr = serverRank.tab === rankTab ? serverRank : { rows: null, status: "loading" as const }
+            const fromServer = sr.status === "ok" && sr.rows !== null
+            // 서버 순위 (실패하면 내 기록만)
+            const list: { rank: number; name: string; value: number; me: boolean }[] = fromServer
+              ? (sr.rows as ServerRankRow[]).filter((r) => r.rank <= RANK_SIZE).map((r) => ({ rank: r.rank, name: r.nickname, value: Number(r.value), me: r.is_me && cloud.linked }))
+              : sr.status === "error" ? localList.map((e, i) => ({ rank: i + 1, name: e.name, value: e.value, me: !!e.me })) : []
+            const myServer = fromServer && cloud.linked ? (sr.rows as ServerRankRow[]).find((r) => r.is_me) ?? null : null
             const fmt = (v: number) => (rankTab === "points" ? `${v.toLocaleString()}P` : fmtRecord(v))
-            const myIdx = list.findIndex((e) => e.me)
             const isLevelTab = typeof rankTab === "number"
+            const emptyMsg = rankTab === "points" ? "이번 달 포인트를 모아 보세요!" : rankTab === "total" ? "Lv.11·12·13 모두 만점 기록이 필요해요" : `Lv.${rankTab} 만점이면 순위에 올라가요`
+            const myLine = myServer
+              ? `내 순위 ${myServer.rank}위 · ${fmt(Number(myServer.value))}`
+              : !fromServer && sr.status === "error" && myLocal !== null
+                ? `내 기록 ${fmt(myLocal)}`
+                : fromServer && !cloud.linked && myLocal !== null
+                  ? `내 기록 ${fmt(myLocal)} · 연결하면 순위에 올라가요`
+                  : emptyMsg
             return (
             <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => setShowRecords(false)}>
               <div className="flex max-h-[92vh] w-full max-w-[380px] flex-col rounded-3xl bg-white p-4 shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
@@ -2185,13 +2221,13 @@ export default function CounterPangPang() {
                 <p className="mt-2 text-center text-xs font-bold text-zinc-500">{tabInfo.desc} · 매달 1일 새로 시작</p>
 
                 {/* 1~10위 */}
-                <ol className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto cpp-no-scrollbar">
+                <ol data-testid="rank-list" data-source={fromServer ? "server" : sr.status} className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto cpp-no-scrollbar">
                   {Array.from({ length: RANK_SIZE }, (_, i) => {
                     const e = list[i]
                     return (
                       <li key={i} className={cn("flex items-center gap-2 rounded-xl px-3 py-1 min-[400px]:py-1.5", e?.me ? "bg-indigo-50 ring-1 ring-indigo-200" : "bg-slate-50")}>
                         <span className="w-7 flex-none text-center text-sm font-black text-slate-500">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                        <span className={cn("min-w-0 flex-1 truncate text-sm font-black", e ? "text-slate-800" : "text-slate-300")}>{e ? `${e.name}${e.me ? " (나)" : ""}` : "—"}</span>
+                        <span className={cn("min-w-0 flex-1 truncate text-sm font-black", e ? "text-slate-800" : "text-slate-300")}>{e ? `${e.name}${e.me ? " (나)" : ""}` : sr.status === "loading" && i === 0 ? "불러오는 중…" : "—"}</span>
                         <span className={cn("flex-none text-sm font-black tabular-nums", e ? "text-indigo-600" : "text-slate-300")}>{e ? fmt(e.value) : ""}</span>
                       </li>
                     )
@@ -2201,13 +2237,26 @@ export default function CounterPangPang() {
                 {/* 내 순위 */}
                 <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-3 py-2.5 text-white">
                   <p className="min-w-0 text-sm font-black">
-                    {myIdx >= 0 ? `내 순위 ${myIdx + 1}위 · ${fmt(list[myIdx].value)}` : rankTab === "points" ? "이번 달 포인트를 모아 보세요!" : rankTab === "total" ? "Lv.11·12·13 모두 만점 기록이 필요해요" : `Lv.${rankTab} 만점이면 순위에 올라가요`}
+                    {myLine}
                   </p>
                   {isLevelTab && (rankTab as number) <= unlocked && (
                     <button type="button" onClick={() => { setShowRecords(false); startLevel(rankTab as number) }} className="flex-none rounded-full bg-white px-3 py-1 text-xs font-black text-indigo-600 active:scale-95">도전 ▶</button>
                   )}
                 </div>
-                <p className="mt-2 text-center text-[11px] font-bold text-amber-600">👥 다른 사람과 함께 보는 전체 순위는 서버 연결 후 표시돼요. 지금은 내 기록만 보여요.</p>
+                {sr.status === "error" ? (
+                  <p className="mt-2 text-center text-[11px] font-bold text-amber-600">📶 서버에 연결하지 못해 이 휴대폰의 내 기록만 보여요.</p>
+                ) : cloud.linked ? (
+                  <p className="mt-2 text-center text-[11px] font-bold text-zinc-400">👥 카카오 계정을 연결한 친구들의 이번 달 순위예요.</p>
+                ) : (
+                  <div className="mt-2 text-center">
+                    <p className="text-[11px] font-bold text-amber-600">👤 손님 기록은 순위에 오르지 않아요. {isChild ? "보호자와 연결하면" : "카카오 계정을 연결하면"} 내 기록도 올라가요.</p>
+                    {canLinkAccount && (
+                      <button type="button" onClick={() => { sfxClick(); void cloud.linkKakao(); }} className="mt-1.5 rounded-full bg-[#FEE500] px-4 py-1.5 text-xs font-black text-[#191919]">
+                        💬 카카오 계정 연결하기
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             )
