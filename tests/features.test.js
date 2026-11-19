@@ -267,6 +267,26 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
     await p.getByText('시작하기').click(); await sleep(600)
     ck((!after || (after.nickname === null && after.points === 0 && after.ownedCars.join() === 'kart_basic')) && await p.locator('#birth').isVisible(), 'R8 삭제하기 → 모든 정보가 처음 상태로, 가입 화면으로')
   })
+  // ── S. 계정 연결 (카카오) — 실제 로그인은 휴대폰에서 직접 확인
+  await step('S', async () => {
+    await H.seed(p, H.baseSave({ points: 555, savedAt: 1700000000000 }), H.doneDaily()); await H.enterLobby(p)
+    await H.reloadLobby(p)
+    ck((await H.getSave(p)).savedAt === 1700000000000, 'S1 앱을 켜기만 하면 저장 시각이 바뀌지 않음')
+    await p.getByRole('button', { name: '⚙️ 관리' }).click(); await sleep(400)
+    const card = p.getByTestId('cloud-card')
+    ck(await card.getByRole('button', { name: /카카오로 연결하기/ }).isVisible(), 'S2 어른: 카카오로 연결하기 버튼')
+    let authUrl = ''
+    await p.route('**/auth/v1/authorize**', (r) => { authUrl = r.request().url(); r.abort() })
+    await card.getByRole('button', { name: /카카오로 연결하기/ }).click(); await sleep(1500)
+    await p.unroute('**/auth/v1/authorize**')
+    ck(authUrl.includes('zzekinnnhizuwaczyrqp.supabase.co') && authUrl.includes('provider=kakao') && authUrl.includes('code_challenge'), 'S3 버튼 → 카카오 로그인(Supabase)으로 이동')
+    await H.seed(p, H.baseSave({ birthYear: new Date().getFullYear() - 9 }), H.doneDaily()); await H.enterLobby(p)
+    await p.getByRole('button', { name: '⚙️ 관리' }).click(); await sleep(400)
+    const c2 = p.getByTestId('cloud-card')
+    ck(!(await c2.getByRole('button', { name: /카카오로 연결하기/ }).count()) && /보호자 연결/.test(await c2.innerText()), 'S4 어린이: 연결 버튼 없이 안내만')
+    const pv = await (await p.request.get(H.URL + '/privacy')).text()
+    ck(pv.includes('카카오 회원번호') && pv.includes('Supabase') && pv.includes('서울'), 'S5 개인정보처리방침에 계정 연결 항목')
+  })
   await p.close()
 
   console.log(res.join('\n'))
