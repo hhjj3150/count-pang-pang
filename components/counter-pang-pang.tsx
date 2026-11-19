@@ -18,6 +18,7 @@ import { Plate } from "@/components/game/Plate"
 import { PromotionCelebration } from "@/components/game/Promotion"
 import { Tutorial } from "@/components/game/Tutorial"
 import { useCloudAccount } from "@/components/game/useCloudAccount"
+import { MISSION_BONUS, MISSION_REWARD, type MissionDay, type MissionId, applyGameResult, missionInfo, newMissionDay, todayMissions } from "@/lib/game/missions"
 import { getAutoLogin, getSupabase, setAutoLogin } from "@/lib/supabase"
 import { fetchRanking, type ServerRankRow } from "@/lib/game/cloud"
 import { GuardianLink } from "@/components/game/GuardianLink"
@@ -450,6 +451,7 @@ export default function CounterPangPang() {
       
       // 공유 또는 복사 성공 시 보상 지급
       sfxClick();
+      updateMission((d) => ({ ...d, invite: true })); // 📋 미션: 초대 링크 보내기
       const newCount = inviteCount + 1;
       setInvite({ date: today(), count: newCount });
       setPoints(prev => prev + 30);
@@ -466,6 +468,7 @@ export default function CounterPangPang() {
     }
   };
   const correctRef = useRef(0)
+  const streakRef = useRef(0) // 이번 판 연속 정답 수 (오늘의 미션)
   const qIndexRef = useRef(0)
   const audioRef = useRef<AudioContext | null>(null)
 
@@ -521,6 +524,12 @@ export default function CounterPangPang() {
         setAttData(d.attendance && d.attendance.lastMonday === monday ? d.attendance : { date: "", weekCount: 0, lastMonday: monday })
         if (d.invite) setInvite(d.invite)
         if (typeof d.inviteRewarded === "number") setInviteRewarded(d.inviteRewarded)
+        // 📋 오늘의 미션: 불러오면서 만들어 둠 (앱을 켜기만 했는데 '내용이 바뀐 것'으로 보이지 않게)
+        if (d.missions && d.missions.date === today() && Array.isArray(d.missions.picks)) setMissionDay(d.missions)
+        else {
+          const st = d.stats && d.stats.types && d.stats.days && d.stats.games ? d.stats : EMPTY_STATS
+          setMissionDay(newMissionDay(today(), { stats: st, unlocked: d.unlocked ?? 0, records: d.records ?? {} }))
+        }
         if (d.daily && d.daily.date === today()) setDaily(d.daily)
         if (d.monthBest) setMonthBestData(d.monthBest)
         if (d.stats && d.stats.types && d.stats.days && d.stats.games) setLearnStats(d.stats)
@@ -558,6 +567,61 @@ export default function CounterPangPang() {
   // 📊 학습 기록 (부모님 리포트용)
   const [learnStats, setLearnStats] = useState<LearnStats>(EMPTY_STATS);
 
+  // 📋 미션: 피버 타임에 들어갈 때마다 / 랭킹을 열면
+  useEffect(() => {
+    if (isFever) updateMission((d) => ({ ...d, fever: d.fever + 1 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFever]);
+  useEffect(() => {
+    if (showRecords) updateMission((d) => (d.ranking ? d : { ...d, ranking: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRecords]);
+
+  // 📋 오늘의 미션 (lib/game/missions.ts) — 날짜가 바뀌면 새로 만듦
+  const [missionDay, setMissionDay] = useState<MissionDay | null>(null);
+  const [showMissions, setShowMissions] = useState(false);
+  const missionGenRef = useRef<() => MissionDay>(() => newMissionDay(today(), { stats: EMPTY_STATS, unlocked: 0, records: {} }));
+  missionGenRef.current = () => newMissionDay(today(), { stats: learnStats, unlocked, records });
+  const updateMission = useCallback((fn: (d: MissionDay) => MissionDay) => {
+    setMissionDay((d) => fn(d && d.date === today() ? d : missionGenRef.current()));
+  }, []);
+  useEffect(() => {
+    if (!loaded) return;
+    if (!missionDay || missionDay.date !== today()) setMissionDay(missionGenRef.current());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, screen, showMissions]); // 화면을 옮길 때마다 날짜 확인 (자정이 지나면 새 미션)
+  // 미션 진행도 (출석·오늘 맞힌 문제 수는 이미 있는 기록에서 읽음)
+  const missionToday = missionDay && missionDay.date === today() ? missionDay : null;
+  const missionCtx = {
+    attendedToday: attData.date === today(),
+    correctToday: learnStats.days[today()]?.correct ?? 0,
+    hasDaily: daily.date === today() && daily.level >= 1,
+    dailyLevel: daily.date === today() && daily.level >= 1 ? daily.level : null,
+  };
+  const missionList = missionToday
+    ? todayMissions(missionToday).map((id) => ({ id, ...missionInfo(id, missionToday, missionCtx), reward: MISSION_REWARD[id], claimed: missionToday.claimed.includes(id) }))
+    : [];
+  const missionDoneCount = missionList.filter((m) => m.cur >= m.goal).length;
+  const missionClaimable = missionList.filter((m) => m.cur >= m.goal && !m.claimed).length
+    + (missionToday && !missionToday.bonus && missionList.length > 0 && missionList.every((m) => m.claimed) ? 1 : 0);
+  const claimMission = (id: MissionId) => {
+    const m = missionList.find((x) => x.id === id);
+    if (!m || m.claimed || m.cur < m.goal) return;
+    sfxClick();
+    updateMission((d) => (d.claimed.includes(id) ? d : { ...d, claimed: [...d.claimed, id] }));
+    setPoints((p) => p + m.reward);
+    flashToast(`${m.icon} 미션 완료! +${m.reward}P`);
+  };
+  const claimMissionBonus = () => {
+    if (!missionToday || missionToday.bonus || !missionList.every((m) => m.claimed)) return;
+    sfxClick();
+    updateMission((d) => ({ ...d, bonus: true }));
+    setPoints((p) => p + MISSION_BONUS.points);
+    const full = hearts >= HEART_CAP;
+    if (!full) setHearts((h) => Math.min(HEART_CAP, h + MISSION_BONUS.hearts));
+    flashToast(full ? `🎉 오늘의 미션 모두 완료! +${MISSION_BONUS.points}P (하트는 가득 차 있어요)` : `🎉 오늘의 미션 모두 완료! 하트 +${MISSION_BONUS.hearts} 💖 · +${MISSION_BONUS.points}P`);
+  };
+
   // 💾 내 정보 한 묶음 저장: 불러오기가 끝난 뒤, 무엇이든 바뀌면 묶음 전체를 저장 (서버를 붙이면 이 묶음을 올리면 됨)
   // (모든 상태를 선언한 뒤에 두어야 함)
   useEffect(() => {
@@ -568,7 +632,7 @@ export default function CounterPangPang() {
       lifetimePoints, monthlyPoints, monthlyDate,
       ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons,
       heartBuy: heartBuyData, attendance: attData, invite, inviteRewarded, daily, monthBest: monthBestData,
-      stats: learnStats, showGuide, lastLevel: chosenLevel, cloudUserId,
+      stats: learnStats, showGuide, lastLevel: chosenLevel, cloudUserId, missions: missionDay ?? undefined,
     };
     // 내용이 실제로 바뀌었을 때만 저장 시각을 새로 (앱을 켜기만 해도 '최신 기록'이 되지 않게)
     const body = JSON.stringify(data);
@@ -578,7 +642,7 @@ export default function CounterPangPang() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, savedAt: savedAtRef.current || undefined }));
     if (changed) cloudNotifyRef.current();
   }, [loaded, cloudUserId, nickname, hearts, heartDate, unlocked, records, muted, points, lifetimePoints, monthlyPoints, monthlyDate, birthYear, cashExchangeMonth, premium,
-      ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons, heartBuyData, attData, invite, inviteRewarded, daily, monthBestData, learnStats, showGuide, chosenLevel]);
+      ownedCars, equippedCar, ownedBgs, equippedBg, ownedEmoticons, heartBuyData, attData, invite, inviteRewarded, daily, monthBestData, learnStats, showGuide, chosenLevel, missionDay]);
   const recordAnswer = (logicLevel: number, isCorrect: boolean) => {
     const day = today();
     setLearnStats((st) => {
@@ -644,12 +708,12 @@ export default function CounterPangPang() {
     }
     window.location.replace("/");
   };
-  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete });
+  const stateRef = useRef({ showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete, showMissions });
   const isPopRef = useRef(false); // 브라우저 뒤로가기 타이머 (무한 루프 방지용)
   
   useEffect(() => {
-    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete };
-  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete]);
+    stateRef.current = { showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete, showMissions };
+  }, [showVault, showAttendance, previewItem, screen, exitPhase, showMyPage, showPromotionModal, quitConfirm, showTutorial, showRecords, guideLevel, confirmDelete, showMissions]);
 
   // 1. 초기 진입 시 기본 방어막 1개 생성
   useEffect(() => {
@@ -667,10 +731,10 @@ export default function CounterPangPang() {
   // 3. 팝업이 뜰 때 히스토리 쌓기 (🌟 팝업에서 튕기는 현상 완벽 해결!)
   useEffect(() => {
     if (isPopRef.current) return;
-    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial || showRecords || guideLevel !== null || confirmDelete) {
+    if (exitPhase || showVault || showAttendance || previewItem || showMyPage || showTutorial || showRecords || showMissions || guideLevel !== null || confirmDelete) {
       window.history.pushState(null, "", window.location.href);
     }
-  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial, showRecords, guideLevel, confirmDelete]);
+  }, [exitPhase, showVault, showAttendance, previewItem, showMyPage, showTutorial, showRecords, guideLevel, confirmDelete, showMissions]);
 
   // 4. 진짜 뒤로가기를 눌렀을 때의 동작 흐름
   useEffect(() => {
@@ -698,6 +762,8 @@ export default function CounterPangPang() {
         setGuideLevel(null);
       } else if (current.showRecords) {
         setShowRecords(false);
+      } else if (current.showMissions) {
+        setShowMissions(false);
       } else if (current.showVault) {
         setShowVault(false);
       } else if (current.showAttendance) {
@@ -956,8 +1022,11 @@ export default function CounterPangPang() {
     } else {
       setRecordResult(null)
     }
+    // 📋 오늘의 미션: 통과·새 레벨·만점·오늘의 도전·기록 도전·약점 연습
+    const dailyLevel = daily.date === today() && daily.level >= 1 ? daily.level : null
+    updateMission((d) => applyGameResult(d, { level: chosenLevel, score, passed: ok, firstPass: (records[chosenLevel] ?? 0) < PASS_LINE, dailyLevel, recordLevels: RECORD_LEVELS }))
     setScreen("RESULT")
-  }, [chosenLevel, daily, equippedCar, equippedBg, monthBestData])
+  }, [chosenLevel, daily, equippedCar, equippedBg, monthBestData, records, updateMission])
 
   const advance = useCallback(() => {
     if (screenRef.current !== "GAME") return // 게임 도중 나갔으면 진행 중단
@@ -979,6 +1048,9 @@ export default function CounterPangPang() {
       // 📊 학습 기록 (예제 3문제는 정답을 보여주므로 제외)
       const q = questions[qIndexRef.current]
       if (q && qIndexRef.current >= 3) recordAnswer(q.level, isCorrect)
+      // 📋 미션: 한 판에서 10문제 연속 정답
+      streakRef.current = isCorrect ? streakRef.current + 1 : 0
+      if (streakRef.current === 10) updateMission((d) => (d.streak10 ? d : { ...d, streak10: true }))
       if (isCorrect) {
         correctRef.current += 1
         setCorrectCount(correctRef.current)
@@ -1042,6 +1114,7 @@ export default function CounterPangPang() {
       setHearts((h) => h - 1)
       const qs = buildGame(level)
       correctRef.current = 0
+      streakRef.current = 0
       qIndexRef.current = 0
       playMsRef.current = 0
       questionPtsRef.current = 0
@@ -1626,6 +1699,28 @@ export default function CounterPangPang() {
                   )}
                 </div>
               )}
+              {/* 📋 오늘의 미션 버튼 */}
+              {missionList.length > 0 && (
+                <button
+                  type="button"
+                  data-testid="mission-button"
+                  onClick={() => { sfxClick(); setShowMissions(true) }}
+                  className="relative z-10 mb-3 flex w-full items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 p-3 text-left shadow-md ring-1 ring-emerald-300 active:scale-[0.98]"
+                >
+                  <span style={lfs(30)}>📋</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-black text-white" style={lfs(16)}>오늘의 미션 <span className="text-white/90">{missionDoneCount}/{missionList.length}</span></p>
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/30">
+                      <div className="h-full rounded-full bg-white" style={{ width: `${(missionDoneCount / missionList.length) * 100}%` }} />
+                    </div>
+                  </div>
+                  {missionClaimable > 0 ? (
+                    <span className="flex-none animate-pulse rounded-full bg-yellow-300 px-2.5 py-1.5 font-black text-amber-900 shadow" style={lfs(13)}>보상 {missionClaimable}개 🎁</span>
+                  ) : (
+                    <span className="flex-none rounded-full bg-white px-2.5 py-1.5 font-black text-teal-600 shadow" style={lfs(14)}>보기</span>
+                  )}
+                </button>
+              )}
               {/* 🏆 랭킹 버튼 (월간 포인트 · Lv.11 · 12 · 13 · 합산) */}
               <button
                 type="button"
@@ -2198,6 +2293,52 @@ export default function CounterPangPang() {
             />
           )}
 {/* ============================ 🏆 랭킹 창 ============================ */}
+          {/* 📋 오늘의 미션 창 */}
+          {showMissions && missionToday && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => setShowMissions(false)}>
+              <div data-testid="mission-modal" className="flex max-h-[92vh] w-full max-w-[380px] flex-col rounded-3xl bg-white p-4 shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black text-zinc-900">📋 오늘의 미션 <span className="text-sm font-bold text-zinc-400">{missionDoneCount}/{missionList.length}</span></h2>
+                  <button type="button" onClick={() => { sfxClick(); setShowMissions(false) }} className="grid h-9 w-9 place-items-center rounded-full bg-black/5 text-lg text-zinc-900 active:scale-90">✕</button>
+                </div>
+                <p className="mt-1 text-xs font-bold text-zinc-500">위 3개는 매일 같고, 아래 2개는 매일 바뀌어요 · 자정에 새로 시작</p>
+                <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto cpp-no-scrollbar">
+                  {missionList.map((m, i) => {
+                    const done = m.cur >= m.goal
+                    return (
+                      <li key={m.id} data-mission={m.id} className={cn("flex items-center gap-2 rounded-2xl p-2.5 ring-1", m.claimed ? "bg-slate-50 ring-slate-200" : done ? "bg-emerald-50 ring-emerald-300" : "bg-white ring-slate-200", i === 3 && "mt-4")}>
+                        <span className="text-2xl">{m.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("text-sm font-black leading-tight", m.claimed ? "text-slate-400" : "text-slate-800")}>{m.title}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                              <div className={cn("h-full rounded-full", done ? "bg-emerald-400" : "bg-sky-400")} style={{ width: `${Math.min(100, (m.cur / m.goal) * 100)}%` }} />
+                            </div>
+                            <span className="flex-none text-[11px] font-black tabular-nums text-slate-500">{m.cur}/{m.goal}</span>
+                          </div>
+                        </div>
+                        {m.claimed ? (
+                          <span className="flex-none rounded-full bg-slate-200 px-2.5 py-1.5 text-xs font-black text-slate-500">받음 ✓</span>
+                        ) : done ? (
+                          <button type="button" onClick={() => claimMission(m.id)} className="flex-none rounded-full bg-yellow-300 px-2.5 py-1.5 text-xs font-black text-amber-900 shadow active:scale-95">받기 +{m.reward}P</button>
+                        ) : (
+                          <span className="flex-none rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-black text-slate-500">+{m.reward}P</span>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+                <div className={cn("mt-3 flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5", missionToday.bonus ? "bg-slate-100" : "bg-gradient-to-r from-amber-300 to-orange-400")}>
+                  <p className={cn("text-sm font-black", missionToday.bonus ? "text-slate-400" : "text-amber-950")}>🎉 모두 완료 보너스 · 💖 +{MISSION_BONUS.hearts} · +{MISSION_BONUS.points}P</p>
+                  {missionToday.bonus ? (
+                    <span className="flex-none text-xs font-black text-slate-400">받음 ✓</span>
+                  ) : (
+                    <button type="button" disabled={!missionList.every((m) => m.claimed)} onClick={claimMissionBonus} className="flex-none rounded-full bg-white px-3 py-1.5 text-xs font-black text-orange-600 shadow active:scale-95 disabled:opacity-50">받기</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {showRecords && (() => {
             const tabInfo = RANK_TABS.find((t) => t.id === rankTab) ?? RANK_TABS[0]
             const localList = buildRanking(rankTab, { name: nickname ?? "나", monthlyPoints, best: monthBest })

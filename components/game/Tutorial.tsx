@@ -110,6 +110,7 @@ export function Tutorial({ onFinish, onSkip, playClick }: { onFinish: () => void
             <Bubble>
               <p>📆 매일 열린 레벨 중 <b>하나</b>가 오늘의 도전으로 정해져요.</p>
               <p className="mt-2">🏆 그 레벨을 오늘 <b>처음 통과</b>하면 통과 보너스가 <b className="text-rose-500">2배</b>!</p>
+              <p className="mt-2">📋 로비의 <b>오늘의 미션</b>: 매일 5개(3개는 고정, 2개는 매일 바뀜)를 하면 포인트, 모두 하면 <b>하트 +1</b>과 보너스 포인트!</p>
               <p className="mt-2">🔁 실패해도 하트만 있으면 <b>몇 번이든</b> 다시 도전할 수 있어요.</p>
               <p className="mt-2 text-sm text-zinc-500">2배 보너스는 하루에 한 번이에요. 내일은 새로운 도전이 열려요.</p>
             </Bubble>
