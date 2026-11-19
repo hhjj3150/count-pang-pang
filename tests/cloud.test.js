@@ -4,7 +4,7 @@ const { sleep } = H
 const UID = '11111111-2222-3333-4444-555555555555'
 const now = Math.floor(Date.now() / 1000)
 const session = { access_token: 'x.y.z', token_type: 'bearer', expires_in: 3600, expires_at: now + 3600, refresh_token: 'r',
-  user: { id: UID, aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'kakao' }, user_metadata: {}, created_at: new Date().toISOString() } }
+  user: { id: UID, aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'kakao' }, user_metadata: { name: '카카오테스터' }, created_at: new Date().toISOString() } }
 const res = []; const ck = (ok, m) => res.push((ok ? '✅ ' : '❌ ') + m)
 ;(async () => {
   const b = await H.newBrowser(); const p = await H.newPage(b)
@@ -26,6 +26,7 @@ const res = []; const ck = (ok, m) => res.push((ok ? '✅ ' : '❌ ') + m)
   await cf.getByRole('button', { name: /서버 기록/ }).click(); await sleep(2500)
   let s = await H.getSave(p)
   ck(s.nickname === '서버아이' && s.points === 9999 && s.cloudUserId === UID, '2 서버 기록 고르기 → 서버 기록으로 바뀜')
+  ck(/카카오테스터/.test(await p.getByTestId('cloud-linked').innerText()) && /불러왔어요/.test(await p.getByTestId('cloud-linked').innerText()), '2-1 새로고침 뒤 연결 완료 창 (연결된 카카오 계정 이름)')
   // 2) 같은 계정, 서버가 더 최신 → 자동 불러오기
   server = { save: H.baseSave({ ver: 5, nickname: '다른폰', points: 4242, savedAt: Date.now() + 5000 }), save_version: 5, updated_at: new Date().toISOString() }
   await H.seed(p, H.baseSave({ points: 1, cloudUserId: UID, savedAt: Date.now() - 1000 }), withSession(H.doneDaily())); await p.waitForTimeout(3000)
@@ -33,18 +34,23 @@ const res = []; const ck = (ok, m) => res.push((ok ? '✅ ' : '❌ ') + m)
   ck(s.points === 4242 && s.cloudUserId === UID, '3 다른 기기의 더 최신 기록을 자동으로 불러옴')
   // 3) 서버에 기록 없음 → 바로 연결 + 올리기
   server = null; pushes = []
-  await H.seed(p, H.baseSave({ points: 321 }), withSession(H.doneDaily())); await H.enterLobby(p); await sleep(5000)
+  await H.seed(p, H.baseSave({ points: 321 }), withSession(H.doneDaily())); await sleep(5000)
   s = await H.getSave(p)
   ck(s.cloudUserId === UID && pushes.some((x) => x.id === UID && x.save.points === 321), '4 서버 기록이 없으면 이 휴대폰 기록을 바로 연결해서 올림')
+  const lp = p.getByTestId('cloud-linked')
+  ck(await lp.isVisible() && /카카오테스터/.test(await lp.innerText()), '4-1 연결 완료 창에 연결된 카카오 계정 이름')
+  await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/linked_popup.png' })
+  await lp.getByRole('button', { name: '확인' }).click(); await sleep(300)
+  await H.enterLobby(p)
   await p.getByRole('button', { name: '⚙️ 관리' }).click(); await sleep(400)
-  ck(/연결됐어요/.test(await p.getByTestId('cloud-card').innerText()), '5 관리 화면에 연결 상태 표시')
+  ck(/연결됐어요/.test(await p.getByTestId('cloud-card').innerText()) && /연결된 카카오 계정: 카카오테스터/.test(await p.getByTestId('cloud-card').innerText()), '5 관리 화면에 연결 상태와 카카오 계정 이름 표시')
   await p.getByTestId('cloud-card').screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/card.png' })
   // 4) 고르기 창에서 '이 휴대폰 기록'
   server = { save: H.baseSave({ ver: 5, nickname: '서버아이', points: 9999 }), save_version: 5, updated_at: new Date().toISOString() }; pushes = []
   await H.seed(p, H.baseSave({ points: 222 }), withSession(H.doneDaily())); await sleep(3000)
   await p.getByTestId('cloud-conflict').getByRole('button', { name: /이 휴대폰 기록/ }).click(); await sleep(5000)
   s = await H.getSave(p)
-  ck(s.points === 222 && s.cloudUserId === UID && pushes.some((x) => x.save.points === 222), '6 이 휴대폰 기록 고르기 → 서버를 이 기록으로 덮어씀')
+  ck(s.points === 222 && s.cloudUserId === UID && pushes.some((x) => x.save.points === 222) && await p.getByTestId('cloud-linked').isVisible(), '6 이 휴대폰 기록 고르기 → 서버를 이 기록으로 덮어씀 + 연결 완료 창')
   // ── 👨‍👩‍👧 보호자 연결 (만 14세 미만)
   const kid = (o = {}) => H.baseSave({ birthYear: new Date().getFullYear() - 9, ...o })
   let consents = []; let consentPosts = []; let revokes = 0; let profileDeletes = 0
@@ -85,9 +91,11 @@ const res = []; const ck = (ok, m) => res.push((ok ? '✅ ' : '❌ ') + m)
   ck(errShown && authUrl.includes('provider=kakao') && pending?.guardian?.phone === '01012345678' && pending.items.childInfo, '9 동의·테스트 인증 → 보호자 카카오 로그인으로 이동 (동의 내용 잠시 보관)')
   // 카카오에서 돌아옴 (세션 + 보관한 동의) → 동의 기록 저장 후 연결
   pushes = []
-  await H.seed(p, kid({ points: 77 }), withSession({ ...H.doneDaily(), cp_guardian_pending: pending, cp_guardian_test: '1' })); await H.enterLobby(p); await sleep(5000)
+  await H.seed(p, kid({ points: 77 }), withSession({ ...H.doneDaily(), cp_guardian_pending: pending, cp_guardian_test: '1' })); await sleep(5000)
   let k = await H.getSave(p)
   ck(consentPosts.length === 1 && consentPosts[0].method === 'test' && consentPosts[0].guardian_name === '김보호' && k.cloudUserId === UID && pushes.some((x) => x.save.points === 77), '10 돌아오면 동의 기록 저장 + 아이 기록 서버에 올림')
+  if (await p.getByTestId('cloud-linked').isVisible()) await p.getByTestId('cloud-linked').getByRole('button', { name: '확인' }).click()
+  await H.enterLobby(p)
   await p.getByRole('button', { name: '⚙️ 관리' }).click(); await sleep(400)
   const card = p.getByTestId('cloud-card')
   ck(/보호자 동의: 김\*\*/.test(await card.innerText()), '11 관리 화면에 보호자 동의 표시 (이름 가림)')
@@ -101,5 +109,29 @@ const res = []; const ck = (ok, m) => res.push((ok ? '✅ ' : '❌ ') + m)
   await H.seed(p, kid({ points: 5 }), withSession(H.doneDaily())); await H.enterLobby(p); await sleep(4000)
   k = await H.getSave(p)
   ck(!k.cloudUserId && pushes.length === 0, '13 보호자 동의가 없는 아이 계정은 서버에 올리지 않음')
+  // ── 💬 첫 화면 '카카오로 시작하기' (이 기기에 기록 없음)
+  consents = []; server = null; pushes = []
+  await H.seed(p, null, withSession({})); await sleep(4000)
+  ck(await p.getByTestId('signup-kakao').isVisible() && /카카오테스터/.test(await p.getByTestId('signup-kakao').innerText()), '14 카카오로 처음 시작 → 닉네임·태어난 해 정하는 화면')
+  await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/signup_kakao.png' })
+  await p.locator('#nick').fill('새친구'); await p.locator('#birth').selectOption('1990')
+  await p.getByRole('button', { name: '입장하기' }).click(); await sleep(5000)
+  k = await H.getSave(p)
+  ck(k.nickname === '새친구' && k.cloudUserId === UID && pushes.some((x) => x.save.nickname === '새친구') && await p.getByTestId('cloud-linked').isVisible(), '15 입장하면 새 기록으로 연결 + 서버에 올림 + 연결 완료 창')
+  server = { save: H.baseSave({ ver: 5, nickname: '돌아온친구', points: 8888 }), save_version: 5, updated_at: new Date().toISOString() }
+  await H.seed(p, null, withSession({})); await sleep(4000)
+  k = await H.getSave(p)
+  ck(k.nickname === '돌아온친구' && k.points === 8888 && /환영/.test(await p.getByTestId('cloud-linked').innerText()), '16 서버에 기록이 있으면 바로 불러오기 (다시 오신 걸 환영해요)')
+  server = null; pushes = []
+  await H.seed(p, null, withSession({})); await sleep(4000)
+  await p.locator('#nick').fill('꼬마'); await p.locator('#birth').selectOption(String(new Date().getFullYear() - 8))
+  await p.getByRole('button', { name: '입장하기' }).click(); await sleep(500)
+  const ks = p.getByTestId('kid-start')
+  ck(await ks.isVisible() && /준비 중/.test(await ks.innerText()), '17 어린이가 카카오로 시작 → 부모님과 함께 안내 (테스트 모드 아니면 준비 중)')
+  await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/kid_start.png' })
+  await ks.getByRole('button', { name: '손님으로 먼저 하기' }).click(); await sleep(2500)
+  k = await H.getSave(p)
+  const tok = await p.evaluate(() => localStorage.getItem('sb-zzekinnnhizuwaczyrqp-auth-token'))
+  ck(k.nickname === '꼬마' && !k.cloudUserId && !tok && pushes.length === 0, '18 손님으로 먼저 하기 → 로그아웃, 기록은 휴대폰에만')
   console.log(res.join('\n')); await b.close()
 })()

@@ -23,6 +23,7 @@ export interface CloudConflict {
 
 const PUSH_DELAY_MS = 3000 // 저장이 연달아 일어나면 3초 뒤 한 번만 올림
 const NOTICE_KEY = "cp_cloud_notice" // 새로고침 뒤 보여 줄 안내 (sessionStorage)
+const LINKED_KEY = "cp_cloud_linked" // 새로고침 뒤 연결 완료 창 보여 주기 (sessionStorage)
 const PENDING_KEY = "cp_guardian_pending" // 보호자 동의를 마치고 카카오로 다녀오는 동안 잠시 보관 (localStorage)
 const PENDING_TTL_MS = 30 * 60 * 1000 // 30분 안에 카카오 연결을 끝내야 함
 
@@ -60,6 +61,8 @@ export function useCloudAccount(opts: {
   const [conflict, setConflict] = useState<CloudConflict | null>(null)
   const [busy, setBusy] = useState(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
+  const [needsProfile, setNeedsProfile] = useState(false) // 카카오로 처음 시작: 닉네임·태어난 해를 정해야 함
+  const [linkedPopup, setLinkedPopup] = useState<string | null>(null) // 연결이 끝났을 때 크게 보여 줄 안내
   const [guardian, setGuardian] = useState<GuardianConsent | null>(null) // 만 14세 미만: 지금 유효한 보호자 동의
   const justConsentedRef = useRef(false) // 이번에 막 동의 기록을 넣었음 (기록 고르기에서 취소하면 동의도 취소)
   const linkedRef = useRef<string | null>(null) // 기록을 올려도 되는 계정 (기록 고르기 전에는 null)
@@ -107,12 +110,20 @@ export function useCloudAccount(opts: {
       const client = sb()
       if (!client) return
       const local = readLocalSave()
+      const fresh = !local?.nickname // 이 기기에 아직 기록이 없음 (첫 화면에서 '카카오로 시작하기')
       let row
       try {
-        // 만 14세 미만은 보호자 동의가 있어야 연결
-        if (isChildUser(local?.birthYear)) {
+        row = await fetchCloudSave(client, u.id)
+        if (fresh && !row) {
+          // 처음 오신 분: 닉네임·태어난 해를 정하면 그 기록으로 연결 (adoptNewProfile)
+          setNeedsProfile(true)
+          return
+        }
+        // 만 14세 미만 기록은 보호자 동의가 있어야 연결
+        const birth = fresh ? row?.save.birthYear : local?.birthYear
+        if (isChildUser(birth)) {
           const pending = takePending()
-          if (pending) {
+          if (pending && !fresh) {
             await insertTestConsent(client, u.id, { nickname: local?.nickname ?? null, birthYear: local?.birthYear }, pending.guardian, pending.items)
             justConsentedRef.current = true
           }
@@ -121,17 +132,22 @@ export function useCloudAccount(opts: {
             await client.auth.signOut({ scope: "local" })
             handledRef.current = null
             setUser(null)
-            toast("보호자 동의가 필요해요. 관리 → 내 정보에서 보호자와 연결해 주세요 👨‍👩‍👧")
+            toast("만 14세 미만은 보호자 동의가 필요해요. 손님으로 시작한 뒤 관리 → 내 정보에서 보호자와 연결해 주세요 👨‍👩‍👧")
             return
           }
           setGuardian(consent)
         } else {
           setGuardian(null)
         }
-        row = await fetchCloudSave(client, u.id)
       } catch {
         toast("서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요 📶")
         handledRef.current = null
+        return
+      }
+      if (fresh && row) {
+        // 이 기기는 처음, 서버에는 기록이 있음 → 바로 불러오기
+        sessionStorage.setItem(LINKED_KEY, "다시 오신 걸 환영해요! 서버에 있던 기록을 불러왔어요.")
+        applyServerSave(row.save, u.id, "서버 기록을 불러왔어요 ☁️")
         return
       }
       if (local?.cloudUserId === u.id) {
@@ -148,7 +164,7 @@ export function useCloudAccount(opts: {
         // 서버에 기록이 없음 → 이 휴대폰 기록을 연결 (저장되면 자동으로 올라감)
         linkedRef.current = u.id
         setCloudUserId(u.id)
-        toast("카카오 계정 연결 완료! 이제 기록이 서버에도 저장돼요 ☁️")
+        setLinkedPopup("이 휴대폰의 기록을 서버에 보관하기 시작했어요.")
         return
       }
       // 서버에도 기록이 있음 → 고르게 함
@@ -161,6 +177,25 @@ export function useCloudAccount(opts: {
     [applyServerSave, pushNow, setCloudUserId, toast],
   )
 
+  // 처음 오신 분(카카오로 시작): 화면에서 닉네임·태어난 해를 정한 뒤 불러 줌 → 이 새 기록으로 연결 (만 14세 이상만)
+  const adoptNewProfile = useCallback(() => {
+    if (!user) return
+    linkedRef.current = user.id
+    setNeedsProfile(false)
+    setCloudUserId(user.id)
+    setLinkedPopup("새 기록을 만들었어요. 이제부터 서버에 자동으로 보관돼요.")
+  }, [setCloudUserId, user])
+
+  // 카카오로 시작했지만 연결하지 않고 손님으로 하기 (예: 만 14세 미만)
+  const leaveKakaoStart = useCallback(async () => {
+    const client = sb()
+    setNeedsProfile(false)
+    linkedRef.current = null
+    handledRef.current = null
+    setUser(null)
+    if (client) await client.auth.signOut({ scope: "local" }).catch(() => {})
+  }, [])
+
   // 로그인 상태 지켜보기
   useEffect(() => {
     if (!loaded) return
@@ -168,9 +203,12 @@ export function useCloudAccount(opts: {
     if (!client) return
     // 새로고침 전에 남겨 둔 안내
     const notice = sessionStorage.getItem(NOTICE_KEY)
+    const linkedMsg = sessionStorage.getItem(LINKED_KEY)
+    sessionStorage.removeItem(LINKED_KEY)
     if (notice) {
       sessionStorage.removeItem(NOTICE_KEY)
-      setTimeout(() => toast(notice), 600)
+      if (linkedMsg) setLinkedPopup(linkedMsg)
+      else setTimeout(() => toast(notice), 600)
     }
     // 카카오에서 돌아온 주소 정리 (?code=..., 취소했으면 ?error=...)
     const url = new URL(window.location.href)
@@ -197,6 +235,7 @@ export function useCloudAccount(opts: {
           linkedRef.current = null
           handledRef.current = null
           setGuardian(null)
+          setNeedsProfile(false)
         }
       }, 0)
     })
@@ -220,7 +259,12 @@ export function useCloudAccount(opts: {
     const client = sb()
     if (!client) return
     setBusy(true)
-    const { error } = await client.auth.signInWithOAuth({ provider: "kakao", options: { redirectTo: window.location.origin + "/" } })
+    const { error } = await client.auth.signInWithOAuth({ provider: "kakao", options: {
+        redirectTo: window.location.origin + "/",
+        // 이미 카카오에 로그인되어 있어도 '어떤 카카오 계정으로 연결할지' 확인 화면을 보여 줌
+        queryParams: { prompt: "select_account" },
+      },
+    })
     if (error) {
       setBusy(false)
       toast("카카오 연결을 시작하지 못했어요. 잠시 후 다시 해 주세요")
@@ -277,6 +321,7 @@ export function useCloudAccount(opts: {
       const u = user
       if (!client || !u || !conflict) return
       if (choice === "server") {
+        sessionStorage.setItem(LINKED_KEY, "서버에 있던 기록을 불러왔어요.")
         applyServerSave(conflict.serverSave, u.id, "서버 기록을 불러왔어요 ☁️")
         return
       }
@@ -293,7 +338,7 @@ export function useCloudAccount(opts: {
       }
       linkedRef.current = u.id
       setCloudUserId(u.id) // 저장되면서 서버 기록을 이 휴대폰 기록으로 덮어씀
-      toast("이 휴대폰 기록으로 연결했어요 ☁️")
+      setLinkedPopup("이 휴대폰의 기록으로 연결했어요. 서버 기록은 이 기록으로 바뀌어요.")
     },
     [applyServerSave, conflict, setCloudUserId, toast, user],
   )
@@ -312,8 +357,16 @@ export function useCloudAccount(opts: {
     }
   }, [user])
 
+  // 연결된 카카오 계정 이름 (카카오가 준 닉네임, 없으면 이메일 일부)
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
+  const pick = (...keys: string[]) => keys.map((k) => meta[k]).find((v): v is string => typeof v === "string" && v.trim() !== "")
+  const maskEmail = (e?: string | null) => (e ? e.replace(/^(.{2})[^@]*(@.*)$/, "$1***$2") : undefined)
+  const kakaoName = user ? pick("name", "full_name", "nickname", "user_name", "preferred_username") ?? maskEmail(user.email) ?? "카카오 계정" : null
+
   return {
-    user, linked: !!user && !conflict, conflict, busy, lastSyncedAt, guardian,
+    kakaoName, linkedPopup, closeLinkedPopup: () => setLinkedPopup(null),
+    needsProfile, adoptNewProfile, leaveKakaoStart,
+    user, linked: !!user && !conflict && !needsProfile, conflict, busy, lastSyncedAt, guardian,
     notifySaved, linkKakao, linkWithGuardian, logout, resolveConflict, deleteServerAccount, revokeGuardian,
   }
 }

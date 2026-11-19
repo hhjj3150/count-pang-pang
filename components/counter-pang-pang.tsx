@@ -769,6 +769,30 @@ export default function CounterPangPang() {
   const cloud = useCloudAccount({ loaded, setCloudUserId, suspendLocalSave, toast: flashToast })
   cloudNotifyRef.current = cloud.notifySaved
   const canLinkAccount = birthYear !== null && !isChild
+  // 🆕 처음 시작: 닉네임·태어난 해 저장하고 로비로
+  const finishProfile = (name: string, year: number) => {
+    setBirthYear(year)
+    setNickname(name)
+    setScreen("LOBBY")
+    // 🔓 처음 가입하면 게임 방법을 띄우지 않고 Lv.1을 바로 열어 줌 (게임 방법은 Lv.0 카드에서 볼 수 있음)
+    setUnlocked((u) => Math.max(u, 1))
+    if ((window as any).globalBgm) {
+      (window as any).globalBgm.play().catch(() => console.log("BGM 재생 대기"));
+    }
+  }
+  // 💬 카카오로 처음 시작 → 닉네임·태어난 해 정하는 화면으로
+  const [kidStart, setKidStart] = useState(false) // 카카오로 시작했는데 만 14세 미만: 부모님과 함께 / 손님으로
+  useEffect(() => {
+    if (cloud.needsProfile) setScreen("LOGIN")
+  }, [cloud.needsProfile])
+  const startKidAs = async (mode: "guardian" | "guest") => {
+    sfxClick()
+    setKidStart(false)
+    await cloud.leaveKakaoStart()
+    finishProfile(nickInput.trim(), Number(birthInput))
+    if (mode === "guardian") setShowGuardianLink(true)
+    else flashToast("손님으로 시작해요! 기록은 이 휴대폰에만 저장되고, 보호자와 연결하기 전까지 기프티콘은 받을 수 없어요")
+  }
   // 👨‍👩‍👧 보호자 연결 (만 14세 미만). 🧪 본인인증 업체 계약 전이라 '테스트 모드'에서만 보여 줌
   //   테스트 모드 켜기: 주소 뒤에 ?guardian-test=1 (끄기: ?guardian-test=0) 또는 Vercel 환경 변수 NEXT_PUBLIC_GUARDIAN_TEST=1
   const [guardianTest, setGuardianTest] = useState(false)
@@ -1200,16 +1224,52 @@ export default function CounterPangPang() {
               />
             </div>
             <div className="relative z-10 w-full px-6 pb-10">
-              <button
-                type="button"
-                onClick={() => {
-                  sfxClick()
-                  setScreen(nickname ? "LOBBY" : "LOGIN")
-                }}
-                className="w-full rounded-2xl bg-gradient-to-b from-yellow-300 to-amber-400 py-4 text-xl font-black text-amber-950 shadow-[0_6px_0_#b45309] active:translate-y-1 active:shadow-[0_2px_0_#b45309]"
-              >
-                시작하기 🚗
-              </button>
+              {nickname ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfxClick()
+                      setScreen("LOBBY")
+                    }}
+                    className="w-full rounded-2xl bg-gradient-to-b from-yellow-300 to-amber-400 py-4 text-xl font-black text-amber-950 shadow-[0_6px_0_#b45309] active:translate-y-1 active:shadow-[0_2px_0_#b45309]"
+                  >
+                    시작하기 🚗
+                  </button>
+                  {cloud.linked ? (
+                    <p className="mt-2 text-center text-xs font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">💬 {cloud.kakaoName} 님으로 로그인 중</p>
+                  ) : canLinkAccount ? (
+                    <button
+                      type="button"
+                      onClick={() => { sfxClick(); void cloud.linkKakao(); }}
+                      className="mt-2 w-full text-center text-xs font-black text-white underline drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                    >
+                      손님으로 하는 중 · 💬 카카오 연결하고 기록 보관·기프티콘 받기 ›
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={cloud.busy}
+                    onClick={() => { sfxClick(); void cloud.linkKakao(); }}
+                    className="w-full rounded-2xl bg-[#FEE500] py-4 text-xl font-black text-[#191919] shadow-[0_6px_0_#c9b400] active:translate-y-1 active:shadow-[0_2px_0_#c9b400] disabled:opacity-70"
+                  >
+                    {cloud.busy ? "카카오로 이동 중…" : "💬 카카오로 시작하기"}
+                  </button>
+                  <p className="mt-2 text-center text-xs font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                    카카오로 로그인해요. 한 번 로그인하면 다음부터 자동으로 로그인돼요.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { sfxClick(); setScreen("LOGIN"); }}
+                    className="mt-3 w-full text-center text-sm font-black text-white underline drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                  >
+                    손님으로 먼저 해 보기 ›
+                  </button>
+                </>
+              )}
               {/* 👇 여기서부터 추가: 물리적인 게임 종료 버튼 👇 */}
               <button
                 type="button"
@@ -1244,16 +1304,15 @@ export default function CounterPangPang() {
               flashToast("태어난 해를 선택해 주세요!")
               return
             }
-            setBirthYear(Number(birthInput))
             sfxClick()
-            setNickname(name)
-            setScreen("LOBBY")
-            // 🔓 처음 가입하면 게임 방법을 띄우지 않고 Lv.1을 바로 열어 줌 (게임 방법은 Lv.0 카드에서 볼 수 있음)
-            setUnlocked((u) => Math.max(u, 1))
-
-            if ((window as any).globalBgm) {
-              (window as any).globalBgm.play().catch(() => console.log("BGM 재생 대기"));
+            if (cloud.needsProfile) {
+              // 💬 카카오로 시작: 만 14세 미만은 부모님과 함께 (또는 손님으로)
+              if (isChildUser(Number(birthInput))) return setKidStart(true)
+              finishProfile(name, Number(birthInput))
+              cloud.adoptNewProfile()
+              return
             }
+            finishProfile(name, Number(birthInput))
           }}
           /* 2. 닉네임 박스(테두리, 배경색) 삭제하고 내용물만 남김 */
           className="relative z-10 w-full max-w-sm"
@@ -1263,7 +1322,18 @@ export default function CounterPangPang() {
   <img src="/assets/0-2-2.png" alt="상단 장식" className="h-32 object-contain" />
 </div>
           <h2 className="mb-1 text-center text-3xl font-black text-black drop-shadow-md">반가워요 </h2>
-          <p className="mb-6 text-center text-base font-bold text-black drop-shadow-md">닉네임은 선물로 받을 이모티콘에 시그니처로 사용됩니다.</p>
+          <p className="mb-3 text-center text-base font-bold text-black drop-shadow-md">닉네임은 선물로 받을 이모티콘에 시그니처로 사용됩니다.</p>
+          {cloud.needsProfile ? (
+            <p data-testid="signup-kakao" className="mb-5 rounded-xl bg-[#FEE500] px-3 py-2.5 text-center text-xs font-black leading-relaxed text-[#191919] shadow">
+              💬 카카오 로그인 완료{cloud.kakaoName ? ` (${cloud.kakaoName})` : ""}! 닉네임과 태어난 해만 정하면 시작해요.
+            </p>
+          ) : (
+            <p data-testid="signup-guest" className="mb-5 rounded-xl bg-white/85 px-3 py-2.5 text-center text-xs font-bold leading-relaxed text-zinc-700 shadow">
+              👤 <b>손님으로 시작</b>해요. 기록은 이 휴대폰에만 저장돼요.<br />
+              <b className="text-rose-600">카카오 계정을 연결하기 전까지는 기프티콘을 받을 수 없어요.</b>
+              <br />(캐시는 계속 모이고, 나중에 관리 → 내 정보에서 연결할 수 있어요)
+            </p>
+          )}
           {/* 👆 여기까지 👆 */}
 
           <label className="mb-2 block text-sm font-bold text-black drop-shadow-md" htmlFor="nick">
@@ -1303,7 +1373,44 @@ export default function CounterPangPang() {
               <p className="mt-3 text-center text-xs font-bold text-black/60 drop-shadow-sm">
                 입장하면 <a href="/terms" className="underline">이용약관</a>과 <a href="/privacy" className="underline">개인정보처리방침</a>에 동의하는 것으로 봐요.
               </p>
+              <button
+                type="button"
+                onClick={() => { sfxClick(); if (cloud.needsProfile) void cloud.leaveKakaoStart(); setScreen("INTRO"); }}
+                className="mt-2 w-full text-center text-xs font-bold text-black/60 underline"
+              >
+                ← 처음 화면으로
+              </button>
             </form>
+            {/* 👨‍👩‍👧 카카오로 시작했는데 만 14세 미만 */}
+            {kidStart && (
+              <div data-testid="kid-start" className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm">
+                <div className="w-full max-w-[340px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop">
+                  <p className="text-5xl">👨‍👩‍👧</p>
+                  <h2 className="mt-2 text-xl font-black text-zinc-900">부모님 인증이 필요해요</h2>
+                  <p className="mt-2 text-sm font-bold leading-relaxed text-zinc-600">
+                    만 14세 미만은 카카오로 시작하려면 <b className="text-emerald-600">부모님(보호자)의 동의</b>가 필요해요.
+                  </p>
+                  {guardianTest ? (
+                    <button type="button" onClick={() => void startKidAs("guardian")} className="mt-5 w-full rounded-2xl bg-emerald-500 py-3 text-base font-black text-white">
+                      👨‍👩‍👧 부모님과 함께 시작하기 <span className="text-xs">(🧪 테스트)</span>
+                    </button>
+                  ) : (
+                    <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-relaxed text-amber-700 ring-1 ring-amber-200">
+                      부모님과 함께 시작하기는 준비 중이에요. 그동안은 손님으로 먼저 즐겨 주세요!
+                    </p>
+                  )}
+                  <button type="button" onClick={() => void startKidAs("guest")} className="mt-2 w-full rounded-2xl bg-slate-100 py-3 text-base font-black text-slate-700">
+                    손님으로 먼저 하기
+                  </button>
+                  <p className="mt-2 text-[11px] font-bold leading-relaxed text-zinc-500">
+                    손님은 기록이 이 휴대폰에만 저장되고, 보호자와 연결하기 전까지 기프티콘은 받을 수 없어요.
+                  </p>
+                  <button type="button" onClick={() => { sfxClick(); setKidStart(false); }} className="mt-2 text-xs font-bold text-zinc-400 underline">
+                    태어난 해 다시 고르기
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -2249,6 +2356,9 @@ export default function CounterPangPang() {
                       <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
                         카카오 계정에 연결됐어요. 기록이 서버에도 자동으로 저장돼서 휴대폰을 바꿔도 이어서 할 수 있어요.
                       </p>
+                      <p className="mt-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-slate-800 ring-1 ring-yellow-200">
+                        💬 연결된 카카오 계정: {cloud.kakaoName}
+                      </p>
                       {cloud.guardian && (
                         <p className="mt-1 text-[11px] font-bold text-yellow-700">
                           👨‍👩‍👧 보호자 동의: {cloud.guardian.guardian_name.slice(0, 1)}** 님 · {new Date(cloud.guardian.consented_at).toLocaleDateString("ko-KR")}
@@ -2288,6 +2398,7 @@ export default function CounterPangPang() {
                       <p className="mt-1 text-xs font-bold leading-relaxed text-yellow-800">
                         카카오 계정을 연결하면 기록을 서버에 보관해요. 휴대폰을 바꾸거나 앱을 지워도 기록을 되찾을 수 있어요.
                       </p>
+                      <p className="mt-1 text-xs font-black text-rose-600">손님은 카카오 계정을 연결하기 전까지 기프티콘을 받을 수 없어요.</p>
                       <button
                         type="button"
                         disabled={cloud.busy}
@@ -2296,6 +2407,9 @@ export default function CounterPangPang() {
                       >
                         {cloud.busy ? "카카오로 이동 중…" : "💬 카카오로 연결하기"}
                       </button>
+                      <p className="mt-1.5 text-[11px] font-bold leading-relaxed text-yellow-700">
+                        카카오 화면에서 연결할 계정을 고르면 게임으로 돌아와요. 따로 회원가입은 없어요.
+                      </p>
                     </>
                   ) : birthYear !== null && guardianTest ? (
                     <>
@@ -2795,6 +2909,16 @@ export default function CounterPangPang() {
                         준비 중
                       </button>
                     </div>
+                    {!cloud.linked && (
+                      <div data-testid="gift-guest" className="mt-3 rounded-lg bg-yellow-50 p-2.5 text-[11px] font-bold leading-relaxed text-yellow-800 ring-1 ring-yellow-200">
+                        👤 손님은 {isChild ? "보호자와 연결하기" : "카카오 계정을 연결하기"} 전까지 기프티콘을 받을 수 없어요. 캐시는 그대로 계속 모여요.
+                        {canLinkAccount && (
+                          <button type="button" onClick={() => { sfxClick(); void cloud.linkKakao(); }} className="mt-2 block w-full rounded-lg bg-[#FEE500] py-2 text-xs font-black text-[#191919]">
+                            💬 카카오 계정 연결하기
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {isChild && (
                       <p className="mt-3 rounded-lg bg-rose-50 p-2 text-[11px] font-bold text-rose-600">
                         만 {ECONOMY.giftCardMinAge}세 미만은 상품권 교환에 보호자 동의가 필요해서, 지금은 캐시 모으기만 할 수 있어요.
@@ -2855,6 +2979,25 @@ export default function CounterPangPang() {
           onClose={() => setShowGuardianLink(false)}
           onSubmit={(g, items) => { sfxClick(); void cloud.linkWithGuardian(g, items); }}
         />
+      )}
+      {/* ☁️ 연결 완료 안내 */}
+      {cloud.linkedPopup && !cloud.conflict && (
+        <div data-testid="cloud-linked" className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm" onClick={cloud.closeLinkedPopup}>
+          <div className="w-full max-w-[330px] rounded-3xl bg-white p-6 text-center shadow-2xl cpp-pop" onClick={(e) => e.stopPropagation()}>
+            <p className="text-5xl">✅</p>
+            <h2 className="mt-2 text-xl font-black text-zinc-900">카카오 계정과 연결됐어요</h2>
+            <p className="mt-3 rounded-xl bg-yellow-50 px-3 py-2.5 text-sm font-black text-slate-800 ring-1 ring-yellow-200">
+              💬 {cloud.kakaoName ?? "카카오 계정"}
+            </p>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-zinc-600">{cloud.linkedPopup}</p>
+            <p className="mt-1 text-xs font-bold leading-relaxed text-zinc-500">
+              이제 게임 기록이 서버에 자동으로 저장돼요. 다른 휴대폰에서도 이 카카오 계정으로 연결하면 이어서 할 수 있어요.
+            </p>
+            <button type="button" onClick={() => { sfxClick(); cloud.closeLinkedPopup(); }} className="mt-5 w-full rounded-2xl bg-emerald-500 py-3 text-base font-black text-white">
+              확인
+            </button>
+          </div>
+        </div>
       )}
       {/* ☁️ 기록 고르기: 처음 연결할 때 서버에도 기록이 있으면 */}
       {cloud.conflict && (
