@@ -2,6 +2,7 @@
 // 내 정보는 모두 이 한 묶음(STORAGE_KEY)에 저장해요. 서버를 붙이면 이 묶음을 그대로 올리고 받으면 돼요.
 import { MonthBest } from "./records"
 import { LearnStats } from "./stats"
+import type { MissionDay } from "./missions"
 
 export interface SaveData {
   ver?: number // 저장 형식 버전 (SAVE_VERSION)
@@ -28,8 +29,10 @@ export interface SaveData {
   heartBuy?: { date: string; count: number } // 💖 오늘 상점에서 하트를 산 횟수
   attendance?: { date: string; weekCount: number; lastMonday: string } // 📅 출석 (주마다 새로 시작)
   invite?: { date: string; count: number } // 💌 오늘 친구 초대 횟수
+  inviteRewarded?: number // 💌 초대해서 가입한 친구 중 포인트 보상을 이미 받은 수 (캐시를 끈 동안)
   daily?: { date: string; level: number; done: boolean } // 🔥 오늘의 도전
   monthBest?: { month: string; best: MonthBest } // 🏆 이번 달 신기록
+  missions?: MissionDay  // 📋 오늘의 미션 (lib/game/missions.ts)
   stats?: LearnStats     // 📊 학습 기록 (부모님 리포트)
   showGuide?: boolean    // 📋 레벨 시작 전 게임 설명 팝업 보기
   lastLevel?: number     // 마지막으로 고른 레벨

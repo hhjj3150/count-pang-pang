@@ -20,14 +20,14 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
     ck(off === '0' && await p.evaluate(() => localStorage.getItem('cp_auto_login')) === null, 'A0-2 자동 로그인 끄기/켜기 저장')
     await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/intro_new.png' })
     await p.getByRole('button', { name: /손님으로 먼저 해 보기/ }).click(); await sleep(300)
-    ck(/기프티콘을 받을 수 없어요/.test(await p.getByTestId('signup-guest').innerText()), 'A0-1 손님 가입 화면: 카카오 연결 전에는 기프티콘 못 받음 안내')
+    ck(/서버에 보관되지 않고 랭킹에도 오르지 않아요/.test(await p.getByTestId('signup-guest').innerText()), 'A0-1 손님 가입 화면: 연결 전에는 서버 보관·랭킹 안 됨 안내')
     await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/signup_guest.png' })
     await p.locator('input').first().fill('점검왕')
     await p.locator('#birth').selectOption('1990')
     await p.locator('input').first().press('Enter'); await sleep(1200)
     ck(!(await p.getByText(/🎓 게임 방법/).isVisible()), 'A1 가입 직후 게임 방법 자동 표시 안 함')
     ck((await H.lockedCount(p)) === 13, 'A2 가입하면 Lv.1 열림')
-    const w = await H.wallet(p); ck(w.P === 0 && w.C === 0, `A3 가입 직후 0P 0C`)
+    const w = await H.wallet(p); ck(w.P === 0 && w.C === null, `A3 가입 직후 0P, 캐시 칸 없음`)
     ck((await H.hearts(p)) === 5, 'A4 시작 하트 5개')
   })
   // ── B. 게임 방법(Lv.0): 10장, 끝까지 보면 +5P 한 번만, 하트 안 씀
@@ -46,7 +46,7 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
     const btn = p.getByRole('button', { name: /광고 보고 하트 충전/ })
     for (let i = 0; i < 7; i++) { await btn.click(); await sleep(120) }
     const w = await H.wallet(p)
-    ck((await H.hearts(p)) === 10 && w.C === 0, `C1 광고 충전: 하트 10(최대), 손님 캐시 ${w.C}C (쌓이지 않음)`)
+    ck((await H.hearts(p)) === 10 && w.C === null, `C1 광고 충전: 하트 10(최대), 캐시 칸 없음`)
     ck(await p.getByText(/하트가 가득 찼어요/).isVisible(), 'C2 가득 차면 안내')
   })
   // ── D. 출석체크
@@ -66,8 +66,8 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
   await step('E', async () => {
     await p.evaluate(() => { navigator.share = async () => {} })
     await p.getByRole('button', { name: '💌 초대' }).click(); await sleep(1500)
-    const w = await H.wallet(p); ck(w.P === 40 && w.C === 0, `E1 손님 초대 +30P, 캐시 없음 (${w.P}P ${w.C}C)`)
-    ck(/카카오 연결하면 친구 가입마다 캐시/.test(await p.locator('body').innerText()), 'E2 손님 초대 안내: 연결하면 친구 가입마다 캐시')
+    const w = await H.wallet(p); ck(w.P === 40 && w.C === null, `E1 손님 초대 +30P (${w.P}P)`)
+    ck(/카카오 연결하면 친구가 가입할 때마다 \+300P/.test(await p.locator('body').innerText()), 'E2 손님 초대 안내: 연결하면 친구 가입마다 +300P')
   })
   await p.close()
 
@@ -299,9 +299,45 @@ const step = async (name, fn) => { try { await fn() } catch (e) { ck(false, `${n
     ck(pv.includes('카카오 회원번호') && pv.includes('Supabase') && pv.includes('서울'), 'S5 개인정보처리방침에 계정 연결 항목')
     await H.seed(p, H.baseSave({ cash: 300 }), H.doneDaily()); await H.enterLobby(p)
     await p.getByRole('button', { name: '🛒 포인트 상점' }).click(); await sleep(400)
-    await p.getByRole('button', { name: '🎁 상품권' }).click(); await sleep(300)
-    const gg = await p.getByTestId('gift-guest').innerText()
-    ck(/캐시가 쌓이지 않고 기프티콘도 받을 수 없어요/.test(gg) && (await H.wallet(p)).C === 0, 'S6 상품권 탭: 손님은 캐시 0, 캐시·기프티콘 없음 안내 (예전 저장값의 캐시 무시)')
+    ck(!(await p.getByRole('button', { name: '🎁 상품권' }).count()) && (await H.wallet(p)).C === null && !/💵|기프티콘/.test(await p.locator('body').innerText()), 'S6 캐시를 끈 동안: 상품권 탭·캐시·기프티콘 문구 없음')
+  })
+  // ── M. 📋 오늘의 미션 (고정 3 + 매일 바뀌는 2, 보상 포인트·하트)
+  await step('M', async () => {
+    await H.seed(p, H.baseSave({ points: 0, hearts: 5 }), H.doneDaily()); await H.enterLobby(p); await sleep(500)
+    const mb = p.getByTestId('mission-button')
+    ck(/오늘의 미션 0\/5/.test(await mb.innerText()), 'M1 로비에 오늘의 미션 0/5')
+    const picks0 = (await H.getSave(p)).missions?.picks
+    await p.getByRole('button', { name: '📅 출석체크' }).click(); await sleep(400)
+    await p.getByRole('button', { name: /출석하고 포인트 받기/ }).click(); await sleep(400)
+    if (await p.getByRole('button', { name: '오늘 출석 완료 ✅' }).isVisible().catch(() => false)) await p.goBack()
+    await sleep(300)
+    ck(/보상 1개/.test(await mb.innerText()), 'M2 출석하면 받을 보상 1개 표시')
+    const before = (await H.wallet(p)).P
+    await mb.click(); await sleep(400)
+    const modal = p.getByTestId('mission-modal')
+    await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/missions.png' })
+    await modal.locator('[data-mission="attend"]').getByRole('button', { name: /받기 \+20P/ }).click(); await sleep(300)
+    ck((await H.wallet(p)).P === before + 20 && /받음/.test(await modal.locator('[data-mission="attend"]').innerText()), 'M3 받기 → +20P, 받음 표시')
+    await p.goBack(); await sleep(300)
+    // Lv.1(오늘의 도전 레벨) 만점
+    await H.startLevel(p, 1); await H.playGame(p, Array(15).fill('ok'))
+    await p.getByText('이번 점수').waitFor(); await sleep(2800); await H.closePromo(p)
+    await p.getByRole('button', { name: '확인', exact: true }).click(); await sleep(900); await H.closePromo(p)
+    const md = (await H.getSave(p)).missions
+    ck(md.passed.includes(1) && md.dailyPerfect && md.perfectAny && md.streak10, `M4 만점 한 판 → 통과 1/5·오늘의 도전 만점·10연속 정답 기록`)
+    await mb.click(); await sleep(400)
+    ck(/1\/5/.test(await modal.locator('[data-mission="pass5"]').innerText()) && await modal.locator('[data-mission="dailyPerfect"]').getByRole('button', { name: /받기 \+50P/ }).isVisible(), 'M5 미션 창: 5판 통과 1/5, 오늘의 도전 만점 받기')
+    await p.goBack(); await sleep(300)
+    await H.reloadLobby(p)
+    ck(JSON.stringify((await H.getSave(p)).missions.picks) === JSON.stringify(picks0) && picks0.length === 2, `M6 매일 바뀌는 미션 2개는 다시 열어도 같음 (${picks0})`)
+    // 모두 받은 상태 → 보너스
+    const all = { ...md, picks: ['invite', 'ranking'], passed: [1, 2, 3, 4, 5], dailyPerfect: true, invite: true, ranking: true, claimed: ['attend', 'pass5', 'dailyPerfect', 'invite', 'ranking'], bonus: false }
+    await H.seed(p, H.baseSave({ ver: 5, points: 0, hearts: 5, missions: all, attendance: { date: H.ymd(), weekCount: 1, lastMonday: md ? (await H.getSave(p)).attendance.lastMonday : '' } }), H.doneDaily()); await H.enterLobby(p)
+    await mb.click(); await sleep(400)
+    const hb = await H.hearts(p), pb = (await H.wallet(p)).P
+    await modal.getByRole('button', { name: '받기', exact: true }).click(); await sleep(400)
+    ck((await H.hearts(p)) === hb + 1 && (await H.wallet(p)).P === pb + 100, 'M7 다섯 개 다 받으면 보너스 하트 +1 · +100P')
+    await p.goBack(); await sleep(300)
   })
   await p.close()
 

@@ -385,7 +385,7 @@ export function useCloudAccount(opts: {
     setGuardian(null)
     setUser(null)
     setCloudUserId(undefined)
-    toast("보호자 동의를 취소했어요. 서버 게임 기록은 지웠고, 휴대폰 기록과 모은 캐시는 남아 있어요")
+    toast("보호자 동의를 취소했어요. 서버 게임 기록은 지웠고, 휴대폰 기록은 그대로예요")
     return true
   }, [setCloudUserId, toast, user])
 

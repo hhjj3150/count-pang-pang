@@ -34,8 +34,8 @@ const getSave = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('counter
 
 async function wallet(p) {
   const t = await p.getByRole('button', { name: /🪙/ }).innerText()
-  const m = t.match(/🪙 ([\d,]+)P\s*💵 ([\d,]+)C/)
-  return { P: +m[1].replace(/,/g, ''), C: +m[2].replace(/,/g, '') }
+  const m = t.match(/🪙 ([\d,]+)P(?:\s*💵 ([\d,]+)C)?/) // 캐시를 끈 동안(CASH_ENABLED=false)은 💵 칸이 없음 → C는 null
+  return { P: +m[1].replace(/,/g, ''), C: m[2] === undefined ? null : +m[2].replace(/,/g, '') }
 }
 const hearts = (p) => p.evaluate(() => +[...document.querySelectorAll('header div')].find((e) => /^💖\s*\d+$/.test(e.textContent.trim())).textContent.match(/\d+/)[0])
 const lockedCount = (p) => p.getByText(/^🔒/).count()
